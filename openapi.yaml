@@ -1,0 +1,320 @@
+openapi: "3.1.0"
+
+info:
+  title: "UidePet Huellitas Solidarias API"
+  version: "1.0.0"
+  description: "API REST para la gestión de mascotas, solicitudes de adopción y seguridad JWT del proyecto UidePet - Huellitas Solidarias."
+  license:
+    name: "MIT"
+    identifier: "MIT"
+
+servers:
+  - url: "http://localhost:3000"
+    description: "Servidor local de desarrollo"
+
+paths:
+  /health:
+    get:
+      operationId: "healthCheck"
+      summary: "Verificar estado del servidor"
+      description: "Retorna el estado actual de la API."
+      security: []
+      responses:
+        "200":
+          description: "Servidor activo."
+          content:
+            application/json:
+              example:
+                code: 200
+                status: "API UidePet Huellitas Solidarias activa"
+                timestamp: "2026-06-29T19:00:00.000Z"
+        "404":
+          description: "Ruta no encontrada."
+          content:
+            application/json:
+              example:
+                code: 404
+                error: "Ruta no encontrada"
+
+  /v1/mascotas:
+    get:
+      operationId: "listarMascotasV1"
+      summary: "Listar mascotas disponibles"
+      description: "Retorna una lista de mascotas registradas para adopción."
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Lista de mascotas obtenida correctamente."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  version:
+                    type: string
+                    example: "v1"
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Mascota"
+              example:
+                code: 200
+                version: "v1"
+                data:
+                  - id_mascota: 1
+                    nombre: "Max"
+                    especie: "Perro"
+                    edad: "2 años"
+                    sexo: "Macho"
+                    tamanio: "Mediano"
+                    estado: "Disponible"
+                    ubicacion: "Campus UIDE Quito"
+        "401":
+          description: "Token ausente, inválido o expirado."
+          content:
+            application/json:
+              examples:
+                token_ausente:
+                  value:
+                    error: "Token ausente"
+                token_expirado:
+                  value:
+                    error: "Token expirado"
+                firma_invalida:
+                  value:
+                    error: "Firma invalida"
+        "429":
+          description: "Demasiadas peticiones."
+          content:
+            application/json:
+              example:
+                error: "Demasiadas peticiones. Intenta mas tarde."
+
+  /v1/solicitudes-adopcion:
+    post:
+      operationId: "crearSolicitudAdopcionV1"
+      summary: "Registrar solicitud de adopción versión 1"
+      description: "Crea una solicitud de adopción con los datos básicos del usuario y la mascota."
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudAdopcionV1"
+            example:
+              id_mascota: 1
+              id_usuario: 1
+              tipo_vivienda: "Casa con patio"
+              tiene_mascotas: true
+              motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
+      responses:
+        "201":
+          description: "Solicitud de adopción registrada correctamente."
+          content:
+            application/json:
+              example:
+                version: "v1"
+                message: "Solicitud de adopción registrada correctamente"
+                data:
+                  id_solicitud: 1
+                  id_mascota: 1
+                  id_usuario: 1
+                  tipo_vivienda: "Casa con patio"
+                  tiene_mascotas: true
+                  motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
+                  estado: "EN_REVISION"
+                  fecha_solicitud: "2026-06-29T19:00:00.000Z"
+        "400":
+          description: "Campos requeridos incompletos."
+          content:
+            application/json:
+              example:
+                error: "Campos requeridos: id_mascota, id_usuario, tipo_vivienda, tiene_mascotas, motivo_adopcion"
+        "401":
+          description: "Token ausente, inválido o expirado."
+          content:
+            application/json:
+              examples:
+                token_ausente:
+                  value:
+                    error: "Token ausente"
+                firma_invalida:
+                  value:
+                    error: "Firma invalida"
+                algoritmo_no_permitido:
+                  value:
+                    error: "Algoritmo no permitido"
+        "429":
+          description: "Demasiadas peticiones."
+          content:
+            application/json:
+              example:
+                error: "Demasiadas peticiones. Intenta mas tarde."
+
+  /v2/solicitudes-adopcion:
+    post:
+      operationId: "crearSolicitudAdopcionV2"
+      summary: "Registrar solicitud de adopción versión 2 con seguimiento"
+      description: "Crea una solicitud de adopción e incluye campos adicionales para seguimiento posterior."
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudAdopcionV2"
+            example:
+              id_mascota: 1
+              id_usuario: 1
+              tipo_vivienda: "Casa con patio"
+              tiene_mascotas: true
+              motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
+              acepta_seguimiento: true
+              canal_seguimiento: "whatsapp"
+      responses:
+        "201":
+          description: "Solicitud de adopción registrada correctamente con seguimiento."
+          content:
+            application/json:
+              example:
+                version: "v2"
+                message: "Solicitud de adopción registrada correctamente con seguimiento"
+                data:
+                  id_solicitud: 1
+                  id_mascota: 1
+                  id_usuario: 1
+                  tipo_vivienda: "Casa con patio"
+                  tiene_mascotas: true
+                  motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
+                  acepta_seguimiento: true
+                  canal_seguimiento: "whatsapp"
+                  estado: "EN_REVISION"
+                  fecha_solicitud: "2026-06-29T19:00:00.000Z"
+        "400":
+          description: "Payload inválido o canal de seguimiento fuera de enum."
+          content:
+            application/json:
+              examples:
+                campos_faltantes:
+                  value:
+                    error: "Campos requeridos: id_mascota, id_usuario, tipo_vivienda, tiene_mascotas, motivo_adopcion, acepta_seguimiento, canal_seguimiento"
+                canal_invalido:
+                  value:
+                    error: "canal_seguimiento inválido. Valores: whatsapp, correo, telefono"
+        "401":
+          description: "Token ausente, inválido, expirado o algoritmo no permitido."
+          content:
+            application/json:
+              examples:
+                token_ausente:
+                  value:
+                    error: "Token ausente"
+                token_expirado:
+                  value:
+                    error: "Token expirado"
+                firma_invalida:
+                  value:
+                    error: "Firma invalida"
+                algoritmo_no_permitido:
+                  value:
+                    error: "Algoritmo no permitido"
+        "429":
+          description: "Demasiadas peticiones."
+          content:
+            application/json:
+              example:
+                error: "Demasiadas peticiones. Intenta mas tarde."
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Token JWT generado mediante generate-token.mjs y enviado en el header Authorization."
+
+  schemas:
+    Mascota:
+      type: object
+      required:
+        - id_mascota
+        - nombre
+        - especie
+        - estado
+      properties:
+        id_mascota:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Max"
+        especie:
+          type: string
+          example: "Perro"
+        edad:
+          type: string
+          example: "2 años"
+        sexo:
+          type: string
+          example: "Macho"
+        tamanio:
+          type: string
+          example: "Mediano"
+        estado:
+          type: string
+          example: "Disponible"
+        ubicacion:
+          type: string
+          example: "Campus UIDE Quito"
+
+    SolicitudAdopcionV1:
+      type: object
+      required:
+        - id_mascota
+        - id_usuario
+        - tipo_vivienda
+        - tiene_mascotas
+        - motivo_adopcion
+      properties:
+        id_mascota:
+          type: integer
+          example: 1
+        id_usuario:
+          type: integer
+          example: 1
+        tipo_vivienda:
+          type: string
+          example: "Casa con patio"
+        tiene_mascotas:
+          type: boolean
+          example: true
+        motivo_adopcion:
+          type: string
+          example: "Deseo brindar un hogar responsable y seguro a la mascota."
+
+    SolicitudAdopcionV2:
+      allOf:
+        - $ref: "#/components/schemas/SolicitudAdopcionV1"
+        - type: object
+          required:
+            - acepta_seguimiento
+            - canal_seguimiento
+          properties:
+            acepta_seguimiento:
+              type: boolean
+              example: true
+            canal_seguimiento:
+              type: string
+              enum:
+                - whatsapp
+                - correo
+                - telefono
+              example: "whatsapp"
+      unevaluatedProperties: false
