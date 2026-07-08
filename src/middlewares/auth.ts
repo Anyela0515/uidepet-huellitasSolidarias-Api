@@ -1,72 +1,64 @@
-import { type Request, type Response, type NextFunction } from "express";
-import { createHmac, timingSafeEqual } from "crypto";
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "secreto-demo-huellitas";
+export type RolUsuario = "admin" | "adoptante" | "organizacion" | "voluntario";
 
-function base64urlDecode(value: string): string {
-  return Buffer.from(
-    value.replace(/-/g, "+").replace(/_/g, "/"),
-    "base64"
-  ).toString("utf8");
+export interface AppJwtPayload {
+  sub: number;
+  email: string;
+  rol: RolUsuario;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AppJwtPayload;
+    }
+  }
 }
 
 export function requireJwt(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization ?? "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : "";
+  const header = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({ error: "Token ausente" });
+  if (!header) {
+    res.status(401).json({ error: "Token ausente" });
+    return;
   }
 
-  const parts = token.split(".");
-
-  if (parts.length !== 3) {
-    return res.status(401).json({ error: "Token malformado" });
+  if (!header.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Token malformado" });
+    return;
   }
-
-  const [headerB64, payloadB64, signatureB64] = parts;
 
   try {
-    const header = JSON.parse(base64urlDecode(headerB64));
+    const token = header.split(" ")[1];
 
-    if (header.alg !== "HS256") {
-      return res.status(401).json({ error: "Algoritmo no permitido" });
-    }
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as unknown as AppJwtPayload;
 
-    const expectedSignature = createHmac("sha256", JWT_SECRET)
-      .update(`${headerB64}.${payloadB64}`)
-      .digest("base64url");
-
-    const receivedBuffer = Buffer.from(signatureB64);
-    const expectedBuffer = Buffer.from(expectedSignature);
-
-    if (
-      receivedBuffer.length !== expectedBuffer.length ||
-      !timingSafeEqual(receivedBuffer, expectedBuffer)
-    ) {
-      return res.status(401).json({ error: "Firma invalida" });
-    }
-
-    const claims = JSON.parse(base64urlDecode(payloadB64));
-    const now = Math.floor(Date.now() / 1000);
-
-    if (claims.exp && claims.exp < now) {
-      return res.status(401).json({ error: "Token expirado" });
-    }
-
-    if (!claims.sub) {
-      return res.status(401).json({ error: "Claim sub ausente" });
-    }
-
-    (req as Request & { user?: unknown }).user = {
-      sub: claims.sub,
-      scope: claims.scope ?? "",
-    };
-
+    req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    res.status(401).json({ error: "Token inválido o expirado" });
   }
+}
+
+export function requireRole(...rolesPermitidos: RolUsuario[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Usuario no autenticado" });
+      return;
+    }
+
+    if (!rolesPermitidos.includes(req.user.rol)) {
+      res.status(403).json({
+        error: "Acceso denegado. Rol insuficiente.",
+      });
+      return;
+    }
+
+    next();
+  };
 }

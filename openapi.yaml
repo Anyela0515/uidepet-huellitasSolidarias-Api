@@ -1,51 +1,246 @@
-openapi: "3.1.0"
+openapi: "3.0.3"
 
 info:
-  title: "UidePet Huellitas Solidarias API"
+  title: "UidePet - Huellitas Solidarias API"
   version: "1.0.0"
-  description: "API REST para la gestión de mascotas, solicitudes de adopción y seguridad JWT del proyecto UidePet - Huellitas Solidarias."
+  description: "API REST para gestión de mascotas en adopción del proyecto Huellitas Solidarias UIDE."
   license:
-    name: "MIT"
-    identifier: "MIT"
+    name: "Académico"
 
 servers:
   - url: "http://localhost:3000"
     description: "Servidor local de desarrollo"
 
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          example: "fundacion@huellitas.com"
+        password:
+          type: string
+          example: "123456"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        usuario:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            nombre:
+              type: string
+              example: "Fundación Huellitas Solidarias"
+            email:
+              type: string
+              example: "fundacion@huellitas.com"
+            rol:
+              type: string
+              example: "organizacion"
+
+    Mascota:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        fk_organizacion_id:
+          type: integer
+          example: 1
+        organizacion_nombre:
+          type: string
+          example: "Fundación Huellitas Solidarias"
+        nombre:
+          type: string
+          example: "Estrella"
+        especie:
+          type: string
+          enum:
+            - PERRO
+            - GATO
+            - CONEJO
+            - OTRO
+          example: "PERRO"
+        raza:
+          type: string
+          example: "MESTIZO"
+        sexo:
+          type: string
+          enum:
+            - MACHO
+            - HEMBRA
+            - DESCONOCIDO
+          example: "HEMBRA"
+        edad_aproximada:
+          type: string
+          example: "1 año"
+        tamano:
+          type: string
+          enum:
+            - PEQUENO
+            - MEDIANO
+            - GRANDE
+            - NO_APLICA
+          example: "MEDIANO"
+        color:
+          type: string
+          example: "Blanco con negro"
+        descripcion:
+          type: string
+          example: "Perrita tranquila, cariñosa y lista para adopción responsable."
+        historia:
+          type: string
+          example: "Fue rescatada por la organización y recibió atención básica."
+        estado_salud:
+          type: string
+          example: "Vacunada, desparasitada y estable"
+        esterilizado:
+          type: boolean
+          example: false
+        estado_adopcion:
+          type: string
+          enum:
+            - NO_DISPONIBLE
+            - DISPONIBLE
+            - EN_PROCESO
+            - ADOPTADO
+            - FALLECIDO
+          example: "DISPONIBLE"
+        fecha_registro:
+          type: string
+          format: date-time
+
+    CrearMascota:
+      type: object
+      required:
+        - fk_organizacion_id
+        - nombre
+        - especie
+        - sexo
+        - edad_aproximada
+        - tamano
+        - descripcion
+        - historia
+        - estado_salud
+      properties:
+        fk_organizacion_id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 80
+          example: "Estrella"
+        especie:
+          type: string
+          enum:
+            - PERRO
+            - GATO
+            - CONEJO
+            - OTRO
+          example: "PERRO"
+        raza:
+          type: string
+          example: "MESTIZO"
+        sexo:
+          type: string
+          enum:
+            - MACHO
+            - HEMBRA
+            - DESCONOCIDO
+          example: "HEMBRA"
+        edad_aproximada:
+          type: string
+          example: "1 año"
+        tamano:
+          type: string
+          enum:
+            - PEQUENO
+            - MEDIANO
+            - GRANDE
+            - NO_APLICA
+          example: "MEDIANO"
+        color:
+          type: string
+          example: "Blanco con negro"
+        descripcion:
+          type: string
+          minLength: 10
+          example: "Perrita tranquila, cariñosa y lista para adopción responsable."
+        historia:
+          type: string
+          minLength: 10
+          example: "Fue rescatada por la organización y recibió atención básica."
+        estado_salud:
+          type: string
+          example: "Vacunada, desparasitada y estable"
+        esterilizado:
+          type: boolean
+          example: false
+        estado_adopcion:
+          type: string
+          enum:
+            - NO_DISPONIBLE
+            - DISPONIBLE
+            - EN_PROCESO
+            - ADOPTADO
+            - FALLECIDO
+          example: "DISPONIBLE"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Token ausente"
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 422
+        error:
+          type: string
+          example: "Datos de entrada inválidos."
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                example: "nombre"
+              message:
+                type: string
+                example: "El nombre debe tener mínimo 2 caracteres"
+
 paths:
   /health:
     get:
-      operationId: "healthCheck"
-      summary: "Verificar estado del servidor"
-      description: "Retorna el estado actual de la API."
+      operationId: healthCheck
+      summary: "Verificar estado de la API"
+      description: "Ruta pública para comprobar que el servidor está activo."
       security: []
       responses:
         "200":
-          description: "Servidor activo."
-          content:
-            application/json:
-              example:
-                code: 200
-                status: "API UidePet Huellitas Solidarias activa"
-                timestamp: "2026-06-29T19:00:00.000Z"
-        "404":
-          description: "Ruta no encontrada."
-          content:
-            application/json:
-              example:
-                code: 404
-                error: "Ruta no encontrada"
-
-  /v1/mascotas:
-    get:
-      operationId: "listarMascotasV1"
-      summary: "Listar mascotas disponibles"
-      description: "Retorna una lista de mascotas registradas para adopción."
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: "Lista de mascotas obtenida correctamente."
+          description: "API activa"
           content:
             application/json:
               schema:
@@ -54,51 +249,80 @@ paths:
                   code:
                     type: integer
                     example: 200
-                  version:
+                  status:
                     type: string
-                    example: "v1"
+                    example: "API UidePet Huellitas Solidarias activa"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "500":
+          description: "Error interno del servidor"
+
+  /auth/login:
+    post:
+      operationId: loginUsuario
+      summary: "Iniciar sesión y obtener token JWT"
+      description: "Ruta pública que valida credenciales y devuelve un token JWT."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: "Login correcto"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: "Email o contraseña faltantes"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: "Credenciales inválidas"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/mascotas:
+    get:
+      operationId: listarMascotas
+      summary: "Listar mascotas registradas"
+      description: "Lista las mascotas registradas en la base de datos real."
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Lista de mascotas"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
                   data:
                     type: array
                     items:
                       $ref: "#/components/schemas/Mascota"
-              example:
-                code: 200
-                version: "v1"
-                data:
-                  - id_mascota: 1
-                    nombre: "Max"
-                    especie: "Perro"
-                    edad: "2 años"
-                    sexo: "Macho"
-                    tamanio: "Mediano"
-                    estado: "Disponible"
-                    ubicacion: "Campus UIDE Quito"
         "401":
-          description: "Token ausente, inválido o expirado."
+          description: "Token ausente, inválido o expirado"
           content:
             application/json:
-              examples:
-                token_ausente:
-                  value:
-                    error: "Token ausente"
-                token_expirado:
-                  value:
-                    error: "Token expirado"
-                firma_invalida:
-                  value:
-                    error: "Firma invalida"
-        "429":
-          description: "Demasiadas peticiones."
-          content:
-            application/json:
-              example:
-                error: "Demasiadas peticiones. Intenta mas tarde."
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
-  /v1/solicitudes-adopcion:
     post:
-      operationId: "crearSolicitudAdopcionV1"
-      summary: "Registrar solicitud de adopción versión 1"
-      description: "Crea una solicitud de adopción con los datos básicos del usuario y la mascota."
+      operationId: crearMascota
+      summary: "Crear una mascota"
+      description: "Permite registrar una nueva mascota. Solo roles organizacion o admin."
       security:
         - BearerAuth: []
       requestBody:
@@ -106,215 +330,176 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SolicitudAdopcionV1"
-            example:
-              id_mascota: 1
-              id_usuario: 1
-              tipo_vivienda: "Casa con patio"
-              tiene_mascotas: true
-              motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
+              $ref: "#/components/schemas/CrearMascota"
       responses:
         "201":
-          description: "Solicitud de adopción registrada correctamente."
+          description: "Mascota creada correctamente"
           content:
             application/json:
-              example:
-                version: "v1"
-                message: "Solicitud de adopción registrada correctamente"
-                data:
-                  id_solicitud: 1
-                  id_mascota: 1
-                  id_usuario: 1
-                  tipo_vivienda: "Casa con patio"
-                  tiene_mascotas: true
-                  motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
-                  estado: "EN_REVISION"
-                  fecha_solicitud: "2026-06-29T19:00:00.000Z"
-        "400":
-          description: "Campos requeridos incompletos."
-          content:
-            application/json:
-              example:
-                error: "Campos requeridos: id_mascota, id_usuario, tipo_vivienda, tiene_mascotas, motivo_adopcion"
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "Mascota creada correctamente."
+                  data:
+                    $ref: "#/components/schemas/Mascota"
         "401":
-          description: "Token ausente, inválido o expirado."
+          description: "Token ausente, inválido o expirado"
           content:
             application/json:
-              examples:
-                token_ausente:
-                  value:
-                    error: "Token ausente"
-                firma_invalida:
-                  value:
-                    error: "Firma invalida"
-                algoritmo_no_permitido:
-                  value:
-                    error: "Algoritmo no permitido"
-        "429":
-          description: "Demasiadas peticiones."
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Rol insuficiente"
           content:
             application/json:
-              example:
-                error: "Demasiadas peticiones. Intenta mas tarde."
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: "Datos de entrada inválidos"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
 
-  /v2/solicitudes-adopcion:
-    post:
-      operationId: "crearSolicitudAdopcionV2"
-      summary: "Registrar solicitud de adopción versión 2 con seguimiento"
-      description: "Crea una solicitud de adopción e incluye campos adicionales para seguimiento posterior."
+  /v1/mascotas/{id}:
+    get:
+      operationId: obtenerMascota
+      summary: "Obtener mascota por ID"
+      description: "Obtiene una mascota específica por su identificador."
       security:
         - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID de la mascota"
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: "Mascota encontrada"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: "#/components/schemas/Mascota"
+        "401":
+          description: "Token ausente, inválido o expirado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Mascota no encontrada"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: actualizarMascota
+      summary: "Actualizar mascota"
+      description: "Actualiza parcialmente una mascota. Solo roles organizacion o admin."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID de la mascota"
+          schema:
+            type: integer
+            example: 1
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SolicitudAdopcionV2"
-            example:
-              id_mascota: 1
-              id_usuario: 1
-              tipo_vivienda: "Casa con patio"
-              tiene_mascotas: true
-              motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
-              acepta_seguimiento: true
-              canal_seguimiento: "whatsapp"
+              $ref: "#/components/schemas/CrearMascota"
       responses:
-        "201":
-          description: "Solicitud de adopción registrada correctamente con seguimiento."
+        "200":
+          description: "Mascota actualizada"
           content:
             application/json:
-              example:
-                version: "v2"
-                message: "Solicitud de adopción registrada correctamente con seguimiento"
-                data:
-                  id_solicitud: 1
-                  id_mascota: 1
-                  id_usuario: 1
-                  tipo_vivienda: "Casa con patio"
-                  tiene_mascotas: true
-                  motivo_adopcion: "Deseo brindar un hogar responsable y seguro a la mascota."
-                  acepta_seguimiento: true
-                  canal_seguimiento: "whatsapp"
-                  estado: "EN_REVISION"
-                  fecha_solicitud: "2026-06-29T19:00:00.000Z"
-        "400":
-          description: "Payload inválido o canal de seguimiento fuera de enum."
-          content:
-            application/json:
-              examples:
-                campos_faltantes:
-                  value:
-                    error: "Campos requeridos: id_mascota, id_usuario, tipo_vivienda, tiene_mascotas, motivo_adopcion, acepta_seguimiento, canal_seguimiento"
-                canal_invalido:
-                  value:
-                    error: "canal_seguimiento inválido. Valores: whatsapp, correo, telefono"
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Mascota actualizada correctamente."
+                  data:
+                    $ref: "#/components/schemas/Mascota"
         "401":
-          description: "Token ausente, inválido, expirado o algoritmo no permitido."
+          description: "Token ausente, inválido o expirado"
           content:
             application/json:
-              examples:
-                token_ausente:
-                  value:
-                    error: "Token ausente"
-                token_expirado:
-                  value:
-                    error: "Token expirado"
-                firma_invalida:
-                  value:
-                    error: "Firma invalida"
-                algoritmo_no_permitido:
-                  value:
-                    error: "Algoritmo no permitido"
-        "429":
-          description: "Demasiadas peticiones."
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Rol insuficiente"
           content:
             application/json:
-              example:
-                error: "Demasiadas peticiones. Intenta mas tarde."
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Mascota no encontrada"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: "Datos inválidos"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
 
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: "Token JWT generado mediante generate-token.mjs y enviado en el header Authorization."
-
-  schemas:
-    Mascota:
-      type: object
-      required:
-        - id_mascota
-        - nombre
-        - especie
-        - estado
-      properties:
-        id_mascota:
-          type: integer
-          example: 1
-        nombre:
-          type: string
-          example: "Max"
-        especie:
-          type: string
-          example: "Perro"
-        edad:
-          type: string
-          example: "2 años"
-        sexo:
-          type: string
-          example: "Macho"
-        tamanio:
-          type: string
-          example: "Mediano"
-        estado:
-          type: string
-          example: "Disponible"
-        ubicacion:
-          type: string
-          example: "Campus UIDE Quito"
-
-    SolicitudAdopcionV1:
-      type: object
-      required:
-        - id_mascota
-        - id_usuario
-        - tipo_vivienda
-        - tiene_mascotas
-        - motivo_adopcion
-      properties:
-        id_mascota:
-          type: integer
-          example: 1
-        id_usuario:
-          type: integer
-          example: 1
-        tipo_vivienda:
-          type: string
-          example: "Casa con patio"
-        tiene_mascotas:
-          type: boolean
-          example: true
-        motivo_adopcion:
-          type: string
-          example: "Deseo brindar un hogar responsable y seguro a la mascota."
-
-    SolicitudAdopcionV2:
-      allOf:
-        - $ref: "#/components/schemas/SolicitudAdopcionV1"
-        - type: object
-          required:
-            - acepta_seguimiento
-            - canal_seguimiento
-          properties:
-            acepta_seguimiento:
-              type: boolean
-              example: true
-            canal_seguimiento:
-              type: string
-              enum:
-                - whatsapp
-                - correo
-                - telefono
-              example: "whatsapp"
-      unevaluatedProperties: false
+    delete:
+      operationId: eliminarMascota
+      summary: "Eliminar mascota"
+      description: "Elimina una mascota por ID. Solo roles organizacion o admin."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID de la mascota"
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "204":
+          description: "Mascota eliminada correctamente"
+        "401":
+          description: "Token ausente, inválido o expirado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Rol insuficiente"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Mascota no encontrada"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
