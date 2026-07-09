@@ -21,24 +21,22 @@ router.post("/login", async (req, res) => {
   const [rows] = (await pool.query(
     `
     SELECT
-      cu.id_cuenta AS id,
-      cu.usuario AS email,
-      cu.password_hash AS password,
-      r.nombre_rol AS rol,
-      COALESCE(CONCAT(p.nombres, ' ', p.apellidos), o.nombre) AS nombre
-    FROM cuenta_usuario cu
-    JOIN cuenta_rol cr ON cr.fk_cuenta_id = cu.id_cuenta
-    JOIN rol r ON r.id_rol = cr.fk_rol_id
-    LEFT JOIN persona p ON p.id_persona = cu.fk_persona_id
-    LEFT JOIN organizacion o ON o.id_organizacion = cu.fk_organizacion_id
-    WHERE cu.usuario = ?
-      AND cu.estado = 'ACTIVA'
+      id,
+      nombre,
+      email,
+      password,
+      rol
+    FROM usuarios
+    WHERE email = ?
     LIMIT 1
     `,
     [email]
   )) as [any[], any];
 
   const usuario = rows[0];
+  console.log("Usuario encontrado:", usuario);
+  console.log("Password enviada:", password);
+  console.log("Hash BD:", usuario?.password);
 
   if (!usuario) {
     res.status(401).json({
@@ -48,6 +46,7 @@ router.post("/login", async (req, res) => {
   }
 
   const passwordValida = await bcrypt.compare(password, usuario.password);
+  console.log("Password válida:", passwordValida);
 
   if (!passwordValida) {
     res.status(401).json({
@@ -66,7 +65,7 @@ router.post("/login", async (req, res) => {
     },
     process.env.JWT_SECRET as string,
     {
-      expiresIn: "1h",
+      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
     }
   );
 
