@@ -4,6 +4,8 @@ import {
   ActualizarMascotaDTO,
 } from "../schemas/mascota.schema.js";
 
+
+// capa dde datos
 const BASE_QUERY = `
   SELECT
     m.id_mascota AS id,
@@ -26,9 +28,13 @@ const BASE_QUERY = `
   JOIN organizacion o ON o.id_organizacion = m.fk_organizacion_id
 `;
 
+const MAX_MASCOTAS_POR_RESPUESTA = 20;
+
 export async function findAll() {
   const [rows] = await pool.query(
-    BASE_QUERY + " ORDER BY m.id_mascota DESC"
+    BASE_QUERY +
+      " ORDER BY m.id_mascota DESC LIMIT ?",
+    [MAX_MASCOTAS_POR_RESPUESTA]
   );
 
   return rows as any[];
