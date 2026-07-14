@@ -8,4 +8,6 @@ export const pool = mysql.createPool({
   database: process.env.DB_NAME ?? "huellitas_solidarias_db",
   waitForConnections: true,
   connectionLimit: 10,
+  timezone: "Z",
+  dateStrings: false,
 });

@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-export type RolUsuario = "admin" | "adoptante" | "organizacion" | "voluntario";
+export type RolUsuario = "usuario" | "fundacion" | "admin";
 
 export interface AppJwtPayload {
   sub: number;
-  email: string;
+  correo: string;
   rol: RolUsuario;
 }
 
@@ -32,7 +32,6 @@ export function requireJwt(req: Request, res: Response, next: NextFunction) {
 
   try {
     const token = header.split(" ")[1];
-
     const payload = jwt.verify(
       token,
       process.env.JWT_SECRET as string

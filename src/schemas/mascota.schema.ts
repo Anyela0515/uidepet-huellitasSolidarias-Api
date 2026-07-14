@@ -1,37 +1,23 @@
 import { z } from "zod";
 
 export const crearMascotaSchema = z.object({
-  fk_organizacion_id: z.number().int().positive(),
-
-  nombre: z.string().min(2, "El nombre debe tener mínimo 2 caracteres").max(80),
-
-  especie: z.enum(["PERRO", "GATO", "CONEJO", "OTRO"]),
-
-  raza: z.string().min(2).max(80).optional(),
-
-  sexo: z.enum(["MACHO", "HEMBRA", "DESCONOCIDO"]),
-
-  edad_aproximada: z.string().min(2).max(50),
-
-  tamano: z.enum(["PEQUENO", "MEDIANO", "GRANDE", "NO_APLICA"]),
-
-  color: z.string().min(2).max(80).optional(),
-
-  descripcion: z
-    .string()
-    .min(10, "La descripción debe tener mínimo 10 caracteres"),
-
-  historia: z
-    .string()
-    .min(10, "La historia debe tener mínimo 10 caracteres"),
-
-  estado_salud: z.string().min(3).max(150),
-
-  esterilizado: z.boolean().optional(),
-
-  estado_adopcion: z
-    .enum(["NO_DISPONIBLE", "DISPONIBLE", "EN_PROCESO", "ADOPTADO", "FALLECIDO"])
-    .optional(),
+  nombre: z.string().min(2).max(80),
+  especie: z.string().min(2),
+  raza: z.string().min(2).optional(),
+  edad: z.string().min(1),
+  edadGrupo: z.string().optional(),
+  sexo: z.string().min(2),
+  tamano: z.string().min(2),
+  ubicacion: z.string().min(2),
+  historia: z.string().min(10),
+  requisitos: z.string().min(5),
+  tags: z.array(z.string()).optional(),
+  imagen: z.string().min(1),
+  fundacion: z.string().optional(),
+  fundacionEmail: z.string().email().optional(),
+  estado: z.string().optional(),
+  fechaPublicacion: z.string().optional(),
+  hidden: z.boolean().optional(),
 });
 
 export const actualizarMascotaSchema = crearMascotaSchema.partial();

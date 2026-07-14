@@ -1,83 +1,36 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { pool } from "../config/database.js";
+import * as authController from "../controllers/auth.controller.js";
+import { requireJwt, requireRole } from "../middlewares/auth.js";
+import { authRateLimiter } from "../middlewares/rateLimiter.js";
 
 const router = Router();
 
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body as {
-    email?: string;
-    password?: string;
-  };
+router.post("/login", authRateLimiter, authController.login);
+router.post("/register", authRateLimiter, authController.register);
+router.post("/reset-password", authRateLimiter, authController.resetPassword);
 
-  if (!email || !password) {
-    res.status(400).json({
-      error: "Email y contraseña son requeridos.",
-    });
-    return;
-  }
+router.get("/me", requireJwt, authController.me);
+router.patch("/perfil", requireJwt, authController.updateProfile);
 
-  const [rows] = (await pool.query(
-    `
-    SELECT
-      id,
-      nombre,
-      email,
-      password,
-      rol
-    FROM usuarios
-    WHERE email = ?
-    LIMIT 1
-    `,
-    [email]
-  )) as [any[], any];
+router.get(
+  "/usuarios",
+  requireJwt,
+  requireRole("admin"),
+  authController.listUsers
+);
 
-  const usuario = rows[0];
-  console.log("Usuario encontrado:", usuario);
-  console.log("Password enviada:", password);
-  console.log("Hash BD:", usuario?.password);
+router.patch(
+  "/usuarios/:correo/rol",
+  requireJwt,
+  requireRole("admin"),
+  authController.setRole
+);
 
-  if (!usuario) {
-    res.status(401).json({
-      error: "Credenciales inválidas.",
-    });
-    return;
-  }
-
-  const passwordValida = await bcrypt.compare(password, usuario.password);
-  console.log("Password válida:", passwordValida);
-
-  if (!passwordValida) {
-    res.status(401).json({
-      error: "Credenciales inválidas.",
-    });
-    return;
-  }
-
-  const rolNormalizado = String(usuario.rol).toLowerCase();
-
-  const token = jwt.sign(
-    {
-      sub: usuario.id,
-      email: usuario.email,
-      rol: rolNormalizado,
-    },
-    process.env.JWT_SECRET as string,
-    {
-      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
-    }
-  );
-
-  res.status(200).json({
-    token,
-    usuario: {
-      id: usuario.id,
-      nombre: usuario.nombre,
-      email: usuario.email,
-      rol: rolNormalizado,
-    },
-  });
-});
+router.patch(
+  "/usuarios/:correo/estado",
+  requireJwt,
+  requireRole("admin"),
+  authController.setEstado
+);
 
 export default router;
