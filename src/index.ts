@@ -81,6 +81,7 @@ app.use((_req: Request, res: Response) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Servidor iniciado en http://localhost:${PORT}`);
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Servidor iniciado en el puerto ${PORT}`);
 });
