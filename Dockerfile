@@ -27,10 +27,12 @@ ENV PORT=3000
 
 COPY package.json package-lock.json ./
 
+
 RUN npm ci --omit=dev \
     && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY db ./db
 
 USER node
 
