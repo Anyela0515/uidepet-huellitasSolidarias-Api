@@ -44,6 +44,24 @@ export async function toggle(correo: string, mascotaId: number) {
   return true;
 }
 
+export async function add(correo: string, mascotaId: number) {
+  const usuarioId = await catalog.findUsuarioIdByCorreo(correo);
+  if (!usuarioId) throw new Error("Usuario no encontrado.");
+  await pool.query(
+    "INSERT IGNORE INTO favoritos (usuario_id, mascota_id) VALUES (?, ?)",
+    [usuarioId, mascotaId]
+  );
+}
+
+export async function remove(correo: string, mascotaId: number) {
+  const usuarioId = await catalog.findUsuarioIdByCorreo(correo);
+  if (!usuarioId) return;
+  await pool.query(
+    "DELETE FROM favoritos WHERE usuario_id = ? AND mascota_id = ?",
+    [usuarioId, mascotaId]
+  );
+}
+
 export async function removePetFromAll(mascotaId: number) {
   await pool.query("DELETE FROM favoritos WHERE mascota_id = ?", [mascotaId]);
 }

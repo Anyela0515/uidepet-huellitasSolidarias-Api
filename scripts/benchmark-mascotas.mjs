@@ -1,4 +1,4 @@
-const URL = "http://localhost:3000/v1/mascotas";
+const URL = "http://localhost:3000/mascotas/publicas";
 const TOKEN = process.env.API_TOKEN;
 
 // Tu API permite 10 solicitudes cada 15 minutos.
@@ -48,7 +48,7 @@ async function main() {
   const times = [];
   const sizes = [];
 
-  console.log("=== BENCHMARK GET /v1/mascotas ===");
+  console.log("=== BENCHMARK GET /mascotas/publicas ===");
   console.log(`Endpoint: ${URL}`);
   console.log(`Solicitudes medidas: ${TOTAL}`);
 

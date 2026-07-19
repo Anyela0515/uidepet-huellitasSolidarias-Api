@@ -22,5 +22,15 @@ export const crearMascotaSchema = z.object({
 
 export const actualizarMascotaSchema = crearMascotaSchema.partial();
 
+export const agregarTagSchema = z.object({
+  tag: z.string().min(1).max(60),
+});
+
+export const agregarMedioSchema = z.object({
+  tipo: z.enum(["imagen", "documento"]).optional(),
+  contenido: z.string().min(1),
+  esPrincipal: z.boolean().optional(),
+});
+
 export type CrearMascotaDTO = z.infer<typeof crearMascotaSchema>;
 export type ActualizarMascotaDTO = z.infer<typeof actualizarMascotaSchema>;

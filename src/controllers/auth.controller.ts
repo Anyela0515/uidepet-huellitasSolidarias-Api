@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import {
+  changePasswordSchema,
   loginSchema,
   registerSchema,
-  resetPasswordSchema,
   updateProfileSchema,
 } from "../schemas/auth.schema.js";
 import {
@@ -37,12 +37,17 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(result);
 });
 
-export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
-  const data = resetPasswordSchema.parse(req.body);
-  const result = await authService.resetPassword(data.correo, data.password);
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  const data = changePasswordSchema.parse(req.body);
+  const result = await authService.changePassword(
+    req.user!.correo,
+    data.currentPassword,
+    data.newPassword
+  );
 
   if ("error" in result) {
-    res.status(404).json({ error: result.error });
+    const status = result.error.includes("incorrecta") ? 401 : 404;
+    res.status(status).json({ error: result.error });
     return;
   }
 
@@ -70,9 +75,11 @@ export const updateProfile = asyncHandler(async (req: Request, res: Response) =>
   res.status(200).json(result);
 });
 
-export const listUsers = asyncHandler(async (_req: Request, res: Response) => {
-  const usuarios = await authService.listUsers();
-  res.status(200).json({ data: usuarios });
+export const listUsers = asyncHandler(async (req: Request, res: Response) => {
+  const { data, meta } = await authService.listUsers(
+    req.query as Record<string, unknown>
+  );
+  res.status(200).json({ success: true, data, pagination: meta });
 });
 
 export const setRole = asyncHandler(async (req: Request, res: Response) => {

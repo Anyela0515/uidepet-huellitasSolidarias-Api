@@ -29,4 +29,26 @@ router.delete(
   controller.eliminar
 );
 
+router.post(
+  "/:id/tags",
+  requireRole("fundacion", "admin"),
+  controller.agregarTag
+);
+router.delete(
+  "/:id/tags/:tagId",
+  requireRole("fundacion", "admin"),
+  controller.quitarTag
+);
+
+router.post(
+  "/:id/medios",
+  requireRole("fundacion", "admin"),
+  controller.agregarMedio
+);
+router.delete(
+  "/:id/medios/:medioId",
+  requireRole("fundacion", "admin"),
+  controller.quitarMedio
+);
+
 export default router;

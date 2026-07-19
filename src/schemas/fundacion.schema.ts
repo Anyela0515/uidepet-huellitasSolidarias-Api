@@ -15,3 +15,14 @@ export const crearFundacionSchema = z.object({
 export const actualizarEstadoFundacionSchema = z.object({
   estado: z.enum(["pendiente", "aprobada", "rechazada"]),
 });
+
+export const actualizarPerfilFundacionSchema = z
+  .object({
+    telefono: z.string().min(7).max(20).optional(),
+    ciudad: z.string().min(2).optional(),
+    descripcion: z.string().min(10).optional(),
+    direccion: z.string().min(5).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Debes enviar al menos un campo para actualizar.",
+  });

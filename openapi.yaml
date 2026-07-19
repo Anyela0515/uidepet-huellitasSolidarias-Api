@@ -1,505 +1,786 @@
-openapi: "3.0.3"
-
+openapi: 3.0.3
 info:
-  title: "UidePet - Huellitas Solidarias API"
+  title: Huellitas Solidarias API
+  description: >
+    API REST para la plataforma de adopción responsable de mascotas,
+    fundaciones, solicitudes de adopción, favoritos, mensajes y donaciones.
+    Las rutas no llevan prefijo de versión (`/mascotas`, no `/api/v1/mascotas`),
+    reflejando el código real del backend.
   version: "1.0.0"
-  description: "API REST para gestión de mascotas en adopción del proyecto Huellitas Solidarias UIDE."
-  license:
-    name: "Académico"
-
 servers:
-  - url: "http://localhost:3000"
-    description: "Servidor local de desarrollo"
+  - url: http://localhost:3000
+    description: Desarrollo local
 
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+security:
+  - bearerAuth: []
 
-  schemas:
-    LoginRequest:
-      type: object
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          example: "fundacion@huellitas.com"
-        password:
-          type: string
-          example: "123456"
-
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        usuario:
-          type: object
-          properties:
-            id:
-              type: integer
-              example: 1
-            nombre:
-              type: string
-              example: "Fundación Huellitas Solidarias"
-            email:
-              type: string
-              example: "fundacion@huellitas.com"
-            rol:
-              type: string
-              example: "organizacion"
-
-    Mascota:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        fk_organizacion_id:
-          type: integer
-          example: 1
-        organizacion_nombre:
-          type: string
-          example: "Fundación Huellitas Solidarias"
-        nombre:
-          type: string
-          example: "Estrella"
-        especie:
-          type: string
-          enum:
-            - PERRO
-            - GATO
-            - CONEJO
-            - OTRO
-          example: "PERRO"
-        raza:
-          type: string
-          example: "MESTIZO"
-        sexo:
-          type: string
-          enum:
-            - MACHO
-            - HEMBRA
-            - DESCONOCIDO
-          example: "HEMBRA"
-        edad_aproximada:
-          type: string
-          example: "1 año"
-        tamano:
-          type: string
-          enum:
-            - PEQUENO
-            - MEDIANO
-            - GRANDE
-            - NO_APLICA
-          example: "MEDIANO"
-        color:
-          type: string
-          example: "Blanco con negro"
-        descripcion:
-          type: string
-          example: "Perrita tranquila, cariñosa y lista para adopción responsable."
-        historia:
-          type: string
-          example: "Fue rescatada por la organización y recibió atención básica."
-        estado_salud:
-          type: string
-          example: "Vacunada, desparasitada y estable"
-        esterilizado:
-          type: boolean
-          example: false
-        estado_adopcion:
-          type: string
-          enum:
-            - NO_DISPONIBLE
-            - DISPONIBLE
-            - EN_PROCESO
-            - ADOPTADO
-            - FALLECIDO
-          example: "DISPONIBLE"
-        fecha_registro:
-          type: string
-          format: date-time
-
-    CrearMascota:
-      type: object
-      required:
-        - fk_organizacion_id
-        - nombre
-        - especie
-        - sexo
-        - edad_aproximada
-        - tamano
-        - descripcion
-        - historia
-        - estado_salud
-      properties:
-        fk_organizacion_id:
-          type: integer
-          example: 1
-        nombre:
-          type: string
-          minLength: 2
-          maxLength: 80
-          example: "Estrella"
-        especie:
-          type: string
-          enum:
-            - PERRO
-            - GATO
-            - CONEJO
-            - OTRO
-          example: "PERRO"
-        raza:
-          type: string
-          example: "MESTIZO"
-        sexo:
-          type: string
-          enum:
-            - MACHO
-            - HEMBRA
-            - DESCONOCIDO
-          example: "HEMBRA"
-        edad_aproximada:
-          type: string
-          example: "1 año"
-        tamano:
-          type: string
-          enum:
-            - PEQUENO
-            - MEDIANO
-            - GRANDE
-            - NO_APLICA
-          example: "MEDIANO"
-        color:
-          type: string
-          example: "Blanco con negro"
-        descripcion:
-          type: string
-          minLength: 10
-          example: "Perrita tranquila, cariñosa y lista para adopción responsable."
-        historia:
-          type: string
-          minLength: 10
-          example: "Fue rescatada por la organización y recibió atención básica."
-        estado_salud:
-          type: string
-          example: "Vacunada, desparasitada y estable"
-        esterilizado:
-          type: boolean
-          example: false
-        estado_adopcion:
-          type: string
-          enum:
-            - NO_DISPONIBLE
-            - DISPONIBLE
-            - EN_PROCESO
-            - ADOPTADO
-            - FALLECIDO
-          example: "DISPONIBLE"
-
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          example: "Token ausente"
-
-    ValidationErrorResponse:
-      type: object
-      properties:
-        code:
-          type: integer
-          example: 422
-        error:
-          type: string
-          example: "Datos de entrada inválidos."
-        details:
-          type: array
-          items:
-            type: object
-            properties:
-              path:
-                type: string
-                example: "nombre"
-              message:
-                type: string
-                example: "El nombre debe tener mínimo 2 caracteres"
+tags:
+  - name: Auth
+  - name: Mascotas
+  - name: Solicitudes
+  - name: Seguimientos
+  - name: Fundaciones
+  - name: Favoritos
+  - name: Mensajes
+  - name: Donaciones
+  - name: Catalogos
+  - name: ConfiguracionSitio
+  - name: Salud
 
 paths:
   /health:
     get:
-      operationId: healthCheck
-      summary: "Verificar estado de la API"
-      description: "Ruta pública para comprobar que el servidor está activo."
+      tags: [Salud]
+      summary: Estado del servicio y de la conexión a MySQL
       security: []
       responses:
         "200":
-          description: "API activa"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                    example: 200
-                  status:
-                    type: string
-                    example: "API UidePet Huellitas Solidarias activa"
-                  timestamp:
-                    type: string
-                    format: date-time
-        "500":
-          description: "Error interno del servidor"
+          description: API y base de datos operativas
+        "503":
+          description: API activa pero sin conexión a la base de datos
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registro público (siempre rol "usuario")
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, correo, password, cedula, telefono, direccion]
+              properties:
+                nombre: { type: string, minLength: 3 }
+                correo: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                cedula: { type: string, minLength: 10, maxLength: 10 }
+                telefono: { type: string, minLength: 10 }
+                direccion: { type: string, minLength: 5 }
+      responses:
+        "201": { description: Usuario creado }
+        "409": { description: Correo o cédula ya registrados }
+        "422": { description: Datos inválidos }
 
   /auth/login:
     post:
-      operationId: loginUsuario
-      summary: "Iniciar sesión y obtener token JWT"
-      description: "Ruta pública que valida credenciales y devuelve un token JWT."
+      tags: [Auth]
+      summary: Inicio de sesión
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              type: object
+              required: [correo, password]
+              properties:
+                correo: { type: string, format: email }
+                password: { type: string }
       responses:
         "200":
-          description: "Login correcto"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
-        "400":
-          description: "Email o contraseña faltantes"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: "Credenciales inválidas"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /v1/mascotas:
-    get:
-      operationId: listarMascotas
-      summary: "Listar mascotas registradas"
-      description: "Lista las mascotas registradas en la base de datos real."
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: "Lista de mascotas"
+          description: Login exitoso
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  code:
-                    type: integer
-                    example: 200
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Mascota"
-        "401":
-          description: "Token ausente, inválido o expirado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                  token: { type: string }
+                  usuario: { $ref: "#/components/schemas/Usuario" }
+        "401": { description: Credenciales incorrectas }
+        "403": { description: Cuenta suspendida }
 
-    post:
-      operationId: crearMascota
-      summary: "Crear una mascota"
-      description: "Permite registrar una nueva mascota. Solo roles organizacion o admin."
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CrearMascota"
-      responses:
-        "201":
-          description: "Mascota creada correctamente"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                    example: 201
-                  message:
-                    type: string
-                    example: "Mascota creada correctamente."
-                  data:
-                    $ref: "#/components/schemas/Mascota"
-        "401":
-          description: "Token ausente, inválido o expirado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Rol insuficiente"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          description: "Datos de entrada inválidos"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ValidationErrorResponse"
-
-  /v1/mascotas/{id}:
-    get:
-      operationId: obtenerMascota
-      summary: "Obtener mascota por ID"
-      description: "Obtiene una mascota específica por su identificador."
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID de la mascota"
-          schema:
-            type: integer
-            example: 1
-      responses:
-        "200":
-          description: "Mascota encontrada"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                    example: 200
-                  data:
-                    $ref: "#/components/schemas/Mascota"
-        "401":
-          description: "Token ausente, inválido o expirado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Mascota no encontrada"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+  /auth/password:
     patch:
-      operationId: actualizarMascota
-      summary: "Actualizar mascota"
-      description: "Actualiza parcialmente una mascota. Solo roles organizacion o admin."
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID de la mascota"
-          schema:
-            type: integer
-            example: 1
+      tags: [Auth]
+      summary: Cambiar la propia contraseña (requiere la actual)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CrearMascota"
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, minLength: 8 }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        "200": { description: Contraseña actualizada }
+        "401": { description: Contraseña actual incorrecta }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Perfil propio
       responses:
         "200":
-          description: "Mascota actualizada"
+          description: OK
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  code:
-                    type: integer
-                    example: 200
-                  message:
-                    type: string
-                    example: "Mascota actualizada correctamente."
-                  data:
-                    $ref: "#/components/schemas/Mascota"
-        "401":
-          description: "Token ausente, inválido o expirado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Rol insuficiente"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Mascota no encontrada"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          description: "Datos inválidos"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ValidationErrorResponse"
+                  usuario: { $ref: "#/components/schemas/Usuario" }
 
+  /auth/perfil:
+    patch:
+      tags: [Auth]
+      summary: Actualizar perfil propio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: { type: string }
+                telefono: { type: string }
+                direccion: { type: string }
+                cedula: { type: string }
+      responses:
+        "200": { description: OK }
+
+  /auth/usuarios:
+    get:
+      tags: [Auth]
+      summary: Listar usuarios (admin)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: rol
+          in: query
+          schema: { type: string, enum: [usuario, fundacion, admin] }
+        - name: estado
+          in: query
+          schema: { type: string, enum: [Activo, Suspendido] }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Listado paginado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+        "403": { description: Rol insuficiente }
+
+  /auth/usuarios/{correo}/rol:
+    patch:
+      tags: [Auth]
+      summary: Cambiar el rol de un usuario (admin)
+      parameters:
+        - name: correo
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rol: { type: string, enum: [usuario, fundacion, admin] }
+      responses:
+        "200": { description: OK }
+
+  /auth/usuarios/{correo}/estado:
+    patch:
+      tags: [Auth]
+      summary: Activar/suspender una cuenta (admin, borrado lógico)
+      parameters:
+        - name: correo
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { type: string, enum: [Activo, Suspendido] }
+      responses:
+        "200": { description: OK }
+
+  /mascotas/publicas:
+    get:
+      tags: [Mascotas]
+      summary: Listado público paginado de mascotas visibles
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: especie
+          in: query
+          schema: { type: string }
+        - name: ciudad
+          in: query
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [nombre, fecha, ciudad] }
+        - name: sortOrder
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+
+  /mascotas/{id}:
+    get:
+      tags: [Mascotas]
+      summary: Detalle de una mascota
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+      responses:
+        "200": { description: OK }
+        "404": { description: No encontrada / oculta / eliminada }
+    patch:
+      tags: [Mascotas]
+      summary: Actualizar una mascota (fundación dueña o admin)
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+      responses:
+        "200": { description: OK }
+        "403": { description: No es la fundación dueña }
     delete:
-      operationId: eliminarMascota
-      summary: "Eliminar mascota"
-      description: "Elimina una mascota por ID. Solo roles organizacion o admin."
-      security:
-        - BearerAuth: []
+      tags: [Mascotas]
+      summary: Eliminar (borrado lógico) una mascota
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+      responses:
+        "204": { description: Eliminada lógicamente }
+        "403": { description: No es la fundación dueña }
+
+  /mascotas:
+    get:
+      tags: [Mascotas]
+      summary: Listado autenticado (fundación ve las propias, resto ve el catálogo visible)
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [Mascotas]
+      summary: Crear mascota (fundación, admin)
+      responses:
+        "201": { description: Creada }
+        "403": { description: Rol insuficiente }
+
+  /mascotas/{id}/tags:
+    post:
+      tags: [Mascotas]
+      summary: Agregar un tag
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+      responses:
+        "201": { description: OK }
+
+  /mascotas/{id}/tags/{tagId}:
+    delete:
+      tags: [Mascotas]
+      summary: Quitar un tag
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+        - name: tagId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+
+  /mascotas/{id}/medios:
+    post:
+      tags: [Mascotas]
+      summary: Agregar un medio (imagen/documento)
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+      responses:
+        "201": { description: OK }
+
+  /mascotas/{id}/medios/{medioId}:
+    delete:
+      tags: [Mascotas]
+      summary: Quitar un medio
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+        - name: medioId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+
+  /solicitudes:
+    get:
+      tags: [Solicitudes]
+      summary: Listar solicitudes de adopción (según rol)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: estado
+          in: query
+          schema: { type: string, enum: [revision, aprobada, rechazada, seguimiento] }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [Solicitudes]
+      summary: Crear solicitud de adopción (rol usuario)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [petId, form]
+              properties:
+                petId: { type: integer }
+                form: { type: object }
+      responses:
+        "201": { description: Creada }
+        "400": { description: Mascota no disponible / solicitud duplicada }
+
+  /solicitudes/{id}:
+    get:
+      tags: [Solicitudes]
+      summary: Detalle de una solicitud
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      responses:
+        "200": { description: OK }
+        "404": { description: No encontrada }
+
+  /solicitudes/{id}/estado:
+    patch:
+      tags: [Solicitudes]
+      summary: Cambiar estado (fundación dueña, admin) — con bloqueo pesimista anti-concurrencia
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { type: string, enum: [revision, aprobada, rechazada, seguimiento] }
+                observaciones: { type: string }
+                proximoPaso: { type: string }
+      responses:
+        "200": { description: OK }
+        "400": { description: Transición no permitida }
+        "403": { description: No es la fundación dueña }
+
+  /solicitudes/{id}/seguimiento:
+    post:
+      tags: [Solicitudes]
+      summary: Adoptante envía el seguimiento post-adopción
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      responses:
+        "200": { description: OK }
+
+  /solicitudes/{id}/evidencias:
+    post:
+      tags: [Solicitudes]
+      summary: Agregar una evidencia puntual a la solicitud
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      responses:
+        "201": { description: OK }
+
+  /solicitudes/{id}/evidencias/{evidenciaId}:
+    delete:
+      tags: [Solicitudes]
+      summary: Quitar una evidencia
+      parameters:
+        - $ref: "#/components/parameters/idString"
+        - name: evidenciaId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+
+  /seguimientos-adopcion/{id}:
+    patch:
+      tags: [Seguimientos]
+      summary: Editar el comentario de un seguimiento (fundación responsable, admin)
       parameters:
         - name: id
           in: path
           required: true
-          description: "ID de la mascota"
-          schema:
-            type: integer
-            example: 1
+          schema: { type: integer }
       responses:
-        "204":
-          description: "Mascota eliminada correctamente"
-        "401":
-          description: "Token ausente, inválido o expirado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Rol insuficiente"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Mascota no encontrada"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+        "200": { description: OK }
+    delete:
+      tags: [Seguimientos]
+      summary: Rechazado siempre — los seguimientos son evidencia y nunca se borran físicamente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "409": { description: Operación no permitida por política de retención }
+
+  /seguimientos-adopcion/{id}/archivos:
+    post:
+      tags: [Seguimientos]
+      summary: Agregar un archivo de evidencia al seguimiento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "201": { description: OK }
+
+  /seguimientos-adopcion/{id}/archivos/{archivoId}:
+    delete:
+      tags: [Seguimientos]
+      summary: Quitar un archivo del seguimiento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: archivoId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+
+  /fundaciones:
+    get:
+      tags: [Fundaciones]
+      summary: Listar solicitudes de registro de fundación (admin)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: estado
+          in: query
+          schema: { type: string, enum: [pendiente, aprobada, rechazada] }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [Fundaciones]
+      summary: Registrar una solicitud de fundación (público)
+      security: []
+      responses:
+        "201": { description: Creada }
+        "409": { description: Correo/RUC duplicados }
+
+  /fundaciones/me:
+    get:
+      tags: [Fundaciones]
+      summary: Perfil propio de la organización (rol fundacion)
+      responses:
+        "200": { description: OK }
+    patch:
+      tags: [Fundaciones]
+      summary: Actualizar perfil propio de la organización
+      responses:
+        "200": { description: OK }
+
+  /fundaciones/{id}:
+    get:
+      tags: [Fundaciones]
+      summary: Detalle de una solicitud de registro (admin)
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [Fundaciones]
+      summary: Desactivar una organización (admin, borrado lógico). id = organizaciones.id
+      parameters:
+        - $ref: "#/components/parameters/idNumerico"
+      responses:
+        "204": { description: Desactivada }
+        "409": { description: Tiene mascotas o solicitudes asociadas }
+
+  /fundaciones/{id}/estado:
+    patch:
+      tags: [Fundaciones]
+      summary: Aprobar/rechazar una solicitud de registro (admin)
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { type: string, enum: [pendiente, aprobada, rechazada] }
+      responses:
+        "200": { description: OK, puede incluir temporaryPassword una sola vez }
+        "409": { description: La solicitud ya fue procesada }
+
+  /favoritos:
+    get:
+      tags: [Favoritos]
+      summary: Listar mascotas favoritas (rol usuario)
+      responses:
+        "200": { description: OK }
+
+  /favoritos/{mascotaId}:
+    post:
+      tags: [Favoritos]
+      summary: Agregar a favoritos
+      parameters:
+        - $ref: "#/components/parameters/mascotaId"
+      responses:
+        "201": { description: OK }
+    delete:
+      tags: [Favoritos]
+      summary: Quitar de favoritos
+      parameters:
+        - $ref: "#/components/parameters/mascotaId"
+      responses:
+        "204": { description: OK }
+
+  /favoritos/{mascotaId}/verificar:
+    get:
+      tags: [Favoritos]
+      summary: Verificar si una mascota es favorita
+      parameters:
+        - $ref: "#/components/parameters/mascotaId"
+      responses:
+        "200": { description: "{ isFavorite: boolean }" }
+
+  /favoritos/{mascotaId}/toggle:
+    post:
+      tags: [Favoritos]
+      summary: Alternar favorito (endpoint histórico)
+      parameters:
+        - $ref: "#/components/parameters/mascotaId"
+      responses:
+        "200": { description: "{ isFavorite: boolean }" }
+
+  /mensajes:
+    get:
+      tags: [Mensajes]
+      summary: Listar mensajes de contacto (fundacion, admin)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: leido
+          in: query
+          schema: { type: boolean }
+      responses:
+        "200": { description: OK }
+        "403": { description: Rol insuficiente }
+    post:
+      tags: [Mensajes]
+      summary: Enviar un mensaje de contacto (público)
+      security: []
+      responses:
+        "201": { description: Creado }
+
+  /mensajes/{id}/leido:
+    patch:
+      tags: [Mensajes]
+      summary: Marcar un mensaje como leído (dueño del mensaje o admin)
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      responses:
+        "200": { description: OK }
+        "403": { description: No pertenece a tu organización }
+
+  /donaciones:
+    get:
+      tags: [Donaciones]
+      summary: Listar donaciones (admin ve todas, resto las propias)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: tipo
+          in: query
+          schema: { type: string }
+        - name: estado
+          in: query
+          schema: { type: string, enum: [Completado, Pendiente, Cancelado] }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [Donaciones]
+      summary: Registrar una donación (público o autenticado)
+      security: []
+      responses:
+        "201": { description: Creada }
+
+  /donaciones/{id}/estado:
+    patch:
+      tags: [Donaciones]
+      summary: Cambiar estado de una donación (admin)
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { type: string, enum: [Completado, Pendiente, Cancelado] }
+      responses:
+        "200": { description: OK }
+
+  /donaciones/{id}:
+    delete:
+      tags: [Donaciones]
+      summary: Cancelar una donación (admin, cancelación lógica)
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      responses:
+        "200": { description: OK }
+        "409": { description: Ya está completada }
+
+  /catalogos/especies:
+    get:
+      tags: [Catalogos]
+      summary: Listar especies
+      security: []
+      responses:
+        "200": { description: OK }
+
+  /catalogos/razas:
+    get:
+      tags: [Catalogos]
+      summary: Listar razas (opcionalmente filtradas por especie)
+      security: []
+      parameters:
+        - name: especieId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+
+  /catalogos/ciudades:
+    get:
+      tags: [Catalogos]
+      summary: Listar ciudades
+      security: []
+      responses:
+        "200": { description: OK }
+
+  /catalogos/tags:
+    get:
+      tags: [Catalogos]
+      summary: Listar tags
+      security: []
+      responses:
+        "200": { description: OK }
+
+  # Resto de catálogos de solo lectura (mismo patrón que /catalogos/especies):
+  # /catalogos/roles, /estados-cuenta, /sexos, /tamanos, /unidades-edad,
+  # /estados-mascota, /estados-solicitud-adopcion,
+  # /estados-solicitud-organizacion, /tipos-vivienda, /tipos-donacion,
+  # /estados-donacion, /tipos-medio — ver ENDPOINTS_FRONTEND.md.
+
+  /configuracion-sitio:
+    get:
+      tags: [ConfiguracionSitio]
+      summary: Obtener configuración pública del sitio
+      security: []
+      responses:
+        "200": { description: OK }
+    patch:
+      tags: [ConfiguracionSitio]
+      summary: Actualizar configuración del sitio (admin)
+      responses:
+        "200": { description: OK }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+    idNumerico:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    idString:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    mascotaId:
+      name: mascotaId
+      in: path
+      required: true
+      schema: { type: integer }
+
+  schemas:
+    Usuario:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        correo: { type: string }
+        rol: { type: string, enum: [usuario, fundacion, admin] }
+        estado: { type: string }
+
+    Mascota:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        especie: { type: string }
+        raza: { type: string }
+        edad: { type: string }
+        sexo: { type: string }
+        tamano: { type: string }
+        ubicacion: { type: string }
+        imagen: { type: string }
+        fundacion: { type: string }
+        estado: { type: string }
+        hidden: { type: boolean }
+
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+        hasNextPage: { type: boolean }
+        hasPreviousPage: { type: boolean }
+
+    PaginatedResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: array, items: {} }
+        pagination: { $ref: "#/components/schemas/PaginationMeta" }
+
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        code: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        errorCode: { type: string }
+        details: { type: array, items: {} }

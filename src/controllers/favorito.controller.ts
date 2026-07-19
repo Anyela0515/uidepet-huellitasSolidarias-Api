@@ -24,3 +24,15 @@ export const verificar = asyncHandler(async (req: Request, res: Response) => {
   const isFavorite = await favoritoService.esFavorito(req.user!.correo, mascotaId);
   res.status(200).json({ isFavorite });
 });
+
+export const agregar = asyncHandler(async (req: Request, res: Response) => {
+  const mascotaId = Number(req.params.mascotaId);
+  await favoritoService.agregarFavorito(req.user!.correo, mascotaId);
+  res.status(201).json({ success: true, message: "Agregado a favoritos." });
+});
+
+export const eliminar = asyncHandler(async (req: Request, res: Response) => {
+  const mascotaId = Number(req.params.mascotaId);
+  await favoritoService.quitarFavorito(req.user!.correo, mascotaId);
+  res.status(204).send();
+});

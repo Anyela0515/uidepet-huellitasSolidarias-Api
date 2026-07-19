@@ -1,7 +1,16 @@
 import { pool } from "../config/database.js";
 import type { RowDataPacket } from "mysql2";
+import type { Pool, PoolConnection } from "mysql2/promise";
 import { mapFundacion } from "../utils/mappers.js";
 import * as catalog from "./catalog.repository.js";
+import { buildPaginationMeta, type PaginationParams } from "../utils/pagination.js";
+
+type Executor = Pool | PoolConnection;
+
+export const FUNDACION_SORT_FIELDS: Record<string, string> = {
+  nombre: "s.nombre_organizacion",
+  fecha: "s.creado_en",
+};
 
 const SELECT = `
   SELECT
@@ -21,15 +30,37 @@ const SELECT = `
   INNER JOIN estados_solicitud_organizacion e ON e.id = s.estado_id
 `;
 
-export async function findAll() {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `${SELECT} ORDER BY s.creado_en DESC`
+export async function findAll(
+  pagination: PaginationParams,
+  sortClause: string,
+  estado?: string
+) {
+  const values: unknown[] = [];
+  const where = estado ? "WHERE e.codigo = ?" : "";
+  if (estado) values.push(estado);
+
+  const [countRows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS total
+     FROM solicitudes_registro_organizacion s
+     INNER JOIN estados_solicitud_organizacion e ON e.id = s.estado_id
+     ${where}`,
+    values
   );
-  return rows.map((row) => mapFundacion(row));
+  const total = Number(countRows[0]?.total ?? 0);
+
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `${SELECT} ${where} ORDER BY ${sortClause} LIMIT ? OFFSET ?`,
+    [...values, pagination.limit, pagination.offset]
+  );
+
+  return {
+    data: rows.map((row) => mapFundacion(row)),
+    meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+  };
 }
 
-export async function findById(id: string) {
-  const [rows] = await pool.query<RowDataPacket[]>(
+export async function findById(id: string, conn: Executor = pool) {
+  const [rows] = await conn.query<RowDataPacket[]>(
     `${SELECT} WHERE s.id = ? LIMIT 1`,
     [id]
   );
@@ -90,11 +121,11 @@ export async function create(data: {
   return findById(id);
 }
 
-export async function updateEstado(id: string, estado: string) {
-  const estadoId = await catalog.getEstadoSolicitudOrgId(estado);
-  await pool.query(
+export async function updateEstado(id: string, estado: string, conn: Executor = pool) {
+  const estadoId = await catalog.getEstadoSolicitudOrgId(estado, conn);
+  await conn.query(
     "UPDATE solicitudes_registro_organizacion SET estado_id = ? WHERE id = ?",
     [estadoId, id]
   );
-  return findById(id);
+  return findById(id, conn);
 }

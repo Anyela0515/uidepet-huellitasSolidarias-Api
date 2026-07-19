@@ -8,8 +8,14 @@ import {
 } from "../schemas/solicitud.schema.js";
 import * as catalog from "./catalog.repository.js";
 import * as mascotaRepo from "./mascota.repository.js";
+import { buildPaginationMeta, type PaginationParams } from "../utils/pagination.js";
 
 const ACTIVE_STATES = ["revision", "aprobada", "seguimiento"] as const;
+
+export const SOLICITUD_SORT_FIELDS: Record<string, string> = {
+  fecha: "sa.creado_en",
+  estado: "es.codigo",
+};
 
 const SOLICITUD_SELECT = `
   SELECT
@@ -96,27 +102,91 @@ const SOLICITUD_SELECT = `
   LEFT JOIN seguimientos_adopcion seg ON seg.solicitud_id = sa.id
 `;
 
-export async function findAll() {
+async function countWhere(where: string, values: unknown[]): Promise<number> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `${SOLICITUD_SELECT} ORDER BY sa.creado_en DESC`
+    `SELECT COUNT(*) AS total
+     FROM solicitudes_adopcion sa
+     INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+     INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
+     INNER JOIN organizaciones o ON o.id = sa.organizacion_id
+     INNER JOIN usuarios uf ON uf.id = o.usuario_id
+     ${where}`,
+    values
   );
-  return rows.map((row) => mapSolicitud(row));
+  return Number(rows[0]?.total ?? 0);
 }
 
-export async function findByAdoptante(correo: string) {
+export async function findAll(
+  pagination: PaginationParams,
+  sortClause: string,
+  estado?: string
+) {
+  const values: unknown[] = [];
+  const where = estado ? "WHERE es.codigo = ?" : "";
+  if (estado) values.push(estado);
+
+  const total = await countWhere(where, values);
   const [rows] = await pool.query<RowDataPacket[]>(
-    `${SOLICITUD_SELECT} WHERE ua.correo = ? ORDER BY sa.creado_en DESC`,
-    [correo]
+    `${SOLICITUD_SELECT} ${where} ORDER BY ${sortClause} LIMIT ? OFFSET ?`,
+    [...values, pagination.limit, pagination.offset]
   );
-  return rows.map((row) => mapSolicitud(row));
+
+  return {
+    data: rows.map((row) => mapSolicitud(row)),
+    meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+  };
 }
 
-export async function findByFundacion(fundacionEmail: string) {
+export async function findByAdoptante(
+  correo: string,
+  pagination: PaginationParams,
+  sortClause: string,
+  estado?: string
+) {
+  const values: unknown[] = [correo];
+  const clauses = ["ua.correo = ?"];
+  if (estado) {
+    clauses.push("es.codigo = ?");
+    values.push(estado);
+  }
+  const where = `WHERE ${clauses.join(" AND ")}`;
+
+  const total = await countWhere(where, values);
   const [rows] = await pool.query<RowDataPacket[]>(
-    `${SOLICITUD_SELECT} WHERE uf.correo = ? ORDER BY sa.creado_en DESC`,
-    [fundacionEmail]
+    `${SOLICITUD_SELECT} ${where} ORDER BY ${sortClause} LIMIT ? OFFSET ?`,
+    [...values, pagination.limit, pagination.offset]
   );
-  return rows.map((row) => mapSolicitud(row));
+
+  return {
+    data: rows.map((row) => mapSolicitud(row)),
+    meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+  };
+}
+
+export async function findByFundacion(
+  fundacionEmail: string,
+  pagination: PaginationParams,
+  sortClause: string,
+  estado?: string
+) {
+  const values: unknown[] = [fundacionEmail];
+  const clauses = ["uf.correo = ?"];
+  if (estado) {
+    clauses.push("es.codigo = ?");
+    values.push(estado);
+  }
+  const where = `WHERE ${clauses.join(" AND ")}`;
+
+  const total = await countWhere(where, values);
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `${SOLICITUD_SELECT} ${where} ORDER BY ${sortClause} LIMIT ? OFFSET ?`,
+    [...values, pagination.limit, pagination.offset]
+  );
+
+  return {
+    data: rows.map((row) => mapSolicitud(row)),
+    meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+  };
 }
 
 export async function findById(id: string) {
@@ -275,6 +345,105 @@ export async function updateEstado(
   return findById(id);
 }
 
+/**
+ * Transición de estado con bloqueo pesimista: evita que dos solicitudes de
+ * la misma mascota sean aprobadas concurrentemente (SELECT ... FOR UPDATE
+ * sobre la mascota y sobre la propia solicitud, dentro de una transacción).
+ * `allowedTransitions` se re-valida DENTRO del bloqueo por si el estado
+ * cambió entre la lectura inicial (fuera de la transacción) y este punto.
+ */
+export async function updateEstadoConBloqueo(
+  id: string,
+  petId: number,
+  data: ActualizarEstadoSolicitudDTO,
+  allowedTransitions: Record<string, string[]>
+) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [lockedSolicitud] = await conn.query<RowDataPacket[]>(
+      `SELECT sa.id, es.codigo AS estado_codigo
+       FROM solicitudes_adopcion sa
+       INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+       WHERE sa.id = ?
+       FOR UPDATE`,
+      [id]
+    );
+    const estadoActualCodigo = lockedSolicitud[0]
+      ? String(lockedSolicitud[0].estado_codigo)
+      : null;
+
+    if (!estadoActualCodigo) {
+      throw new Error("SOLICITUD_NO_ENCONTRADA");
+    }
+
+    const allowed = allowedTransitions[estadoActualCodigo] ?? [];
+    if (!allowed.includes(data.estado)) {
+      throw new Error("TRANSICION_NO_PERMITIDA");
+    }
+
+    // Bloquea la mascota para que ninguna otra transacción concurrente
+    // pueda aprobar/rechazar una solicitud distinta para el mismo animal.
+    await conn.query("SELECT id FROM mascotas WHERE id = ? FOR UPDATE", [petId]);
+
+    const estadoId = await catalog.getEstadoSolicitudAdopcionId(data.estado, conn);
+    await conn.query(
+      `UPDATE solicitudes_adopcion
+       SET estado_id = ?,
+           observaciones = COALESCE(?, observaciones),
+           proximo_paso = COALESCE(?, proximo_paso)
+       WHERE id = ?`,
+      [estadoId, data.observaciones ?? null, data.proximoPaso ?? null, id]
+    );
+
+    let nuevoEstadoMascota: string | null = null;
+
+    if (data.estado === "aprobada") {
+      nuevoEstadoMascota = "En proceso";
+      const estadoRechazadaId = await catalog.getEstadoSolicitudAdopcionId("rechazada", conn);
+      await conn.query(
+        `UPDATE solicitudes_adopcion sa
+         INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+         SET sa.estado_id = ?,
+             sa.observaciones = 'Otra solicitud fue aprobada para esta mascota.',
+             sa.proximo_paso = 'Puedes postular por otra mascota disponible.'
+         WHERE sa.mascota_id = ? AND es.codigo IN (?, ?, ?) AND sa.id <> ?`,
+        [estadoRechazadaId, petId, ...ACTIVE_STATES, id]
+      );
+    } else if (data.estado === "seguimiento") {
+      nuevoEstadoMascota = "Adoptado";
+    } else if (data.estado === "rechazada") {
+      const [others] = await conn.query<RowDataPacket[]>(
+        `SELECT sa.id
+         FROM solicitudes_adopcion sa
+         INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+         WHERE sa.mascota_id = ? AND es.codigo IN (?, ?, ?) AND sa.id <> ?
+         LIMIT 1`,
+        [petId, ...ACTIVE_STATES, id]
+      );
+      if (!others.length) nuevoEstadoMascota = "Disponible";
+    }
+
+    if (nuevoEstadoMascota) {
+      const estadoMascotaId = await catalog.getEstadoMascotaId(nuevoEstadoMascota, conn);
+      await conn.query("UPDATE mascotas SET estado_mascota_id = ? WHERE id = ?", [
+        estadoMascotaId,
+        petId,
+      ]);
+    }
+
+    await conn.commit();
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
+
+  return findById(id);
+}
+
 export async function addSeguimiento(
   id: string,
   data: {
@@ -309,6 +478,93 @@ export async function addSeguimiento(
   }
 
   return findById(id);
+}
+
+export async function addEvidencia(
+  solicitudId: string,
+  data: { nombreArchivo: string; mimeType?: string; tamanioBytes?: number; contenido?: string }
+) {
+  const [result] = await pool.query<ResultSetHeader>(
+    `INSERT INTO evidencias_adopcion
+      (solicitud_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      solicitudId,
+      data.nombreArchivo,
+      data.mimeType ?? null,
+      data.tamanioBytes ?? null,
+      data.contenido ?? null,
+    ]
+  );
+  return { evidenciaId: result.insertId, solicitud: await findById(solicitudId) };
+}
+
+export async function removeEvidencia(solicitudId: string, evidenciaId: number) {
+  await pool.query(
+    "DELETE FROM evidencias_adopcion WHERE id = ? AND solicitud_id = ?",
+    [evidenciaId, solicitudId]
+  );
+  return findById(solicitudId);
+}
+
+export interface SeguimientoDetalle {
+  id: number;
+  solicitudId: string;
+  comentario: string;
+  fundacionEmail: string;
+  adoptanteEmail: string;
+}
+
+export async function findSeguimientoById(id: number): Promise<SeguimientoDetalle | null> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT
+      seg.id,
+      seg.solicitud_id,
+      seg.comentario,
+      uf.correo AS fundacion_email,
+      ua.correo AS adoptante_email
+     FROM seguimientos_adopcion seg
+     INNER JOIN solicitudes_adopcion sa ON sa.id = seg.solicitud_id
+     INNER JOIN organizaciones o ON o.id = sa.organizacion_id
+     INNER JOIN usuarios uf ON uf.id = o.usuario_id
+     INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
+     WHERE seg.id = ?
+     LIMIT 1`,
+    [id]
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: Number(row.id),
+    solicitudId: String(row.solicitud_id),
+    comentario: String(row.comentario ?? ""),
+    fundacionEmail: String(row.fundacion_email),
+    adoptanteEmail: String(row.adoptante_email),
+  };
+}
+
+export async function updateSeguimientoComentario(id: number, comentario: string) {
+  await pool.query(
+    "UPDATE seguimientos_adopcion SET comentario = ? WHERE id = ?",
+    [comentario, id]
+  );
+  return findSeguimientoById(id);
+}
+
+export async function addArchivoSeguimiento(seguimientoId: number, nombreArchivo: string) {
+  await pool.query(
+    "INSERT INTO archivos_seguimiento (seguimiento_id, nombre_archivo) VALUES (?, ?)",
+    [seguimientoId, nombreArchivo]
+  );
+  return findSeguimientoById(seguimientoId);
+}
+
+export async function removeArchivoSeguimiento(seguimientoId: number, archivoId: number) {
+  await pool.query(
+    "DELETE FROM archivos_seguimiento WHERE id = ? AND seguimiento_id = ?",
+    [archivoId, seguimientoId]
+  );
+  return findSeguimientoById(seguimientoId);
 }
 
 export async function cancelActiveByPetId(petId: number) {

@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import {
   actualizarEstadoSolicitudSchema,
+  actualizarSeguimientoSchema,
+  archivoSeguimientoSchema,
   crearSolicitudSchema,
+  evidenciaAdopcionSchema,
   seguimientoSolicitudSchema,
 } from "../schemas/solicitud.schema.js";
 import * as authService from "../services/auth.service.js";
@@ -10,8 +13,12 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const listar = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user!;
-  const data = await solicitudService.listarSolicitudes(user.rol, user.correo);
-  res.status(200).json({ data });
+  const { data, meta } = await solicitudService.listarSolicitudes(
+    user.rol,
+    user.correo,
+    req.query as Record<string, unknown>
+  );
+  res.status(200).json({ success: true, data, pagination: meta });
 });
 
 export const obtener = asyncHandler(async (req: Request, res: Response) => {
@@ -81,4 +88,76 @@ export const agregarSeguimiento = asyncHandler(async (req: Request, res: Respons
   }
 
   res.status(200).json(result);
+});
+
+export const agregarEvidencia = asyncHandler(async (req: Request, res: Response) => {
+  const data = evidenciaAdopcionSchema.parse(req.body);
+  const user = req.user!;
+  const result = await solicitudService.agregarEvidencia(
+    String(req.params.id),
+    data,
+    user.rol,
+    user.correo
+  );
+  res.status(201).json({
+    success: true,
+    message: "Evidencia agregada correctamente.",
+    data: result,
+  });
+});
+
+export const eliminarEvidencia = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const solicitud = await solicitudService.eliminarEvidencia(
+    String(req.params.id),
+    Number(req.params.evidenciaId),
+    user.rol,
+    user.correo
+  );
+  res.status(200).json({ success: true, data: solicitud });
+});
+
+export const actualizarSeguimiento = asyncHandler(async (req: Request, res: Response) => {
+  const { comentario } = actualizarSeguimientoSchema.parse(req.body);
+  const user = req.user!;
+  const seguimiento = await solicitudService.actualizarSeguimiento(
+    Number(req.params.id),
+    comentario,
+    user.rol,
+    user.correo
+  );
+  res.status(200).json({ success: true, data: seguimiento });
+});
+
+export const eliminarSeguimiento = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
+  await solicitudService.eliminarSeguimiento(
+    Number(req.params.id),
+    user.rol,
+    user.correo
+  );
+  res.status(204).send();
+});
+
+export const agregarArchivoSeguimiento = asyncHandler(async (req: Request, res: Response) => {
+  const { nombreArchivo } = archivoSeguimientoSchema.parse(req.body);
+  const user = req.user!;
+  const seguimiento = await solicitudService.agregarArchivoSeguimiento(
+    Number(req.params.id),
+    nombreArchivo,
+    user.rol,
+    user.correo
+  );
+  res.status(201).json({ success: true, data: seguimiento });
+});
+
+export const eliminarArchivoSeguimiento = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const seguimiento = await solicitudService.eliminarArchivoSeguimiento(
+    Number(req.params.id),
+    Number(req.params.archivoId),
+    user.rol,
+    user.correo
+  );
+  res.status(200).json({ success: true, data: seguimiento });
 });

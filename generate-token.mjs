@@ -1,35 +1,26 @@
-import { createHmac, randomUUID } from "crypto";
+import "dotenv/config";
+import jwt from "jsonwebtoken";
 
-const secret = process.env.JWT_SECRET ?? "secreto-demo-huellitas";
+/**
+ * Utilidad de desarrollo: genera un JWT válido para probar rutas protegidas
+ * sin pasar por /auth/login. El payload coincide con AppJwtPayload real
+ * (src/middlewares/auth.ts): { sub, correo, rol }.
+ *
+ * Uso: node generate-token.mjs [correo] [rol]
+ * Ejemplo: node generate-token.mjs admin@huellitas.com admin
+ */
 
-function base64url(value) {
-  return Buffer.from(value)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+const secret = process.env.JWT_SECRET;
+if (!secret || secret.length < 32) {
+  console.error("Falta JWT_SECRET (mínimo 32 caracteres) en tu .env");
+  process.exit(1);
 }
 
-const header = base64url(
-  JSON.stringify({
-    alg: "HS256",
-    typ: "JWT",
-  })
-);
+const correo = process.argv[2] ?? "admin@huellitas.com";
+const rol = process.argv[3] ?? "admin";
 
-const payload = base64url(
-  JSON.stringify({
-    sub: "20251042",
-    iss: "https://auth.uide.edu.ec",
-    aud: "https://api.uide.edu.ec/uidepet",
-    scope: "uidepet:write",
-    exp: Math.floor(Date.now() / 1000) + 3600,
-    jti: randomUUID(),
-  })
-);
+const token = jwt.sign({ sub: 1, correo, rol }, secret, {
+  expiresIn: process.env.JWT_EXPIRES_IN || "8h",
+});
 
-const signature = createHmac("sha256", secret)
-  .update(`${header}.${payload}`)
-  .digest("base64url");
-
-console.log(`${header}.${payload}.${signature}`);
+console.log(token);

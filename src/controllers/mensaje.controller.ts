@@ -5,8 +5,12 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const listar = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user!;
-  const data = await mensajeService.listarMensajes(user.rol, user.correo);
-  res.status(200).json({ data });
+  const { data, meta } = await mensajeService.listarMensajes(
+    user.rol,
+    user.correo,
+    req.query as Record<string, unknown>
+  );
+  res.status(200).json({ success: true, data, pagination: meta });
 });
 
 export const crear = asyncHandler(async (req: Request, res: Response) => {
@@ -16,6 +20,11 @@ export const crear = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const marcarLeido = asyncHandler(async (req: Request, res: Response) => {
-  const result = await mensajeService.marcarLeido(String(req.params.id));
+  const user = req.user!;
+  const result = await mensajeService.marcarLeido(
+    String(req.params.id),
+    user.rol,
+    user.correo
+  );
   res.status(200).json(result);
 });

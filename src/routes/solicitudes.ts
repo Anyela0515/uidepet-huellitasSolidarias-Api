@@ -18,4 +18,7 @@ router.patch(
 
 router.post("/:id/seguimiento", requireRole("usuario"), controller.agregarSeguimiento);
 
+router.post("/:id/evidencias", controller.agregarEvidencia);
+router.delete("/:id/evidencias/:evidenciaId", controller.eliminarEvidencia);
+
 export default router;

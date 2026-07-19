@@ -24,3 +24,7 @@ export const actualizarRolSchema = z.object({
 export const actualizarEstadoUsuarioSchema = z.object({
   estado: z.enum(["Activo", "Suspendido"]),
 });
+
+export const actualizarEstadoDonacionSchema = z.object({
+  estado: z.enum(["Completado", "Pendiente", "Cancelado"]),
+});

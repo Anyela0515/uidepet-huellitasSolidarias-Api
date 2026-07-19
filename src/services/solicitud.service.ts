@@ -6,6 +6,9 @@ import {
   CrearSolicitudDTO,
 } from "../schemas/solicitud.schema.js";
 import { isAvailableForAdoption } from "./mascota.service.js";
+import { buildSortClause, parsePagination } from "../utils/pagination.js";
+import { SOLICITUD_SORT_FIELDS } from "../repositories/solicitud.repository.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   revision: ["aprobada", "rechazada"],
@@ -14,10 +17,19 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   seguimiento: [],
 };
 
-export async function listarSolicitudes(rol: string, correo: string) {
-  if (rol === "admin") return solicitudRepo.findAll();
-  if (rol === "fundacion") return solicitudRepo.findByFundacion(correo);
-  return solicitudRepo.findByAdoptante(correo);
+export async function listarSolicitudes(
+  rol: string,
+  correo: string,
+  query: Record<string, unknown> = {}
+) {
+  const pagination = parsePagination(query);
+  const sortClause = buildSortClause(query.sortBy, query.sortOrder, SOLICITUD_SORT_FIELDS, "fecha");
+  const estado = query.estado ? String(query.estado) : undefined;
+
+  if (rol === "admin") return solicitudRepo.findAll(pagination, sortClause, estado);
+  if (rol === "fundacion")
+    return solicitudRepo.findByFundacion(correo, pagination, sortClause, estado);
+  return solicitudRepo.findByAdoptante(correo, pagination, sortClause, estado);
 }
 
 export async function obtenerSolicitud(id: string) {
@@ -69,25 +81,31 @@ export async function actualizarEstado(
     return { error: "No tienes permiso para modificar esta solicitud." };
   }
 
+  // Validación optimista previa (mejor mensaje de error para el caso común);
+  // la validación autoritativa ocurre de nuevo dentro de la transacción con
+  // bloqueo, por si el estado cambió entre esta lectura y la escritura.
   const allowed = ALLOWED_TRANSITIONS[actual.estado] || [];
   if (!allowed.includes(data.estado)) {
     return { error: "Transición de estado no permitida." };
   }
 
-  const solicitud = await solicitudRepo.updateEstado(id, data);
-
-  if (data.estado === "rechazada") {
-    const hasOther = await solicitudRepo.hasActiveForPet(actual.petId, id);
-    if (!hasOther) {
-      await mascotaRepo.update(actual.petId, { estado: "Disponible" });
+  try {
+    const solicitud = await solicitudRepo.updateEstadoConBloqueo(
+      id,
+      actual.petId,
+      data,
+      ALLOWED_TRANSITIONS
+    );
+    return { solicitud };
+  } catch (error) {
+    if (error instanceof Error && error.message === "TRANSICION_NO_PERMITIDA") {
+      return { error: "Transición de estado no permitida: la solicitud ya cambió de estado." };
     }
-  } else if (data.estado === "aprobada") {
-    await mascotaRepo.update(actual.petId, { estado: "En proceso" });
-  } else if (data.estado === "seguimiento") {
-    await mascotaRepo.update(actual.petId, { estado: "Adoptado" });
+    if (error instanceof Error && error.message === "SOLICITUD_NO_ENCONTRADA") {
+      return { error: "Solicitud no encontrada." };
+    }
+    throw error;
   }
-
-  return { solicitud };
 }
 
 export async function agregarSeguimiento(
@@ -123,4 +141,91 @@ export async function agregarSeguimiento(
   });
 
   return { solicitud };
+}
+
+export async function agregarEvidencia(
+  solicitudId: string,
+  data: { nombreArchivo: string; mimeType?: string; tamanioBytes?: number; contenido?: string },
+  rol: string,
+  correo: string
+) {
+  const solicitud = await solicitudRepo.findById(solicitudId);
+  if (!solicitud) throw new NotFoundError("Solicitud no encontrada.");
+  if (rol !== "admin" && solicitud.adoptanteEmail !== correo) {
+    throw new ForbiddenError("No tienes permiso para modificar esta solicitud.");
+  }
+  return solicitudRepo.addEvidencia(solicitudId, data);
+}
+
+export async function eliminarEvidencia(
+  solicitudId: string,
+  evidenciaId: number,
+  rol: string,
+  correo: string
+) {
+  const solicitud = await solicitudRepo.findById(solicitudId);
+  if (!solicitud) throw new NotFoundError("Solicitud no encontrada.");
+  if (rol !== "admin" && solicitud.adoptanteEmail !== correo) {
+    throw new ForbiddenError("No tienes permiso para modificar esta solicitud.");
+  }
+  return solicitudRepo.removeEvidencia(solicitudId, evidenciaId);
+}
+
+async function assertSeguimientoManageable(id: number, rol: string, correo: string) {
+  const seguimiento = await solicitudRepo.findSeguimientoById(id);
+  if (!seguimiento) throw new NotFoundError("Seguimiento no encontrado.");
+  if (rol !== "admin" && seguimiento.fundacionEmail !== correo) {
+    throw new ForbiddenError("No tienes permiso para modificar este seguimiento.");
+  }
+  return seguimiento;
+}
+
+export async function actualizarSeguimiento(
+  id: number,
+  comentario: string,
+  rol: string,
+  correo: string
+) {
+  await assertSeguimientoManageable(id, rol, correo);
+  return solicitudRepo.updateSeguimientoComentario(id, comentario);
+}
+
+/**
+ * Los seguimientos funcionan como evidencia de la adopción: nunca se borran
+ * físicamente, ni siquiera para el administrador. La ruta existe para
+ * cumplir el contrato, pero rechaza la operación de forma explícita.
+ */
+export async function eliminarSeguimiento(id: number, rol: string, correo: string) {
+  await assertSeguimientoManageable(id, rol, correo);
+  throw new ConflictError(
+    "Los seguimientos no se eliminan físicamente: son evidencia de la adopción."
+  );
+}
+
+export async function agregarArchivoSeguimiento(
+  id: number,
+  nombreArchivo: string,
+  rol: string,
+  correo: string
+) {
+  const seguimiento = await solicitudRepo.findSeguimientoById(id);
+  if (!seguimiento) throw new NotFoundError("Seguimiento no encontrado.");
+  const esPropio =
+    rol === "admin" ||
+    seguimiento.fundacionEmail === correo ||
+    seguimiento.adoptanteEmail === correo;
+  if (!esPropio) {
+    throw new ForbiddenError("No tienes permiso para modificar este seguimiento.");
+  }
+  return solicitudRepo.addArchivoSeguimiento(id, nombreArchivo);
+}
+
+export async function eliminarArchivoSeguimiento(
+  id: number,
+  archivoId: number,
+  rol: string,
+  correo: string
+) {
+  await assertSeguimientoManageable(id, rol, correo);
+  return solicitudRepo.removeArchivoSeguimiento(id, archivoId);
 }
