@@ -7,6 +7,9 @@ info:
     Las rutas no llevan prefijo de versión (`/mascotas`, no `/api/v1/mascotas`),
     reflejando el código real del backend.
   version: "1.0.0"
+  license:
+    name: ISC
+    url: https://opensource.org/license/isc-license-txt
 servers:
   - url: http://localhost:3000
     description: Desarrollo local
@@ -16,16 +19,27 @@ security:
 
 tags:
   - name: Auth
+    description: Registro, autenticación, perfiles y administración de cuentas.
   - name: Mascotas
+    description: Catálogo y administración de mascotas en adopción.
   - name: Solicitudes
+    description: Flujo de solicitudes de adopción.
   - name: Seguimientos
+    description: Evidencias y seguimiento posterior a la adopción.
   - name: Fundaciones
+    description: Registro y administración de organizaciones.
   - name: Favoritos
+    description: Favoritos del adoptante autenticado.
   - name: Mensajes
+    description: Mensajes de contacto dirigidos a organizaciones.
   - name: Donaciones
+    description: Registro y administración de donaciones.
   - name: Catalogos
+    description: Catálogos públicos usados por el frontend.
   - name: ConfiguracionSitio
+    description: Contenido y configuración pública del sitio.
   - name: Salud
+    description: Disponibilidad de la API y de MySQL.
 
 paths:
   /health:
@@ -523,7 +537,7 @@ paths:
               properties:
                 estado: { type: string, enum: [pendiente, aprobada, rechazada] }
       responses:
-        "200": { description: OK, puede incluir temporaryPassword una sola vez }
+        "200": { description: "OK; puede incluir temporaryPassword una sola vez" }
         "409": { description: La solicitud ya fue procesada }
 
   /favoritos:

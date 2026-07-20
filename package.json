@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --exec tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:schema": "node --input-type=module -e \"import 'dotenv/config';import fs from 'fs';import mysql from 'mysql2/promise';const c=await mysql.createConnection({host:process.env.DB_HOST||'localhost',port:Number(process.env.DB_PORT||3306),user:process.env.DB_USER||'root',password:process.env.DB_PASSWORD||'',multipleStatements:true});await c.query(fs.readFileSync('db/schema.sql','utf8'));await c.end();console.log('Schema OK');\"",
@@ -13,7 +14,11 @@
     "seed": "node db/seed.mjs",
     "db:reset": "npm run db:schema && npm run seed",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:unit": "vitest run src/utils",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "openapi:lint": "redocly lint openapi.yaml",
+    "check": "npm run typecheck && npm run lint && npm run openapi:lint && npm test"
   },
   "keywords": [
     "api",
@@ -36,16 +41,20 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@redocly/cli": "^2.39.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.20.0",
     "@types/supertest": "^6.0.3",
+    "eslint": "^10.7.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.1.4",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^3.2.4"
   }
 }

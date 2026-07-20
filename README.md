@@ -84,8 +84,23 @@ npm start       # node dist/index.js
 
 ```bash
 npm test          # vitest run (una sola vez)
+npm run test:unit # unitarias sin conexión a MySQL
 npm run test:watch
 ```
+
+## Calidad y contrato de la API
+
+```bash
+npm run typecheck      # valida TypeScript sin generar dist/
+npm run lint           # analiza TypeScript y scripts del proyecto
+npm run openapi:lint   # valida openapi.yaml con Redocly
+npm run check          # ejecuta todos los controles anteriores y las pruebas
+```
+
+GitHub Actions ejecuta automáticamente estos controles, la suite completa y la
+compilación en cada `push` a `main` y en cada pull request. Para las pruebas de
+integración levanta un servicio MySQL efímero, aplica el esquema y la migración,
+y carga el seed sin tocar bases de datos externas.
 
 - **Unitarias** (`src/utils/*.test.ts`): paginación, parseo de edad, mappers — no requieren base de datos.
 - **Integración** (`src/__tests__/*.test.ts`): usan Supertest contra la app real (`src/app.ts`) y la **base de datos de desarrollo** ya migrada y sembrada. No existe una base de datos de pruebas separada ni mocking de MySQL: ejecuta `npm run db:schema && npm run db:migrate && npm run seed` antes de correr los tests. Los tests crean datos efímeros (usuarios/mascotas de prueba con correos e IDs únicos por timestamp) y limpian lo que pueden (borrado lógico), pero pueden dejar algún residuo menor en la base de desarrollo — es un trade-off aceptado para un proyecto académico sin infraestructura de test containers.

@@ -1,5 +1,5 @@
 import { pool } from "../config/database.js";
-import type { ResultSetHeader, RowDataPacket } from "mysql2";
+import type { RowDataPacket } from "mysql2";
 import { mapDonacion } from "../utils/mappers.js";
 import * as catalog from "./catalog.repository.js";
 import { buildPaginationMeta, type PaginationParams } from "../utils/pagination.js";
