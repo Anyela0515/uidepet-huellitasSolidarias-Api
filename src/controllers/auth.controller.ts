@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import {
   changePasswordSchema,
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   updateProfileSchema,
 } from "../schemas/auth.schema.js";
 import {
@@ -51,6 +53,25 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
+  res.status(200).json(result);
+});
+
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { correo } = forgotPasswordSchema.parse(req.body);
+  const result = await authService.requestPasswordReset(correo);
+  res.status(202).json({
+    ...result,
+    message: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+  });
+});
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { token, newPassword } = resetPasswordSchema.parse(req.body);
+  const result = await authService.resetPasswordWithToken(token, newPassword);
+  if ("error" in result) {
+    res.status(400).json(result);
+    return;
+  }
   res.status(200).json(result);
 });
 

@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import type { PoolConnection } from "mysql2/promise";
 import * as usuarioRepo from "../repositories/usuario.repository.js";
 import * as catalog from "../repositories/catalog.repository.js";
@@ -7,6 +8,8 @@ import { LoginDTO, RegisterDTO } from "../schemas/auth.schema.js";
 import { mapUsuario } from "../utils/mappers.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuario.repository.js";
+import * as passwordResetRepo from "../repositories/passwordReset.repository.js";
+import { sendPasswordResetEmail } from "./email.service.js";
 
 export async function login(data: LoginDTO) {
   const row = await usuarioRepo.findByCorreo(data.correo.trim().toLowerCase());
@@ -76,6 +79,34 @@ export async function changePassword(
   const hash = await bcrypt.hash(newPassword, 12);
   await usuarioRepo.updatePassword(correo, hash);
   return { ok: true };
+}
+
+export async function requestPasswordReset(correoInput: string) {
+  const correo = correoInput.trim().toLowerCase();
+  const row = await usuarioRepo.findByCorreo(correo);
+  if (!row) return { ok: true };
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  await passwordResetRepo.create(Number(row.id), tokenHash, expiresAt);
+
+  const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+  const resetUrl = `${frontendUrl}/recuperar-contrasena?token=${encodeURIComponent(token)}`;
+  try {
+    await sendPasswordResetEmail(correo, String(row.nombre || "Usuario"), resetUrl);
+  } catch (error) {
+    console.error("No se pudo enviar el correo de recuperación:", error);
+  }
+
+  return process.env.NODE_ENV === "test" ? { ok: true, token } : { ok: true };
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string) {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const consumed = await passwordResetRepo.consumeAndUpdatePassword(tokenHash, passwordHash);
+  return consumed ? { ok: true } : { error: "El enlace es inválido, ya fue utilizado o venció." };
 }
 
 export async function getMe(id: number) {

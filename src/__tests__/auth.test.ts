@@ -127,4 +127,34 @@ describe("Auth", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ currentPassword: "OtraClave456", newPassword: password });
   });
+
+  it("recupera la contraseña con un token de un solo uso", async () => {
+    const requestReset = await request(app)
+      .post("/auth/forgot-password")
+      .send({ correo });
+
+    expect(requestReset.status).toBe(202);
+    expect(typeof requestReset.body.token).toBe("string");
+
+    const newPassword = "Recuperada789";
+    const reset = await request(app)
+      .post("/auth/reset-password")
+      .send({ token: requestReset.body.token, newPassword });
+    expect(reset.status).toBe(200);
+
+    const reused = await request(app)
+      .post("/auth/reset-password")
+      .send({ token: requestReset.body.token, newPassword: password });
+    expect(reused.status).toBe(400);
+
+    const login = await request(app)
+      .post("/auth/login")
+      .send({ correo, password: newPassword });
+    expect(login.status).toBe(200);
+
+    await request(app)
+      .patch("/auth/password")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .send({ currentPassword: newPassword, newPassword: password });
+  });
 });

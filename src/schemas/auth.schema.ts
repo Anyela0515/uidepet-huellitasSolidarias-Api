@@ -19,6 +19,15 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
+export const forgotPasswordSchema = z.object({
+  correo: z.string().email("Correo inválido."),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(32, "Token inválido."),
+  newPassword: z.string().min(8, "La contraseña debe tener mínimo 8 caracteres."),
+});
+
 export const updateProfileSchema = z.object({
   nombre: z.string().min(3).optional(),
   telefono: z.string().min(10).optional(),

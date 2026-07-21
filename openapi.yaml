@@ -123,6 +123,44 @@ paths:
         "200": { description: Contraseña actualizada }
         "401": { description: Contraseña actual incorrecta }
 
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Solicitar enlace de recuperación de contraseña
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo]
+              properties:
+                correo: { type: string, format: email }
+      responses:
+        "202": { description: Solicitud aceptada; la respuesta no revela si existe la cuenta }
+        "422": { description: Correo inválido }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Establecer una contraseña mediante token de un solo uso
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string, minLength: 32 }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        "200": { description: Contraseña actualizada }
+        "400": { description: "Token inválido, usado o vencido" }
+        "422": { description: Datos inválidos }
+
   /auth/me:
     get:
       tags: [Auth]
