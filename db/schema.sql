@@ -31,28 +31,24 @@ CREATE TABLE especies (
   nombre VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE razas (
+-- Catálogo consolidado de atributos simples de mascota (raza, sexo, tamaño,
+-- unidad de edad). `especies` queda fuera a propósito: es la categoría real
+-- de la mascota y ya funciona correctamente en todo el stack; una raza sigue
+-- referenciándola con una FK normal (sin auto-referencia).
+CREATE TABLE categorias (
   id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  especie_id SMALLINT UNSIGNED NOT NULL,
+  tipo VARCHAR(20) NOT NULL,
   nombre VARCHAR(80) NOT NULL,
-  UNIQUE KEY uq_raza_especie (especie_id, nombre),
-  CONSTRAINT fk_raza_especie
+  especie_id SMALLINT UNSIGNED NULL,
+  especie_id_uniq SMALLINT UNSIGNED GENERATED ALWAYS AS (COALESCE(especie_id, 0)) STORED,
+  UNIQUE KEY uq_categoria_tipo_especie_nombre (tipo, especie_id_uniq, nombre),
+  CONSTRAINT chk_categoria_tipo CHECK (tipo IN ('raza','sexo','tamano','unidad_edad')),
+  CONSTRAINT chk_categoria_raza_especie CHECK (
+    (tipo = 'raza' AND especie_id IS NOT NULL) OR
+    (tipo <> 'raza' AND especie_id IS NULL)
+  ),
+  CONSTRAINT fk_categoria_especie
     FOREIGN KEY (especie_id) REFERENCES especies(id)
-);
-
-CREATE TABLE sexos (
-  id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(20) NOT NULL UNIQUE
-);
-
-CREATE TABLE tamanos (
-  id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(30) NOT NULL UNIQUE
-);
-
-CREATE TABLE unidades_edad (
-  id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(20) NOT NULL UNIQUE
 );
 
 CREATE TABLE estados_mascota (
@@ -190,9 +186,9 @@ CREATE TABLE mascotas (
   nombre VARCHAR(80) NOT NULL,
   raza_id SMALLINT UNSIGNED NOT NULL,
   edad_valor SMALLINT UNSIGNED NOT NULL,
-  unidad_edad_id TINYINT UNSIGNED NOT NULL,
-  sexo_id TINYINT UNSIGNED NOT NULL,
-  tamano_id TINYINT UNSIGNED NOT NULL,
+  unidad_edad_id SMALLINT UNSIGNED NOT NULL,
+  sexo_id SMALLINT UNSIGNED NOT NULL,
+  tamano_id SMALLINT UNSIGNED NOT NULL,
   ciudad_id SMALLINT UNSIGNED NOT NULL,
   historia TEXT NOT NULL,
   requisitos TEXT NOT NULL,
@@ -201,13 +197,13 @@ CREATE TABLE mascotas (
   publicada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   oculto TINYINT(1) NOT NULL DEFAULT 0,
   CONSTRAINT fk_mascota_raza
-    FOREIGN KEY (raza_id) REFERENCES razas(id),
+    FOREIGN KEY (raza_id) REFERENCES categorias(id),
   CONSTRAINT fk_mascota_unidad_edad
-    FOREIGN KEY (unidad_edad_id) REFERENCES unidades_edad(id),
+    FOREIGN KEY (unidad_edad_id) REFERENCES categorias(id),
   CONSTRAINT fk_mascota_sexo
-    FOREIGN KEY (sexo_id) REFERENCES sexos(id),
+    FOREIGN KEY (sexo_id) REFERENCES categorias(id),
   CONSTRAINT fk_mascota_tamano
-    FOREIGN KEY (tamano_id) REFERENCES tamanos(id),
+    FOREIGN KEY (tamano_id) REFERENCES categorias(id),
   CONSTRAINT fk_mascota_ciudad
     FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
   CONSTRAINT fk_mascota_org
@@ -403,11 +399,14 @@ INSERT INTO estados_cuenta (codigo, nombre) VALUES
 
 INSERT INTO especies (nombre) VALUES ('Perro'), ('Gato'), ('Otro');
 
-INSERT INTO sexos (nombre) VALUES ('Macho'), ('Hembra');
+INSERT INTO categorias (tipo, nombre) VALUES
+  ('sexo', 'Macho'), ('sexo', 'Hembra');
 
-INSERT INTO tamanos (nombre) VALUES ('Pequeño'), ('Mediano'), ('Grande');
+INSERT INTO categorias (tipo, nombre) VALUES
+  ('tamano', 'Pequeño'), ('tamano', 'Mediano'), ('tamano', 'Grande');
 
-INSERT INTO unidades_edad (nombre) VALUES ('Años'), ('Meses');
+INSERT INTO categorias (tipo, nombre) VALUES
+  ('unidad_edad', 'Años'), ('unidad_edad', 'Meses');
 
 INSERT INTO estados_mascota (codigo, nombre) VALUES
   ('Disponible', 'Disponible'),

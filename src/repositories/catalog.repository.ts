@@ -28,6 +28,19 @@ async function findIdByCodigo(
   return rows[0] ? Number(rows[0].id) : null;
 }
 
+async function findCategoriaId(
+  tipo: string,
+  nombre: string,
+  especieId: number | null,
+  conn: Executor = pool
+): Promise<number | null> {
+  const [rows] = await conn.query<RowDataPacket[]>(
+    "SELECT id FROM categorias WHERE tipo = ? AND nombre = ? AND especie_id <=> ? LIMIT 1",
+    [tipo, nombre, especieId]
+  );
+  return rows[0] ? Number(rows[0].id) : null;
+}
+
 export async function getRolId(codigo: string, conn: Executor = pool): Promise<number> {
   const id = await findIdByCodigo("roles", codigo, conn);
   if (!id) throw new Error(`Rol no encontrado: ${codigo}`);
@@ -103,41 +116,38 @@ export async function getOrCreateRazaId(
 ): Promise<number> {
   const especieId = await getOrCreateEspecieId(especieNombre, conn);
   const nombre = razaNombre?.trim() || "Mestizo";
-  const [rows] = await conn.query<RowDataPacket[]>(
-    "SELECT id FROM razas WHERE especie_id = ? AND nombre = ? LIMIT 1",
-    [especieId, nombre]
-  );
-  if (rows[0]) return Number(rows[0].id);
+  const existing = await findCategoriaId("raza", nombre, especieId, conn);
+  if (existing) return existing;
 
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO razas (especie_id, nombre) VALUES (?, ?)",
+    "INSERT INTO categorias (tipo, especie_id, nombre) VALUES ('raza', ?, ?)",
     [especieId, nombre]
   );
   return result.insertId;
 }
 
 export async function getOrCreateSexoId(nombre: string, conn: Executor = pool): Promise<number> {
-  const existing = await findIdByNombre("sexos", nombre, conn);
+  const existing = await findCategoriaId("sexo", nombre, null, conn);
   if (existing) return existing;
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO sexos (nombre) VALUES (?)",
+    "INSERT INTO categorias (tipo, nombre) VALUES ('sexo', ?)",
     [nombre]
   );
   return result.insertId;
 }
 
 export async function getOrCreateTamanoId(nombre: string, conn: Executor = pool): Promise<number> {
-  const existing = await findIdByNombre("tamanos", nombre, conn);
+  const existing = await findCategoriaId("tamano", nombre, null, conn);
   if (existing) return existing;
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO tamanos (nombre) VALUES (?)",
+    "INSERT INTO categorias (tipo, nombre) VALUES ('tamano', ?)",
     [nombre]
   );
   return result.insertId;
 }
 
 export async function getUnidadEdadId(nombre: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByNombre("unidades_edad", nombre, conn);
+  const id = await findCategoriaId("unidad_edad", nombre, null, conn);
   if (!id) throw new Error(`Unidad de edad no encontrada: ${nombre}`);
   return id;
 }

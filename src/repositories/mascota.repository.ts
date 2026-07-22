@@ -45,11 +45,11 @@ const MASCOTA_SELECT = `
       WHERE mt.mascota_id = m.id
     ) AS tags
   FROM mascotas m
-  INNER JOIN razas r ON r.id = m.raza_id
+  INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
   INNER JOIN especies e ON e.id = r.especie_id
-  INNER JOIN unidades_edad ue ON ue.id = m.unidad_edad_id
-  INNER JOIN sexos s ON s.id = m.sexo_id
-  INNER JOIN tamanos t ON t.id = m.tamano_id
+  INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
+  INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+  INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
   INNER JOIN ciudades c ON c.id = m.ciudad_id
   INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
   INNER JOIN organizaciones o ON o.id = m.organizacion_id
@@ -195,10 +195,10 @@ export async function findVisible(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM mascotas m
-     INNER JOIN razas r ON r.id = m.raza_id
+     INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
      INNER JOIN especies e ON e.id = r.especie_id
-     INNER JOIN sexos s ON s.id = m.sexo_id
-     INNER JOIN tamanos t ON t.id = m.tamano_id
+     INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+     INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
      INNER JOIN ciudades c ON c.id = m.ciudad_id
      INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
@@ -237,10 +237,10 @@ export async function findByFundacionEmail(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM mascotas m
-     INNER JOIN razas r ON r.id = m.raza_id
+     INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
      INNER JOIN especies e ON e.id = r.especie_id
-     INNER JOIN sexos s ON s.id = m.sexo_id
-     INNER JOIN tamanos t ON t.id = m.tamano_id
+     INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+     INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
      INNER JOIN ciudades c ON c.id = m.ciudad_id
      INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
      INNER JOIN organizaciones o ON o.id = m.organizacion_id

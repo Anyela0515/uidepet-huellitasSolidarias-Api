@@ -89,8 +89,8 @@ const SOLICITUD_SELECT = `
   FROM solicitudes_adopcion sa
   INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
   INNER JOIN mascotas m ON m.id = sa.mascota_id
-  INNER JOIN unidades_edad ue ON ue.id = m.unidad_edad_id
-  INNER JOIN razas rz ON rz.id = m.raza_id
+  INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
+  INNER JOIN categorias rz ON rz.id = m.raza_id AND rz.tipo = 'raza'
   INNER JOIN ciudades ci ON ci.id = m.ciudad_id
   INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
   INNER JOIN perfiles_usuario pu ON pu.usuario_id = ua.id

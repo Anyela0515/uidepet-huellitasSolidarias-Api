@@ -31,15 +31,23 @@ async function idByNombre(conn, table, nombre) {
   return rows[0].id;
 }
 
+async function idByTipoNombre(conn, tipo, nombre) {
+  const [rows] = await conn.query(
+    "SELECT id FROM categorias WHERE tipo = ? AND nombre = ? LIMIT 1",
+    [tipo, nombre]
+  );
+  return rows[0].id;
+}
+
 async function ensureRaza(conn, especieNombre, razaNombre) {
   const especieId = await idByNombre(conn, "especies", especieNombre);
   const [rows] = await conn.query(
-    "SELECT id FROM razas WHERE especie_id = ? AND nombre = ? LIMIT 1",
+    "SELECT id FROM categorias WHERE tipo = 'raza' AND especie_id = ? AND nombre = ? LIMIT 1",
     [especieId, razaNombre]
   );
   if (rows[0]) return rows[0].id;
   const [result] = await conn.query(
-    "INSERT INTO razas (especie_id, nombre) VALUES (?, ?)",
+    "INSERT INTO categorias (tipo, especie_id, nombre) VALUES ('raza', ?, ?)",
     [especieId, razaNombre]
   );
   return result.insertId;
@@ -78,13 +86,13 @@ async function seed() {
     const rolUser = await idByCodigo(conn, "roles", "usuario");
     const estadoActivo = await idByCodigo(conn, "estados_cuenta", "Activo");
     const ciudadLoja = await idByNombre(conn, "ciudades", "Loja");
-    const sexoHembra = await idByNombre(conn, "sexos", "Hembra");
-    const sexoMacho = await idByNombre(conn, "sexos", "Macho");
-    const tamPeq = await idByNombre(conn, "tamanos", "Pequeño");
-    const tamMed = await idByNombre(conn, "tamanos", "Mediano");
-    const tamGran = await idByNombre(conn, "tamanos", "Grande");
-    const unidadAnios = await idByNombre(conn, "unidades_edad", "Años");
-    const unidadMeses = await idByNombre(conn, "unidades_edad", "Meses");
+    const sexoHembra = await idByTipoNombre(conn, "sexo", "Hembra");
+    const sexoMacho = await idByTipoNombre(conn, "sexo", "Macho");
+    const tamPeq = await idByTipoNombre(conn, "tamano", "Pequeño");
+    const tamMed = await idByTipoNombre(conn, "tamano", "Mediano");
+    const tamGran = await idByTipoNombre(conn, "tamano", "Grande");
+    const unidadAnios = await idByTipoNombre(conn, "unidad_edad", "Años");
+    const unidadMeses = await idByTipoNombre(conn, "unidad_edad", "Meses");
     const estDisp = await idByCodigo(conn, "estados_mascota", "Disponible");
     const estProceso = await idByCodigo(conn, "estados_mascota", "En proceso");
     const tipoImg = await idByCodigo(conn, "tipos_medio", "imagen");
