@@ -31,12 +31,12 @@ async function findIdByCodigo(
 async function findCategoriaId(
   tipo: string,
   nombre: string,
-  especieId: number | null,
+  padreId: number | null,
   conn: Executor = pool
 ): Promise<number | null> {
   const [rows] = await conn.query<RowDataPacket[]>(
-    "SELECT id FROM categorias WHERE tipo = ? AND nombre = ? AND especie_id <=> ? LIMIT 1",
-    [tipo, nombre, especieId]
+    "SELECT id FROM categorias WHERE tipo = ? AND nombre = ? AND padre_id <=> ? LIMIT 1",
+    [tipo, nombre, padreId]
   );
   return rows[0] ? Number(rows[0].id) : null;
 }
@@ -100,10 +100,10 @@ export async function getOrCreateCiudadId(nombre: string, conn: Executor = pool)
 }
 
 export async function getOrCreateEspecieId(nombre: string, conn: Executor = pool): Promise<number> {
-  const existing = await findIdByNombre("especies", nombre, conn);
+  const existing = await findCategoriaId("especie", nombre, null, conn);
   if (existing) return existing;
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO especies (nombre) VALUES (?)",
+    "INSERT INTO categorias (tipo, nombre) VALUES ('especie', ?)",
     [nombre]
   );
   return result.insertId;
@@ -120,7 +120,7 @@ export async function getOrCreateRazaId(
   if (existing) return existing;
 
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO categorias (tipo, especie_id, nombre) VALUES ('raza', ?, ?)",
+    "INSERT INTO categorias (tipo, padre_id, nombre) VALUES ('raza', ?, ?)",
     [especieId, nombre]
   );
   return result.insertId;

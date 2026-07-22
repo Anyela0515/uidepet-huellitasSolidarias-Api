@@ -46,7 +46,7 @@ const MASCOTA_SELECT = `
     ) AS tags
   FROM mascotas m
   INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-  INNER JOIN especies e ON e.id = r.especie_id
+  INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
   INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
   INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
   INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
@@ -196,7 +196,7 @@ export async function findVisible(
     `SELECT COUNT(*) AS total
      FROM mascotas m
      INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-     INNER JOIN especies e ON e.id = r.especie_id
+     INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
      INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
      INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
      INNER JOIN ciudades c ON c.id = m.ciudad_id
@@ -238,7 +238,7 @@ export async function findByFundacionEmail(
     `SELECT COUNT(*) AS total
      FROM mascotas m
      INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-     INNER JOIN especies e ON e.id = r.especie_id
+     INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
      INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
      INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
      INNER JOIN ciudades c ON c.id = m.ciudad_id

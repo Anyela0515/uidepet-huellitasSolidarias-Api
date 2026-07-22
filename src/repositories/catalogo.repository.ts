@@ -39,7 +39,7 @@ async function listConCodigo(table: string): Promise<CatalogoItem[]> {
 
 export const getRoles = () => listConCodigo("roles");
 export const getEstadosCuenta = () => listConCodigo("estados_cuenta");
-export const getEspecies = () => listSimple("especies");
+export const getEspecies = () => listCategoriaPorTipo("especie");
 export const getSexos = () => listCategoriaPorTipo("sexo");
 export const getTamanos = () => listCategoriaPorTipo("tamano");
 export const getUnidadesEdad = () => listCategoriaPorTipo("unidad_edad");
@@ -57,8 +57,8 @@ export const getTiposMedio = () => listConCodigo("tipos_medio");
 export async function getRazas(especieId?: number): Promise<RazaItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     especieId
-      ? "SELECT id, especie_id, nombre FROM categorias WHERE tipo = 'raza' AND especie_id = ? ORDER BY nombre ASC"
-      : "SELECT id, especie_id, nombre FROM categorias WHERE tipo = 'raza' ORDER BY nombre ASC",
+      ? "SELECT id, padre_id AS especie_id, nombre FROM categorias WHERE tipo = 'raza' AND padre_id = ? ORDER BY nombre ASC"
+      : "SELECT id, padre_id AS especie_id, nombre FROM categorias WHERE tipo = 'raza' ORDER BY nombre ASC",
     especieId ? [especieId] : []
   );
   return rows.map((row) => ({

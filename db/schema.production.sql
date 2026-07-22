@@ -26,29 +26,24 @@ CREATE TABLE estados_cuenta (
   nombre VARCHAR(60) NOT NULL
 );
 
-CREATE TABLE especies (
-  id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(50) NOT NULL UNIQUE
-);
-
--- Catálogo consolidado de atributos simples de mascota (raza, sexo, tamaño,
--- unidad de edad). `especies` queda fuera a propósito: es la categoría real
--- de la mascota y ya funciona correctamente en todo el stack; una raza sigue
--- referenciándola con una FK normal (sin auto-referencia).
+-- Catálogo consolidado de atributos simples de mascota (especie, raza, sexo,
+-- tamaño, unidad de edad). `padre_id` es una relación recursiva (auto-FK):
+-- las filas tipo='raza' apuntan a su propia especie, que es otra fila de
+-- esta misma tabla (tipo='especie'); el resto de tipos no tiene padre.
 CREATE TABLE categorias (
   id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tipo VARCHAR(20) NOT NULL,
   nombre VARCHAR(80) NOT NULL,
-  especie_id SMALLINT UNSIGNED NULL,
-  especie_id_uniq SMALLINT UNSIGNED GENERATED ALWAYS AS (COALESCE(especie_id, 0)) STORED,
-  UNIQUE KEY uq_categoria_tipo_especie_nombre (tipo, especie_id_uniq, nombre),
-  CONSTRAINT chk_categoria_tipo CHECK (tipo IN ('raza','sexo','tamano','unidad_edad')),
-  CONSTRAINT chk_categoria_raza_especie CHECK (
-    (tipo = 'raza' AND especie_id IS NOT NULL) OR
-    (tipo <> 'raza' AND especie_id IS NULL)
+  padre_id SMALLINT UNSIGNED NULL,
+  padre_id_uniq SMALLINT UNSIGNED GENERATED ALWAYS AS (COALESCE(padre_id, 0)) STORED,
+  UNIQUE KEY uq_categoria_tipo_padre_nombre (tipo, padre_id_uniq, nombre),
+  CONSTRAINT chk_categoria_tipo CHECK (tipo IN ('especie','raza','sexo','tamano','unidad_edad')),
+  CONSTRAINT chk_categoria_raza_padre CHECK (
+    (tipo = 'raza' AND padre_id IS NOT NULL) OR
+    (tipo <> 'raza' AND padre_id IS NULL)
   ),
-  CONSTRAINT fk_categoria_especie
-    FOREIGN KEY (especie_id) REFERENCES especies(id)
+  CONSTRAINT fk_categoria_padre
+    FOREIGN KEY (padre_id) REFERENCES categorias(id)
 );
 
 CREATE TABLE estados_mascota (
@@ -397,7 +392,8 @@ INSERT INTO estados_cuenta (codigo, nombre) VALUES
   ('Activo', 'Activo'),
   ('Suspendido', 'Suspendido');
 
-INSERT INTO especies (nombre) VALUES ('Perro'), ('Gato'), ('Otro');
+INSERT INTO categorias (tipo, nombre) VALUES
+  ('especie', 'Perro'), ('especie', 'Gato'), ('especie', 'Otro');
 
 INSERT INTO categorias (tipo, nombre) VALUES
   ('sexo', 'Macho'), ('sexo', 'Hembra');

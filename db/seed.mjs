@@ -40,14 +40,14 @@ async function idByTipoNombre(conn, tipo, nombre) {
 }
 
 async function ensureRaza(conn, especieNombre, razaNombre) {
-  const especieId = await idByNombre(conn, "especies", especieNombre);
+  const especieId = await idByTipoNombre(conn, "especie", especieNombre);
   const [rows] = await conn.query(
-    "SELECT id FROM categorias WHERE tipo = 'raza' AND especie_id = ? AND nombre = ? LIMIT 1",
+    "SELECT id FROM categorias WHERE tipo = 'raza' AND padre_id = ? AND nombre = ? LIMIT 1",
     [especieId, razaNombre]
   );
   if (rows[0]) return rows[0].id;
   const [result] = await conn.query(
-    "INSERT INTO categorias (tipo, especie_id, nombre) VALUES ('raza', ?, ?)",
+    "INSERT INTO categorias (tipo, padre_id, nombre) VALUES ('raza', ?, ?)",
     [especieId, razaNombre]
   );
   return result.insertId;
