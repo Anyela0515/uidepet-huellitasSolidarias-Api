@@ -1,15 +1,29 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import { OAuth2Client } from "google-auth-library";
 import type { PoolConnection } from "mysql2/promise";
 import * as usuarioRepo from "../repositories/usuario.repository.js";
 import * as catalog from "../repositories/catalog.repository.js";
-import { LoginDTO, RegisterDTO } from "../schemas/auth.schema.js";
+import { GoogleLoginDTO, LoginDTO, RegisterDTO } from "../schemas/auth.schema.js";
 import { mapUsuario } from "../utils/mappers.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuario.repository.js";
 import * as passwordResetRepo from "../repositories/passwordReset.repository.js";
 import { sendPasswordResetEmail } from "./email.service.js";
+
+function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET no configurado correctamente.");
+  }
+
+  return jwt.sign(
+    { sub: usuario.id, correo: usuario.correo, rol: usuario.rol },
+    secret,
+    { expiresIn: (process.env.JWT_EXPIRES_IN || "8h") as jwt.SignOptions["expiresIn"] }
+  );
+}
 
 export async function login(data: LoginDTO) {
   const row = await usuarioRepo.findByCorreo(data.correo.trim().toLowerCase());
@@ -23,21 +37,39 @@ export async function login(data: LoginDTO) {
     return { error: "suspendido" };
   }
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("JWT_SECRET no configurado correctamente.");
+  return { token: signSessionToken(usuario), usuario };
+}
+
+export async function loginWithGoogle(data: GoogleLoginDTO) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) throw new Error("GOOGLE_CLIENT_ID no configurado.");
+
+  const ticket = await new OAuth2Client(clientId).verifyIdToken({
+    idToken: data.credential,
+    audience: clientId,
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.email || !payload.email_verified) {
+    return { error: "Google no pudo verificar el correo de esta cuenta." };
   }
 
-  const token = jwt.sign(
-    { sub: usuario.id, correo: usuario.correo, rol: usuario.rol },
-    secret,
-    {
-      expiresIn: (process.env.JWT_EXPIRES_IN ||
-        "8h") as jwt.SignOptions["expiresIn"],
-    }
-  );
+  const correo = payload.email.trim().toLowerCase();
+  let row = await usuarioRepo.findByCorreo(correo);
+  if (!row) {
+    const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12);
+    await usuarioRepo.create({
+      nombre: payload.name?.trim() || correo.split("@")[0],
+      correo,
+      password: randomPassword,
+      rol: "usuario",
+    });
+    row = await usuarioRepo.findByCorreo(correo);
+  }
+  if (!row) throw new Error("No se pudo crear la cuenta de Google.");
 
-  return { token, usuario };
+  const usuario = mapUsuario(row);
+  if (usuario.estado === "Suspendido") return { error: "suspendido" };
+  return { token: signSessionToken(usuario), usuario };
 }
 
 export async function register(data: RegisterDTO) {

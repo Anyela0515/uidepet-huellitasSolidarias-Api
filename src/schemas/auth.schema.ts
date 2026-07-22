@@ -19,6 +19,10 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
+export const googleLoginSchema = z.object({
+  credential: z.string().min(100, "Credencial de Google inválida."),
+});
+
 export const forgotPasswordSchema = z.object({
   correo: z.string().email("Correo inválido."),
 });
@@ -36,4 +40,5 @@ export const updateProfileSchema = z.object({
 });
 
 export type LoginDTO = z.infer<typeof loginSchema>;
+export type GoogleLoginDTO = z.infer<typeof googleLoginSchema>;
 export type RegisterDTO = z.infer<typeof registerSchema>;

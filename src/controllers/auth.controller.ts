@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import {
   changePasswordSchema,
   forgotPasswordSchema,
+  googleLoginSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
@@ -49,6 +50,19 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
 
   if ("error" in result) {
     const status = result.error.includes("incorrecta") ? 401 : 404;
+    res.status(status).json({ error: result.error });
+    return;
+  }
+
+  res.status(200).json(result);
+});
+
+export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
+  const data = googleLoginSchema.parse(req.body);
+  const result = await authService.loginWithGoogle(data);
+
+  if ("error" in result) {
+    const status = result.error === "suspendido" ? 403 : 401;
     res.status(status).json({ error: result.error });
     return;
   }
