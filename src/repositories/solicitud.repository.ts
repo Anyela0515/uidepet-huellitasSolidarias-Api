@@ -78,14 +78,34 @@ const SOLICITUD_SELECT = `
       FROM evidencias_adopcion ea
       WHERE ea.solicitud_id = sa.id
     ) AS evidencias_json,
-    seg.id AS seguimiento_id,
-    seg.comentario AS seguimiento_comentario,
-    seg.creado_en AS seguimiento_creado_en,
     (
-      SELECT GROUP_CONCAT(asg.nombre_archivo SEPARATOR ',')
-      FROM archivos_seguimiento asg
-      WHERE asg.seguimiento_id = seg.id
-    ) AS seguimiento_archivos_nombres
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', seg.id,
+          'periodo', seg.periodo,
+          'comentario', seg.comentario,
+          'creadoEn', seg.creado_en,
+          'archivos', COALESCE(
+            (
+              SELECT JSON_ARRAYAGG(
+                JSON_OBJECT(
+                  'id', asg.id,
+                  'name', asg.nombre_archivo,
+                  'type', asg.mime_type,
+                  'size', asg.tamanio_bytes,
+                  'url', NULL
+                )
+              )
+              FROM archivos_seguimiento asg
+              WHERE asg.seguimiento_id = seg.id
+            ),
+            JSON_ARRAY()
+          )
+        )
+      )
+      FROM seguimientos_adopcion seg
+      WHERE seg.solicitud_id = sa.id
+    ) AS seguimientos_json
   FROM solicitudes_adopcion sa
   INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
   INNER JOIN mascotas m ON m.id = sa.mascota_id
@@ -99,7 +119,6 @@ const SOLICITUD_SELECT = `
   LEFT JOIN formularios_adopcion f ON f.solicitud_id = sa.id
   LEFT JOIN ciudades cf ON cf.id = f.ciudad_id
   LEFT JOIN tipos_vivienda tv ON tv.id = f.tipo_vivienda_id
-  LEFT JOIN seguimientos_adopcion seg ON seg.solicitud_id = sa.id
 `;
 
 async function countWhere(where: string, values: unknown[]): Promise<number> {
@@ -194,7 +213,70 @@ export async function findById(id: string) {
     `${SOLICITUD_SELECT} WHERE sa.id = ? LIMIT 1`,
     [id]
   );
-  return rows[0] ? mapSolicitud(rows[0]) : null;
+  if (!rows[0]) return null;
+  rows[0].seguimientos_json = await findSeguimientosConContenido(id);
+  return mapSolicitud(rows[0]);
+}
+
+async function findSeguimientosConContenido(solicitudId: string) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT
+       seg.id AS seguimiento_id,
+       seg.periodo,
+       seg.comentario,
+       seg.creado_en,
+       asg.id AS archivo_id,
+       asg.nombre_archivo,
+       asg.mime_type,
+       asg.tamanio_bytes,
+       asg.contenido
+     FROM seguimientos_adopcion seg
+     LEFT JOIN archivos_seguimiento asg ON asg.seguimiento_id = seg.id
+     WHERE seg.solicitud_id = ?
+     ORDER BY seg.creado_en DESC, asg.id ASC`,
+    [solicitudId]
+  );
+
+  const seguimientos = new Map<
+    number,
+    {
+      id: number;
+      periodo: string;
+      comentario: string;
+      creadoEn: unknown;
+      archivos: Array<{
+        id: number;
+        name: string;
+        type: string;
+        size: number;
+        url: string;
+      }>;
+    }
+  >();
+
+  for (const row of rows) {
+    const seguimientoId = Number(row.seguimiento_id);
+    if (!seguimientos.has(seguimientoId)) {
+      seguimientos.set(seguimientoId, {
+        id: seguimientoId,
+        periodo: String(row.periodo),
+        comentario: String(row.comentario ?? ""),
+        creadoEn: row.creado_en,
+        archivos: [],
+      });
+    }
+    if (row.archivo_id) {
+      seguimientos.get(seguimientoId)!.archivos.push({
+        id: Number(row.archivo_id),
+        name: String(row.nombre_archivo ?? ""),
+        type: String(row.mime_type ?? ""),
+        size: Number(row.tamanio_bytes ?? 0),
+        url: String(row.contenido ?? ""),
+      });
+    }
+  }
+
+  return [...seguimientos.values()];
 }
 
 export async function hasActiveForUserAndPet(correo: string, petId: number) {
@@ -447,25 +529,37 @@ export async function updateEstadoConBloqueo(
 export async function addSeguimiento(
   id: string,
   data: {
+    periodo: string;
     comentario: string;
-    cantidadArchivos?: number;
-    archivosNombres?: string[];
+    archivos: Array<{
+      nombreArchivo: string;
+      mimeType: string;
+      tamanioBytes: number;
+      contenido: string;
+    }>;
   }
 ) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const [result] = await conn.query<ResultSetHeader>(
-      `INSERT INTO seguimientos_adopcion (solicitud_id, comentario)
-       VALUES (?, ?)`,
-      [id, data.comentario]
+      `INSERT INTO seguimientos_adopcion (solicitud_id, periodo, comentario)
+       VALUES (?, ?, ?)`,
+      [id, data.periodo, data.comentario]
     );
 
-    for (const nombre of data.archivosNombres ?? []) {
+    for (const archivo of data.archivos) {
       await conn.query(
-        `INSERT INTO archivos_seguimiento (seguimiento_id, nombre_archivo)
-         VALUES (?, ?)`,
-        [result.insertId, nombre]
+        `INSERT INTO archivos_seguimiento
+          (seguimiento_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          result.insertId,
+          archivo.nombreArchivo,
+          archivo.mimeType,
+          archivo.tamanioBytes,
+          archivo.contenido,
+        ]
       );
     }
 
@@ -478,6 +572,17 @@ export async function addSeguimiento(
   }
 
   return findById(id);
+}
+
+export async function hasSeguimientoEnPeriodo(solicitudId: string, periodo: string) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT id
+     FROM seguimientos_adopcion
+     WHERE solicitud_id = ? AND periodo = ?
+     LIMIT 1`,
+    [solicitudId, periodo]
+  );
+  return Boolean(rows[0]);
 }
 
 export async function addEvidencia(

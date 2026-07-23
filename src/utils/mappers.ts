@@ -70,16 +70,9 @@ export function mapMascota(row: Record<string, unknown>): Mascota {
 export function mapSolicitud(row: Record<string, unknown>): Solicitud {
   const creado = toDate(row.creado_en);
   const formData = buildFormData(row);
-  const archivosSeg = row.seguimiento_archivos_nombres;
-  const nombres =
-    typeof archivosSeg === "string"
-      ? archivosSeg
-          .split(",")
-          .map((n) => n.trim())
-          .filter(Boolean)
-      : Array.isArray(archivosSeg)
-        ? (archivosSeg as string[])
-        : [];
+  const seguimientos = parseSeguimientos(row.seguimientos_json);
+  const ultimoSeguimiento = seguimientos[0];
+  const nombres = ultimoSeguimiento?.archivos.map((archivo) => archivo.name) ?? [];
 
   return {
     id: String(row.id),
@@ -111,16 +104,54 @@ export function mapSolicitud(row: Record<string, unknown>): Solicitud {
             .filter(Boolean)
         : [],
     formData,
-    seguimientoEnviado: Boolean(row.seguimiento_id),
-    seguimientoComentario: row.seguimiento_comentario
-      ? String(row.seguimiento_comentario)
-      : undefined,
+    seguimientos,
+    seguimientoEnviado: seguimientos.length > 0,
+    seguimientoComentario: ultimoSeguimiento?.comentario,
     seguimientoArchivos: nombres.length || undefined,
     seguimientoArchivosNombres: nombres,
-    seguimientoFecha: row.seguimiento_creado_en
-      ? formatFechaCorta(toDate(row.seguimiento_creado_en))
-      : undefined,
+    seguimientoFecha: ultimoSeguimiento?.fecha,
   };
+}
+
+function parseSeguimientos(raw: unknown) {
+  let values: unknown[] = [];
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      values = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      values = [];
+    }
+  } else if (Array.isArray(raw)) {
+    values = raw;
+  }
+
+  return values
+    .filter((value): value is Record<string, unknown> => Boolean(value && typeof value === "object"))
+    .map((value) => {
+      const archivosRaw = Array.isArray(value.archivos) ? value.archivos : [];
+      const creadoEn = toDate(value.creadoEn);
+      return {
+        id: Number(value.id),
+        periodo: String(value.periodo ?? ""),
+        comentario: String(value.comentario ?? ""),
+        creadoEn: creadoEn.toISOString(),
+        fecha: formatFechaCorta(creadoEn),
+        archivos: archivosRaw
+          .filter(
+            (archivo): archivo is Record<string, unknown> =>
+              Boolean(archivo && typeof archivo === "object")
+          )
+          .map((archivo) => ({
+            id: Number(archivo.id),
+            name: String(archivo.name ?? ""),
+            type: String(archivo.type ?? ""),
+            size: Number(archivo.size ?? 0),
+            url: String(archivo.url ?? ""),
+          })),
+      };
+    })
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
 }
 
 function buildFormData(row: Record<string, unknown>): Record<string, unknown> {

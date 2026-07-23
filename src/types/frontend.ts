@@ -53,11 +53,29 @@ export interface Solicitud {
   imagen: string;
   tags: string[];
   formData: Record<string, unknown>;
+  seguimientos: SeguimientoAdopcion[];
   seguimientoEnviado: boolean;
   seguimientoComentario?: string;
   seguimientoArchivos?: number;
   seguimientoArchivosNombres: string[];
   seguimientoFecha?: string;
+}
+
+export interface ArchivoSeguimiento {
+  id: number;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+}
+
+export interface SeguimientoAdopcion {
+  id: number;
+  periodo: string;
+  comentario: string;
+  creadoEn: string;
+  fecha: string;
+  archivos: ArchivoSeguimiento[];
 }
 
 export interface FundacionPendiente {

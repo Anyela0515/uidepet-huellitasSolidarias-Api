@@ -434,11 +434,43 @@ paths:
   /solicitudes/{id}/seguimiento:
     post:
       tags: [Solicitudes]
-      summary: Adoptante envía el seguimiento post-adopción
+      summary: Adoptante envía el reporte mensual post-adopción
       parameters:
         - $ref: "#/components/parameters/idString"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comentario, archivos]
+              properties:
+                comentario:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+                archivos:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items:
+                    type: object
+                    required: [nombreArchivo, mimeType, tamanioBytes, contenido]
+                    properties:
+                      nombreArchivo: { type: string }
+                      mimeType:
+                        type: string
+                        enum: [image/jpeg, image/png, image/webp, video/mp4]
+                      tamanioBytes:
+                        type: integer
+                        maximum: 5242880
+                      contenido:
+                        type: string
+                        description: Archivo codificado como data URL
       responses:
-        "200": { description: OK }
+        "200": { description: Reporte mensual guardado }
+        "400": { description: Reporte del mes ya enviado o datos inválidos }
+        "403": { description: La solicitud no pertenece al adoptante }
 
   /solicitudes/{id}/evidencias:
     post:

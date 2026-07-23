@@ -22,7 +22,12 @@ export const listar = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const obtener = asyncHandler(async (req: Request, res: Response) => {
-  const solicitud = await solicitudService.obtenerSolicitud(String(req.params.id));
+  const user = req.user!;
+  const solicitud = await solicitudService.obtenerSolicitud(
+    String(req.params.id),
+    user.rol,
+    user.correo
+  );
   if (!solicitud) {
     res.status(404).json({ error: "Solicitud no encontrada." });
     return;

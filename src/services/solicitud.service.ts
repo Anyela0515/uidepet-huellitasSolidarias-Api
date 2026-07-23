@@ -32,8 +32,20 @@ export async function listarSolicitudes(
   return solicitudRepo.findByAdoptante(correo, pagination, sortClause, estado);
 }
 
-export async function obtenerSolicitud(id: string) {
-  return solicitudRepo.findById(id);
+export async function obtenerSolicitud(id: string, rol: string, correo: string) {
+  const solicitud = await solicitudRepo.findById(id);
+  if (!solicitud) return null;
+
+  const puedeConsultar =
+    rol === "admin" ||
+    solicitud.adoptanteEmail === correo ||
+    (rol === "fundacion" && solicitud.fundacionEmail === correo);
+
+  if (!puedeConsultar) {
+    throw new ForbiddenError("No tienes permiso para consultar esta solicitud.");
+  }
+
+  return solicitud;
 }
 
 export async function crearSolicitud(
@@ -112,8 +124,12 @@ export async function agregarSeguimiento(
   id: string,
   data: {
     comentario: string;
-    cantidadArchivos?: number;
-    archivosNombres?: string[];
+    archivos: Array<{
+      nombreArchivo: string;
+      mimeType: string;
+      tamanioBytes: number;
+      contenido: string;
+    }>;
   },
   userCorreo: string
 ) {
@@ -125,11 +141,13 @@ export async function agregarSeguimiento(
   if (actual.estado !== "seguimiento") {
     return { error: "Esta solicitud no está en etapa de seguimiento." };
   }
-  if (actual.seguimientoEnviado) {
-    return { error: "Ya enviaste la evidencia de seguimiento." };
+  const ahora = new Date();
+  const periodo = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}`;
+  if (await solicitudRepo.hasSeguimientoEnPeriodo(id, periodo)) {
+    return { error: "Ya enviaste el reporte de seguimiento de este mes." };
   }
 
-  const solicitud = await solicitudRepo.addSeguimiento(id, data);
+  const solicitud = await solicitudRepo.addSeguimiento(id, { ...data, periodo });
 
   await mensajeRepo.create({
     de: actual.adoptante,

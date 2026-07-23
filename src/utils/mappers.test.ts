@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapMascota, mapUsuario } from "./mappers.js";
+import { mapMascota, mapSolicitud, mapUsuario } from "./mappers.js";
 
 describe("mapMascota", () => {
   it("mapea una fila SQL snake_case al contrato camelCase del frontend", () => {
@@ -55,5 +55,44 @@ describe("mapUsuario", () => {
     expect(usuario).not.toHaveProperty("password");
     expect(usuario).not.toHaveProperty("password_hash");
     expect(JSON.stringify(usuario)).not.toContain("hash-secreto-no-debe-salir");
+  });
+});
+
+describe("mapSolicitud", () => {
+  it("ordena los reportes mensuales y conserva sus evidencias", () => {
+    const solicitud = mapSolicitud({
+      id: "ADOP-1",
+      mascota_id: 1,
+      creado_en: new Date("2026-01-01T12:00:00Z"),
+      seguimientos_json: JSON.stringify([
+        {
+          id: 1,
+          periodo: "2026-06",
+          comentario: "Reporte de junio",
+          creadoEn: "2026-06-10T12:00:00Z",
+          archivos: [],
+        },
+        {
+          id: 2,
+          periodo: "2026-07",
+          comentario: "Reporte de julio",
+          creadoEn: "2026-07-10T12:00:00Z",
+          archivos: [
+            {
+              id: 3,
+              name: "bienestar.jpg",
+              type: "image/jpeg",
+              size: 1200,
+              url: "data:image/jpeg;base64,YQ==",
+            },
+          ],
+        },
+      ]),
+    });
+
+    expect(solicitud.seguimientos).toHaveLength(2);
+    expect(solicitud.seguimientos[0].periodo).toBe("2026-07");
+    expect(solicitud.seguimientos[0].archivos[0].name).toBe("bienestar.jpg");
+    expect(solicitud.seguimientoComentario).toBe("Reporte de julio");
   });
 });

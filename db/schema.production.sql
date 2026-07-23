@@ -305,9 +305,10 @@ CREATE TABLE evidencias_adopcion (
 CREATE TABLE seguimientos_adopcion (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   solicitud_id VARCHAR(50) NOT NULL,
+  periodo CHAR(7) NOT NULL,
   comentario TEXT NOT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_seg_solicitud (solicitud_id),
+  UNIQUE KEY uq_seg_solicitud_periodo (solicitud_id, periodo),
   CONSTRAINT fk_seg_solicitud
     FOREIGN KEY (solicitud_id) REFERENCES solicitudes_adopcion(id) ON DELETE CASCADE
 );
@@ -316,8 +317,12 @@ CREATE TABLE archivos_seguimiento (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   seguimiento_id INT UNSIGNED NOT NULL,
   nombre_archivo VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100),
+  tamanio_bytes INT UNSIGNED,
+  contenido LONGTEXT,
   CONSTRAINT fk_arch_seg
-    FOREIGN KEY (seguimiento_id) REFERENCES seguimientos_adopcion(id) ON DELETE CASCADE
+    FOREIGN KEY (seguimiento_id) REFERENCES seguimientos_adopcion(id) ON DELETE CASCADE,
+  INDEX idx_arch_seg_seguimiento (seguimiento_id)
 );
 
 -- =============================================================================
