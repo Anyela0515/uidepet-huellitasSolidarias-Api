@@ -1,4 +1,5 @@
 import * as mensajeRepo from "../repositories/mensaje.repository.js";
+import * as organizacionRepo from "../repositories/organizacion.repository.js";
 import { ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { MENSAJE_SORT_FIELDS } from "../repositories/mensaje.repository.js";
@@ -26,7 +27,14 @@ export async function crearMensaje(data: {
   mensaje: string;
   solicitudId?: string | null;
   fundacionEmail?: string | null;
+  organizacionId?: number | null;
 }) {
+  if (data.organizacionId) {
+    const organizacion = await organizacionRepo.findById(data.organizacionId);
+    if (!organizacion || !organizacion.activo) {
+      throw new NotFoundError("Organización no disponible.");
+    }
+  }
   const mensaje = await mensajeRepo.create(data);
   return { mensaje };
 }

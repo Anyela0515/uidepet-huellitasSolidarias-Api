@@ -532,6 +532,14 @@ paths:
         "201": { description: Creada }
         "409": { description: Correo/RUC duplicados }
 
+  /fundaciones/publicas:
+    get:
+      tags: [Fundaciones]
+      summary: Listar organizaciones activas para selecciones públicas
+      security: []
+      responses:
+        "200": { description: "Lista pública con id, nombre, ciudad y descripción" }
+
   /fundaciones/me:
     get:
       tags: [Fundaciones]

@@ -5,6 +5,7 @@ import { requireJwt, requireRole } from "../middlewares/auth.js";
 const router = Router();
 
 router.post("/", controller.registrar);
+router.get("/publicas", controller.listarPublicas);
 
 router.use(requireJwt);
 

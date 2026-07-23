@@ -32,6 +32,10 @@ export async function listarFundaciones(query: Record<string, unknown> = {}) {
   return fundacionRepo.findAll(pagination, sortClause, estado);
 }
 
+export async function listarOrganizacionesPublicas() {
+  return organizacionRepo.findPublicas();
+}
+
 export async function registrarFundacion(data: {
   nombre: string;
   organizacion?: string;

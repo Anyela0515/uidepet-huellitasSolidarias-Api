@@ -110,9 +110,10 @@ export async function create(data: {
   mensaje: string;
   solicitudId?: string | null;
   fundacionEmail?: string | null;
+  organizacionId?: number | null;
 }) {
   const id = `MSG-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  let organizacionId: number | null = null;
+  let organizacionId: number | null = data.organizacionId ?? null;
 
   if (data.fundacionEmail) {
     organizacionId = await catalog.findOrganizacionIdByUsuarioCorreo(

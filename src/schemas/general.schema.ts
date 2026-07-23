@@ -7,6 +7,7 @@ export const crearMensajeSchema = z.object({
   mensaje: z.string().min(10),
   solicitudId: z.string().optional().nullable(),
   fundacionEmail: z.string().email().optional().nullable(),
+  organizacionId: z.number().int().positive().optional().nullable(),
 });
 
 export const crearDonacionSchema = z.object({

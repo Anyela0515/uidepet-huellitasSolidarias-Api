@@ -14,6 +14,11 @@ export const listar = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({ success: true, data, pagination: meta });
 });
 
+export const listarPublicas = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await fundacionService.listarOrganizacionesPublicas();
+  res.status(200).json({ success: true, data });
+});
+
 export const registrar = asyncHandler(async (req: Request, res: Response) => {
   const data = crearFundacionSchema.parse(req.body);
   const result = await fundacionService.registrarFundacion(data);

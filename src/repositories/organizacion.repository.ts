@@ -47,6 +47,22 @@ export async function findByUsuarioCorreo(correo: string): Promise<OrganizacionP
   return rows[0] ? map(rows[0]) : null;
 }
 
+export async function findPublicas() {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion
+     FROM organizaciones o
+     LEFT JOIN ciudades c ON c.id = o.ciudad_id
+     WHERE o.activo = 1
+     ORDER BY o.nombre ASC`
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    nombre: String(row.nombre ?? ""),
+    ciudad: String(row.ciudad ?? ""),
+    descripcion: String(row.descripcion ?? ""),
+  }));
+}
+
 export async function updateByUsuarioCorreo(
   correo: string,
   data: { telefono?: string; ciudad?: string; descripcion?: string; direccion?: string }
