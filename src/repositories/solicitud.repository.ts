@@ -59,6 +59,7 @@ const SOLICITUD_SELECT = `
     f.lugar_dormir AS form_lugar_dormir,
     f.tiene_mascotas AS form_tiene_mascotas,
     f.cantidad_mascotas AS form_cantidad_mascotas,
+    f.tipos_mascotas AS form_tipos_mascotas,
     f.vacunas AS form_vacunas,
     f.esterilizacion AS form_esterilizacion,
     f.responsable_cuidado AS form_responsable_cuidado,
@@ -355,10 +356,10 @@ export async function create(
       `INSERT INTO formularios_adopcion
         (solicitud_id, nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
          direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
-         permanencia_animal, lugar_dormir, tiene_mascotas, cantidad_mascotas, vacunas,
-         esterilizacion, responsable_cuidado, responsable_gastos, acepta_seguimiento,
+         permanencia_animal, lugar_dormir, tiene_mascotas, cantidad_mascotas, tipos_mascotas,
+         vacunas, esterilizacion, responsable_cuidado, responsable_gastos, acepta_seguimiento,
          acepta_contrato, declaracion_veracidad)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         String(form.nombre ?? user.nombre),
@@ -374,6 +375,7 @@ export async function create(
         String(form.lugarDormir ?? ""),
         String(form.tieneMascotas ?? ""),
         form.cantidadMascotas != null ? String(form.cantidadMascotas) : null,
+        form.tiposMascotas != null ? String(form.tiposMascotas) : null,
         form.vacunas != null ? String(form.vacunas) : null,
         form.esterilizacion != null ? String(form.esterilizacion) : null,
         String(form.responsableCuidado ?? ""),
@@ -408,22 +410,6 @@ export async function create(
     conn.release();
   }
 
-  return findById(id);
-}
-
-export async function updateEstado(
-  id: string,
-  data: ActualizarEstadoSolicitudDTO
-) {
-  const estadoId = await catalog.getEstadoSolicitudAdopcionId(data.estado);
-  await pool.query(
-    `UPDATE solicitudes_adopcion
-     SET estado_id = ?,
-         observaciones = COALESCE(?, observaciones),
-         proximo_paso = COALESCE(?, proximo_paso)
-     WHERE id = ?`,
-    [estadoId, data.observaciones ?? null, data.proximoPaso ?? null, id]
-  );
   return findById(id);
 }
 

@@ -187,6 +187,7 @@ function buildFormData(row: Record<string, unknown>): Record<string, unknown> {
     cantidadMascotas: row.form_cantidad_mascotas
       ? String(row.form_cantidad_mascotas)
       : undefined,
+    tiposMascotas: row.form_tipos_mascotas ? String(row.form_tipos_mascotas) : undefined,
     vacunas: row.form_vacunas ? String(row.form_vacunas) : undefined,
     esterilizacion: row.form_esterilizacion
       ? String(row.form_esterilizacion)

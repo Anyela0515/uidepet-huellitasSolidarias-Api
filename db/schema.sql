@@ -271,10 +271,13 @@ CREATE TABLE formularios_adopcion (
   tipo_vivienda_id TINYINT UNSIGNED NOT NULL,
   personas_hogar VARCHAR(20) NOT NULL,
   acuerdo_hogar VARCHAR(10) NOT NULL,
-  permanencia_animal VARCHAR(10) NOT NULL,
-  lugar_dormir VARCHAR(80) NOT NULL,
+  -- Descripción libre (el formulario del frontend usa un textarea, no un
+  -- selector corto), por eso necesita más que un par de palabras tipo "si/no".
+  permanencia_animal VARCHAR(255) NOT NULL,
+  lugar_dormir VARCHAR(255) NOT NULL,
   tiene_mascotas VARCHAR(10) NOT NULL,
   cantidad_mascotas VARCHAR(20),
+  tipos_mascotas VARCHAR(150),
   vacunas VARCHAR(20),
   esterilizacion VARCHAR(20),
   responsable_cuidado VARCHAR(120) NOT NULL,

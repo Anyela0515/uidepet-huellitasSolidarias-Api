@@ -105,6 +105,42 @@ paths:
         "401": { description: Credenciales incorrectas }
         "403": { description: Cuenta suspendida }
 
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Inicio de sesión con Google Identity Services (ID token)
+      description: >-
+        El frontend obtiene un ID token de Google Identity Services y lo
+        envía como `credential`. El backend lo valida contra GOOGLE_CLIENT_ID
+        con google-auth-library, y crea la cuenta local (rol "usuario") si el
+        correo verificado de Google no existe todavía.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential:
+                  type: string
+                  minLength: 100
+                  description: ID token entregado por Google Identity Services
+      responses:
+        "200":
+          description: Login exitoso (usuario nuevo o existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  usuario: { $ref: "#/components/schemas/Usuario" }
+        "401": { description: Google no pudo verificar el correo de esta cuenta }
+        "403": { description: Cuenta suspendida }
+        "422": { description: Credencial de Google inválida o ausente }
+
   /auth/password:
     patch:
       tags: [Auth]
