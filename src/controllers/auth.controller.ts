@@ -142,3 +142,15 @@ export const setEstado = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(200).json(result);
 });
+
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  const correo = String(req.params.correo);
+  const result = await authService.deleteUser(correo);
+
+  if ("error" in result) {
+    res.status(result.status ?? 500).json({ error: result.error });
+    return;
+  }
+
+  res.status(200).json(result);
+});

@@ -41,4 +41,11 @@ router.patch(
   authController.setEstado
 );
 
+router.delete(
+  "/usuarios/:correo",
+  requireJwt,
+  requireRole("admin"),
+  authController.deleteUser
+);
+
 export default router;

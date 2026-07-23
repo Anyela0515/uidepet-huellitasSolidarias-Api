@@ -237,6 +237,14 @@ export async function updateEstado(correo: string, estado: string) {
   ]);
 }
 
+export async function remove(correo: string) {
+  const [result] = await pool.query<ResultSetHeader>(
+    "DELETE FROM usuarios WHERE correo = ?",
+    [correo]
+  );
+  return result.affectedRows > 0;
+}
+
 export async function existsByCorreo(correo: string) {
   const row = await findByCorreo(correo);
   return Boolean(row);

@@ -187,6 +187,28 @@ export async function setEstado(correo: string, estado: string) {
   return { ok: true };
 }
 
+export async function deleteUser(correo: string) {
+  const row = await usuarioRepo.findByCorreo(correo);
+  if (!row) return { error: "Usuario no encontrado.", status: 404 };
+  if (String(row.rol_codigo) === "admin") {
+    return { error: "No se puede eliminar una cuenta administradora.", status: 403 };
+  }
+
+  try {
+    await usuarioRepo.remove(correo);
+    return { ok: true };
+  } catch (error) {
+    const dbError = error as { code?: string };
+    if (dbError.code === "ER_ROW_IS_REFERENCED_2") {
+      return {
+        error: "Este usuario tiene actividad asociada y no se puede eliminar. Puedes suspenderlo.",
+        status: 409,
+      };
+    }
+    throw error;
+  }
+}
+
 export async function createFundacionUser(
   data: {
     correo: string;
