@@ -96,6 +96,12 @@ CREATE TABLE tipos_medio (
   nombre VARCHAR(60) NOT NULL
 );
 
+CREATE TABLE estados_denuncia (
+  id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  codigo VARCHAR(30) NOT NULL UNIQUE,
+  nombre VARCHAR(60) NOT NULL
+);
+
 -- =============================================================================
 -- USUARIOS / PERFILES / ORGANIZACIONES
 -- =============================================================================
@@ -145,11 +151,13 @@ CREATE TABLE organizaciones (
   descripcion TEXT,
   direccion VARCHAR(255),
   usuario_id INT UNSIGNED NOT NULL UNIQUE,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_org_ciudad
     FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
   CONSTRAINT fk_org_usuario
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+  CONSTRAINT chk_organizaciones_activo CHECK (activo IN (0, 1))
 );
 
 CREATE TABLE solicitudes_registro_organizacion (
@@ -388,6 +396,42 @@ CREATE TABLE configuracion_sitio (
 );
 
 -- =============================================================================
+-- REPORTES DE RESCATE (denuncias ciudadanas de animales heridos/abandonados)
+-- =============================================================================
+
+-- Formulario público de "Reportar rescate" del frontend: no requiere cuenta,
+-- el contacto es opcional para permitir reportes anónimos.
+CREATE TABLE denuncias_rescate (
+  id VARCHAR(50) PRIMARY KEY,
+  tipo_animal VARCHAR(30) NOT NULL,
+  urgencia VARCHAR(20) NOT NULL,
+  ubicacion VARCHAR(255) NOT NULL,
+  referencia VARCHAR(255),
+  latitud DECIMAL(10,8) NULL,
+  longitud DECIMAL(11,8) NULL,
+  descripcion TEXT NOT NULL,
+  nombre_contacto VARCHAR(120),
+  contacto VARCHAR(150),
+  estado_id TINYINT UNSIGNED NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_denuncia_estado
+    FOREIGN KEY (estado_id) REFERENCES estados_denuncia(id),
+  INDEX idx_denuncia_estado (estado_id)
+);
+
+CREATE TABLE evidencias_denuncia (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  denuncia_id VARCHAR(50) NOT NULL,
+  nombre_archivo VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100),
+  tamanio_bytes INT UNSIGNED,
+  contenido LONGTEXT,
+  CONSTRAINT fk_evid_denuncia
+    FOREIGN KEY (denuncia_id) REFERENCES denuncias_rescate(id) ON DELETE CASCADE,
+  INDEX idx_evid_denuncia (denuncia_id)
+);
+
+-- =============================================================================
 -- DATOS INICIALES DE CATÁLOGO
 -- =============================================================================
 
@@ -450,6 +494,12 @@ INSERT INTO estados_donacion (codigo, nombre) VALUES
 INSERT INTO tipos_medio (codigo, nombre) VALUES
   ('imagen', 'Imagen'),
   ('documento', 'Documento');
+
+INSERT INTO estados_denuncia (codigo, nombre) VALUES
+  ('recibida', 'Recibida'),
+  ('revision', 'En revisión'),
+  ('atendida', 'Atendida'),
+  ('cerrada', 'Cerrada');
 
 INSERT INTO configuracion_sitio (id, correo, telefono, horario, direccion) VALUES
   (1, 'contacto@huellitas.com', '0990001122', 'Lun–Vie 09:00–18:00', 'Campus UIDE / Loja');

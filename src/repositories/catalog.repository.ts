@@ -89,6 +89,12 @@ export async function getTipoMedioId(codigo: string, conn: Executor = pool): Pro
   return id;
 }
 
+export async function getEstadoDenunciaId(codigo: string, conn: Executor = pool): Promise<number> {
+  const id = await findIdByCodigo("estados_denuncia", codigo, conn);
+  if (!id) throw new Error(`Estado de denuncia no encontrado: ${codigo}`);
+  return id;
+}
+
 export async function getOrCreateCiudadId(nombre: string, conn: Executor = pool): Promise<number> {
   const existing = await findIdByNombre("ciudades", nombre, conn);
   if (existing) return existing;

@@ -234,6 +234,39 @@ export function mapMensaje(row: Record<string, unknown>) {
   };
 }
 
+export function mapDenuncia(row: Record<string, unknown>) {
+  const evidenciasRaw = row.evidencias_json;
+  let evidencias: unknown[] = [];
+  if (typeof evidenciasRaw === "string") {
+    try {
+      evidencias = JSON.parse(evidenciasRaw);
+    } catch {
+      evidencias = [];
+    }
+  } else if (Array.isArray(evidenciasRaw)) {
+    evidencias = evidenciasRaw;
+  }
+
+  const latitud = row.latitud != null ? Number(row.latitud) : null;
+  const longitud = row.longitud != null ? Number(row.longitud) : null;
+
+  return {
+    id: String(row.id),
+    codigo: String(row.id),
+    tipoAnimal: String(row.tipo_animal ?? ""),
+    urgencia: String(row.urgencia ?? ""),
+    ubicacion: String(row.ubicacion ?? ""),
+    referencia: row.referencia ? String(row.referencia) : null,
+    coordenadas: latitud != null && longitud != null ? { latitud, longitud } : null,
+    descripcion: String(row.descripcion ?? ""),
+    nombreContacto: row.nombre_contacto ? String(row.nombre_contacto) : null,
+    contacto: row.contacto ? String(row.contacto) : null,
+    estado: String(row.estado_codigo ?? row.estado ?? "recibida"),
+    fecha: formatFechaCorta(toDate(row.creado_en)),
+    evidencias,
+  };
+}
+
 export function mapDonacion(row: Record<string, unknown>) {
   return {
     id: String(row.id),

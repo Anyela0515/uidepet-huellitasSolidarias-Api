@@ -153,7 +153,7 @@ Middleware `requireRole("fundacion", "admin")` en las rutas; además cada `servi
 
 Ver [`docs/api/ENDPOINTS_FRONTEND.md`](docs/api/ENDPOINTS_FRONTEND.md) (tabla completa por endpoint: auth, roles, params, body, respuestas, errores) y [`openapi.yaml`](openapi.yaml).
 
-Resumen de prefijos: `/auth`, `/mascotas`, `/solicitudes`, `/seguimientos-adopcion`, `/fundaciones`, `/favoritos`, `/mensajes`, `/donaciones`, `/catalogos`, `/configuracion-sitio`, `/health`.
+Resumen de prefijos: `/auth`, `/mascotas`, `/solicitudes`, `/seguimientos-adopcion`, `/fundaciones`, `/favoritos`, `/mensajes`, `/donaciones`, `/reportes`, `/catalogos`, `/configuracion-sitio`, `/health`.
 
 ## Conectar el frontend
 

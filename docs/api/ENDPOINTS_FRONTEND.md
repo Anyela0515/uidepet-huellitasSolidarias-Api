@@ -133,6 +133,18 @@ Solo rol `usuario`.
 
 ---
 
+## 7bis. Reportes de rescate (`/reportes`)
+
+Backend real para el formulario "Reportar rescate" del frontend (`ReporteRescate.jsx`), antes sin endpoint que lo atendiera.
+
+| Método | Ruta | Auth | Roles | Notas |
+|---|---|---|---|---|
+| POST | `/reportes` | No | — | `{tipoAnimal, urgencia, ubicacion, referencia?, descripcion, nombreContacto?, contacto?, coordenadas?: {latitud, longitud}, evidencias: [{name, type, size, url}]}`. `contacto` y `nombreContacto` opcionales (denuncia anónima). Mínimo 1 evidencia, descripción ≥ 20 caracteres. Devuelve `{reporte}` con `reporte.codigo`. |
+| GET | `/reportes` | Sí | admin | Paginado + filtro `estado` (`recibida\|revision\|atendida\|cerrada`). |
+| PATCH | `/reportes/:id/estado` | Sí | admin | `{estado: "recibida"\|"revision"\|"atendida"\|"cerrada"}`. |
+
+---
+
 ## 8. Catálogos (`/catalogos`) — solo lectura, público
 
 `GET /catalogos/roles`, `/estados-cuenta`, `/especies`, `/razas` (+ `?especieId=`), `/sexos`, `/tamanos`, `/unidades-edad`, `/estados-mascota`, `/ciudades`, `/tags`, `/estados-solicitud-adopcion`, `/estados-solicitud-organizacion`, `/tipos-vivienda`, `/tipos-donacion`, `/estados-donacion`, `/tipos-medio`.

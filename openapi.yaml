@@ -34,6 +34,8 @@ tags:
     description: Mensajes de contacto dirigidos a organizaciones.
   - name: Donaciones
     description: Registro y administración de donaciones.
+  - name: Reportes
+    description: Reportes ciudadanos de rescate (denuncias de animales heridos o abandonados).
   - name: Catalogos
     description: Catálogos públicos usados por el frontend.
   - name: ConfiguracionSitio
@@ -772,6 +774,74 @@ paths:
       responses:
         "200": { description: OK }
         "409": { description: Ya está completada }
+
+  /reportes:
+    get:
+      tags: [Reportes]
+      summary: Listar reportes de rescate (admin)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: estado
+          in: query
+          schema: { type: string, enum: [recibida, revision, atendida, cerrada] }
+      responses:
+        "200": { description: OK }
+        "403": { description: Rol insuficiente }
+    post:
+      tags: [Reportes]
+      summary: Reportar un animal para rescate (público, contacto opcional para permitir anonimato)
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipoAnimal, urgencia, ubicacion, descripcion, evidencias]
+              properties:
+                tipoAnimal: { type: string, enum: [Perro, Gato, Otro] }
+                urgencia: { type: string, enum: [Crítica, Alta, Moderada] }
+                ubicacion: { type: string }
+                referencia: { type: string, nullable: true }
+                descripcion: { type: string, minLength: 20 }
+                nombreContacto: { type: string, nullable: true }
+                contacto: { type: string, nullable: true }
+                coordenadas:
+                  type: object
+                  nullable: true
+                  properties:
+                    latitud: { type: number }
+                    longitud: { type: number }
+                evidencias:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      type: { type: string }
+                      size: { type: number }
+                      url: { type: string }
+      responses:
+        "201": { description: Creado }
+        "422": { description: Datos incompletos }
+
+  /reportes/{id}/estado:
+    patch:
+      tags: [Reportes]
+      summary: Cambiar el estado de un reporte de rescate (admin)
+      parameters:
+        - $ref: "#/components/parameters/idString"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { type: string, enum: [recibida, revision, atendida, cerrada] }
+      responses:
+        "200": { description: OK }
+        "404": { description: Reporte no encontrado }
 
   /catalogos/especies:
     get:
