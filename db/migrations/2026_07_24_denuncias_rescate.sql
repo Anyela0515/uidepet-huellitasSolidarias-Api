@@ -1,5 +1,3 @@
-USE huellitas_solidarias_db;
-
 -- Catálogo de estados + tablas del módulo de reportes ciudadanos de rescate
 -- ("Reportar rescate" en el frontend, hoy sin backend real detrás).
 -- Aditivo e idempotente: CREATE TABLE IF NOT EXISTS + INSERT IGNORE, seguro

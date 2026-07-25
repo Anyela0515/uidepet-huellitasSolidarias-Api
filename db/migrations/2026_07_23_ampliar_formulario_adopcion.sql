@@ -14,8 +14,6 @@
 -- soporta `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 -- =============================================================================
 
-USE huellitas_solidarias_db;
-
 ALTER TABLE formularios_adopcion
   MODIFY COLUMN permanencia_animal VARCHAR(255) NOT NULL,
   MODIFY COLUMN lugar_dormir VARCHAR(255) NOT NULL;

@@ -10,11 +10,10 @@
 -- índices y nuevas restricciones CHECK — y estas últimas solo se agregan
 -- si los datos existentes ya las cumplen (se auditan antes de aplicarlas).
 --
--- Requiere ejecutarse sobre la base `huellitas_solidarias_db` ya creada
--- por db/schema.sql (no crea la base de datos).
+-- Requiere ejecutarse sobre la base ya creada por db/schema.sql (no crea la
+-- base de datos). La base objetivo la define la conexión (DB_NAME) que abre
+-- scripts/migrate.mjs — no se hardcodea aquí con USE.
 -- =============================================================================
-
-USE huellitas_solidarias_db;
 
 -- =============================================================================
 -- 0. AUDITORÍA PREVIA (solo lectura)

@@ -1,5 +1,3 @@
-USE huellitas_solidarias_db;
-
 DROP PROCEDURE IF EXISTS migrar_seguimiento_mensual;
 
 CREATE PROCEDURE migrar_seguimiento_mensual()
