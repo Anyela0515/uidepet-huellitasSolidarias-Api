@@ -11,6 +11,8 @@ info:
     name: ISC
     url: https://opensource.org/license/isc-license-txt
 servers:
+  - url: https://api.huellitassolidarias.com
+    description: Producción
   - url: http://localhost:3000
     description: Desarrollo local
 
