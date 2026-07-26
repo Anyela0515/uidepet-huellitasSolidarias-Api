@@ -1,6 +1,11 @@
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import { load as loadYaml } from "js-yaml";
 
 import { pool } from "./config/database.js";
 import { requestLogger } from "./middlewares/logger.js";
@@ -72,6 +77,60 @@ export function createApp() {
       });
     }
   });
+
+  const openapiDocument = loadYaml(
+    fs.readFileSync(path.join(process.cwd(), "openapi.yaml"), "utf8")
+  ) as Record<string, unknown>;
+
+  function timingSafeEqualString(a: string, b: string) {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  }
+
+  // /docs solo debe ser visible para quien tenga estas credenciales: si no
+  // están configuradas, se niega el acceso por defecto (fail closed) en vez
+  // de dejarlo público por un descuido de despliegue.
+  app.use("/docs", (req: Request, res: Response, next) => {
+    const docsUser = process.env.DOCS_USER;
+    const docsPassword = process.env.DOCS_PASSWORD;
+    if (!docsUser || !docsPassword) {
+      res.status(404).json({ code: 404, error: "Ruta no encontrada" });
+      return;
+    }
+
+    const header = req.headers.authorization ?? "";
+    const [scheme, encoded] = header.split(" ");
+    const decoded =
+      scheme === "Basic" && encoded
+        ? Buffer.from(encoded, "base64").toString("utf8")
+        : "";
+    const [user, password] = decoded.split(":");
+
+    if (
+      user &&
+      password &&
+      timingSafeEqualString(user, docsUser) &&
+      timingSafeEqualString(password, docsPassword)
+    ) {
+      next();
+      return;
+    }
+
+    res.set("WWW-Authenticate", 'Basic realm="Huellitas Solidarias API Docs"');
+    res.status(401).send("Autenticación requerida.");
+  });
+
+  // Swagger UI incluye un <script> inline para inicializarse; el CSP estricto
+  // (script-src 'self', sin 'unsafe-inline') que aplica helmet() globalmente
+  // lo bloquearía. Se relaja solo para esta ruta, ya protegida arriba por
+  // autenticación básica.
+  app.use("/docs", (_req: Request, res: Response, next) => {
+    res.removeHeader("Content-Security-Policy");
+    next();
+  });
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
   app.use("/auth", authRouter);
   app.use("/mascotas", mascotasRouter);
