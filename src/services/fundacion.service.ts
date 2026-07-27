@@ -88,7 +88,16 @@ export async function actualizarEstado(
   try {
     await conn.beginTransaction();
 
-    const updated = await fundacionRepo.updateEstado(id, estado, conn);
+    let updated: Awaited<ReturnType<typeof fundacionRepo.findById>>;
+    if (estado === "rechazada") {
+      // Se elimina en vez de marcar como rechazada: correo/RUC son UNIQUE
+      // en esta tabla, y dejar la fila bloquearía un futuro reintento de la
+      // misma organización con los mismos datos.
+      updated = { ...fundacion, estado: "rechazada" };
+      await fundacionRepo.deleteRequest(id, conn);
+    } else {
+      updated = await fundacionRepo.updateEstado(id, estado, conn);
+    }
 
     if (estado === "aprobada" && updated) {
       temporaryPassword = generateTemporaryPassword();
