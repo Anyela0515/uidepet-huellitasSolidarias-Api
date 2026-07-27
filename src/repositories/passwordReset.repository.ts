@@ -63,7 +63,7 @@ export async function consumeAndUpdatePassword(tokenHash: string, passwordHash: 
     }
 
     await connection.query(
-      "UPDATE usuarios SET password_hash = ? WHERE id = ?",
+      "UPDATE usuarios SET password_hash = ?, debe_cambiar_password = 0 WHERE id = ?",
       [passwordHash, token.usuario_id]
     );
     await connection.query(

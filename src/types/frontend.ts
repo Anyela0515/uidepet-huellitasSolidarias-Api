@@ -9,6 +9,7 @@ export interface Usuario {
   estado: string;
   organizacion?: string;
   miembroDesde?: string;
+  debeCambiarPassword: boolean;
 }
 
 export interface Mascota {

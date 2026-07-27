@@ -112,6 +112,7 @@ CREATE TABLE usuarios (
   password_hash VARCHAR(255) NOT NULL,
   rol_id TINYINT UNSIGNED NOT NULL,
   estado_cuenta_id TINYINT UNSIGNED NOT NULL,
+  debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 0,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_usuario_rol
     FOREIGN KEY (rol_id) REFERENCES roles(id),

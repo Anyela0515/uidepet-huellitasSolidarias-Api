@@ -110,6 +110,7 @@ export async function changePassword(
 
   const hash = await bcrypt.hash(newPassword, 12);
   await usuarioRepo.updatePassword(correo, hash);
+  await usuarioRepo.clearDebeCambiarPassword(correo);
   return { ok: true };
 }
 
@@ -259,6 +260,7 @@ export async function createFundacionUser(
       ruc: data.ruc,
       ciudad: data.ciudad,
       descripcion: data.descripcion,
+      debeCambiarPassword: true,
     },
     conn
   );

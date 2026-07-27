@@ -28,6 +28,7 @@ export function mapUsuario(row: Record<string, unknown>): Usuario {
       ? String(row.organizacion_nombre)
       : undefined,
     miembroDesde: formatMiembroDesde(creado),
+    debeCambiarPassword: Boolean(row.debe_cambiar_password),
   };
 }
 

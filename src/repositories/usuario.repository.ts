@@ -24,6 +24,7 @@ const USER_SELECT = `
     u.id,
     u.correo,
     u.password_hash AS password,
+    u.debe_cambiar_password,
     u.creado_en,
     r.codigo AS rol_codigo,
     ec.codigo AS estado_codigo,
@@ -113,6 +114,7 @@ export async function create(
     ciudad?: string;
     ruc?: string;
     descripcion?: string;
+    debeCambiarPassword?: boolean;
   },
   externalConn?: PoolConnection
 ) {
@@ -126,9 +128,9 @@ export async function create(
     const estadoId = await catalog.getEstadoCuentaId("Activo", conn);
 
     const [userResult] = await conn.query<ResultSetHeader>(
-      `INSERT INTO usuarios (correo, password_hash, rol_id, estado_cuenta_id)
-       VALUES (?, ?, ?, ?)`,
-      [data.correo, data.password, rolId, estadoId]
+      `INSERT INTO usuarios (correo, password_hash, rol_id, estado_cuenta_id, debe_cambiar_password)
+       VALUES (?, ?, ?, ?, ?)`,
+      [data.correo, data.password, rolId, estadoId, data.debeCambiarPassword ? 1 : 0]
     );
 
     const usuarioId = userResult.insertId;
@@ -233,6 +235,12 @@ export async function updateEstado(correo: string, estado: string) {
   const estadoId = await catalog.getEstadoCuentaId(estado);
   await pool.query("UPDATE usuarios SET estado_cuenta_id = ? WHERE correo = ?", [
     estadoId,
+    correo,
+  ]);
+}
+
+export async function clearDebeCambiarPassword(correo: string) {
+  await pool.query("UPDATE usuarios SET debe_cambiar_password = 0 WHERE correo = ?", [
     correo,
   ]);
 }

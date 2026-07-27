@@ -6,6 +6,7 @@ import * as authService from "./auth.service.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { FUNDACION_SORT_FIELDS } from "../repositories/fundacion.repository.js";
 import { ConflictError, NotFoundError } from "../utils/errors.js";
+import { sendFundacionCredentialsEmail } from "./email.service.js";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   pendiente: ["aprobada", "rechazada"],
@@ -99,9 +100,10 @@ export async function actualizarEstado(
       updated = await fundacionRepo.updateEstado(id, estado, conn);
     }
 
+    let esCuentaNueva = false;
     if (estado === "aprobada" && updated) {
       temporaryPassword = generateTemporaryPassword();
-      await authService.createFundacionUser(
+      const resultado = await authService.createFundacionUser(
         {
           correo: updated.correo,
           nombre: updated.representante || updated.nombre,
@@ -114,9 +116,24 @@ export async function actualizarEstado(
         },
         conn
       );
+      esCuentaNueva = !resultado.existed;
     }
 
     await conn.commit();
+
+    if (esCuentaNueva && updated && temporaryPassword) {
+      const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+      try {
+        await sendFundacionCredentialsEmail(
+          updated.correo,
+          updated.representante || updated.nombre,
+          temporaryPassword,
+          `${frontendUrl}/ingreso`
+        );
+      } catch (error) {
+        console.error("No se pudo enviar el correo de credenciales de fundación:", error);
+      }
+    }
 
     return {
       fundacion: updated,
