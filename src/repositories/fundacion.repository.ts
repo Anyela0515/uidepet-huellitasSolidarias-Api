@@ -22,6 +22,7 @@ const SELECT = `
     s.telefono,
     s.descripcion,
     s.nombre_documento,
+    s.documento_contenido,
     s.creado_en,
     c.nombre AS ciudad,
     e.codigo AS estado_codigo
@@ -93,6 +94,7 @@ export async function create(data: {
   ciudad: string;
   descripcion: string;
   documento?: string;
+  documentoContenido?: string;
 }) {
   const id = `FUND-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const ciudadId = await catalog.getOrCreateCiudadId(data.ciudad);
@@ -102,8 +104,8 @@ export async function create(data: {
   await pool.query(
     `INSERT INTO solicitudes_registro_organizacion
       (id, nombre_organizacion, ruc, nombre_representante, correo, telefono,
-       ciudad_id, descripcion, nombre_documento, estado_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ciudad_id, descripcion, nombre_documento, documento_contenido, estado_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       nombreOrg,
@@ -114,6 +116,7 @@ export async function create(data: {
       ciudadId,
       data.descripcion,
       data.documento ?? "",
+      data.documentoContenido ?? null,
       estadoId,
     ]
   );

@@ -10,6 +10,8 @@ export const crearFundacionSchema = z.object({
   ciudad: z.string().min(2),
   descripcion: z.string().min(10),
   documento: z.string().optional(),
+  // Data URL en base64 (PDF, máx. ~5MB en el frontend); ~7MB en base64.
+  documentoContenido: z.string().startsWith("data:application/pdf").max(7 * 1024 * 1024).optional(),
 });
 
 export const actualizarEstadoFundacionSchema = z.object({

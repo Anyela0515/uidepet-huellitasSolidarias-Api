@@ -170,6 +170,7 @@ CREATE TABLE solicitudes_registro_organizacion (
   ciudad_id SMALLINT UNSIGNED NOT NULL,
   descripcion TEXT NOT NULL,
   nombre_documento VARCHAR(255),
+  documento_contenido LONGTEXT NULL,
   estado_id TINYINT UNSIGNED NOT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_sol_org_correo (correo),

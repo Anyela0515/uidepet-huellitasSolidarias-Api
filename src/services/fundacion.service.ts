@@ -46,6 +46,7 @@ export async function registrarFundacion(data: {
   ciudad: string;
   descripcion: string;
   documento?: string;
+  documentoContenido?: string;
 }) {
   const correo = data.correo.trim().toLowerCase();
 
