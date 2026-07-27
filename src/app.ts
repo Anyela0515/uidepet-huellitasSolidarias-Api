@@ -28,11 +28,16 @@ export function createApp() {
   const app = express();
   const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
 
+  // La propia API se agrega como origen permitido: Swagger UI se sirve desde
+  // /docs, en el mismo dominio, y "Try it out" llama a la API desde ahí —
+  // el navegador manda ese Origin aunque sea la misma máquina.
   const allowedOrigins = new Set(
     [
       FRONTEND_ORIGIN,
       "http://localhost:5173",
       "http://127.0.0.1:5173",
+      `http://localhost:${process.env.PORT ?? 3000}`,
+      "https://api.huellitassolidarias.com",
       ...(process.env.FRONTEND_ORIGINS?.split(",").map((o) => o.trim()) ?? []),
     ].filter(Boolean)
   );
