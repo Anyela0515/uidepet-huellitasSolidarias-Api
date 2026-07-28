@@ -68,7 +68,10 @@ export async function actualizarEstado(
   estado: string
 ): Promise<
   | { error: string }
-  | { fundacion: Awaited<ReturnType<typeof fundacionRepo.findById>>; temporaryPassword?: string }
+  | {
+      fundacion: Awaited<ReturnType<typeof fundacionRepo.findById>>;
+      credencialesEnviadas?: boolean;
+    }
 > {
   const fundacion = await fundacionRepo.findById(id);
   if (!fundacion) return { error: "Fundación no encontrada." };
@@ -121,6 +124,7 @@ export async function actualizarEstado(
 
     await conn.commit();
 
+    let credencialesEnviadas = false;
     if (esCuentaNueva && updated && temporaryPassword) {
       const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
       try {
@@ -130,6 +134,7 @@ export async function actualizarEstado(
           temporaryPassword,
           `${frontendUrl}/ingreso`
         );
+        credencialesEnviadas = true;
       } catch (error) {
         console.error("No se pudo enviar el correo de credenciales de fundación:", error);
       }
@@ -137,10 +142,9 @@ export async function actualizarEstado(
 
     return {
       fundacion: updated,
-      // Sin infraestructura de envío de correo: la contraseña temporal se
-      // retorna una única vez en esta respuesta para que el admin la
-      // comunique de forma segura. Nunca se loggea ni se persiste en claro.
-      ...(temporaryPassword ? { temporaryPassword } : {}),
+      // La contraseña temporal solo se envía por correo a la fundación; el
+      // admin nunca la recibe en esta respuesta ni en ningún otro lugar.
+      ...(esCuentaNueva ? { credencialesEnviadas } : {}),
     };
   } catch (error) {
     await conn.rollback();

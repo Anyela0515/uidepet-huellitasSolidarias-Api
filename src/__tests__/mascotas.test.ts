@@ -1,6 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
+import * as emailService from "../services/email.service.js";
+
+// La contraseña temporal ya no viaja en la respuesta HTTP de aprobación
+// (el admin no debe verla): se mockea el envío de correo para poder leerla
+// aquí, igual que la recibiría la fundación en su bandeja de entrada.
+vi.mock("../services/email.service.js", () => ({
+  sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Pruebas de integración: requieren la base de datos real de desarrollo
 // migrada y sembrada (npm run db:schema && npm run db:migrate && npm run seed).
@@ -99,7 +107,10 @@ describe("Mascotas", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ estado: "aprobada" });
     expect(aprobacion.status).toBe(200);
-    const temporaryPassword = aprobacion.body.temporaryPassword as string;
+    const envio = vi
+      .mocked(emailService.sendFundacionCredentialsEmail)
+      .mock.calls.find((args) => args[0] === correo);
+    const temporaryPassword = envio?.[2] as string;
 
     const otraFundacionToken = await loginAs(correo, temporaryPassword);
     expect(typeof otraFundacionToken).toBe("string");
