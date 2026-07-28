@@ -173,6 +173,7 @@ export async function actualizarPerfilPropio(
     descripcion?: string;
     direccion?: string;
     imagenQr?: string | null;
+    imagen?: string | null;
   }
 ) {
   const existing = await organizacionRepo.findByUsuarioCorreo(correo);

@@ -27,6 +27,9 @@ export const actualizarPerfilFundacionSchema = z
     // Data URL en base64; puede contener varios códigos QR combinados en
     // una sola imagen (distintos bancos/medios de pago de la organización).
     imagenQr: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
+    // Imagen pública de la organización (logo/foto), visible para los
+    // usuarios en el listado de fundaciones aliadas.
+    imagen: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "Debes enviar al menos un campo para actualizar.",

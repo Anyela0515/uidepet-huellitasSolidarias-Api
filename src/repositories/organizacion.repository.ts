@@ -16,12 +16,13 @@ export interface OrganizacionPerfil {
   correo: string;
   activo: boolean;
   imagenQr: string | null;
+  imagen: string | null;
 }
 
 const SELECT = `
   SELECT
     o.id, o.nombre, o.ruc, o.telefono, c.nombre AS ciudad,
-    o.descripcion, o.direccion, o.activo, o.imagen_qr, u.correo
+    o.descripcion, o.direccion, o.activo, o.imagen_qr, o.imagen, u.correo
   FROM organizaciones o
   INNER JOIN usuarios u ON u.id = o.usuario_id
   LEFT JOIN ciudades c ON c.id = o.ciudad_id
@@ -39,6 +40,7 @@ function map(row: RowDataPacket): OrganizacionPerfil {
     correo: String(row.correo ?? ""),
     activo: Boolean(row.activo),
     imagenQr: row.imagen_qr ? String(row.imagen_qr) : null,
+    imagen: row.imagen ? String(row.imagen) : null,
   };
 }
 
@@ -54,7 +56,7 @@ export async function findByUsuarioCorreo(correo: string): Promise<OrganizacionP
 
 export async function findPublicas() {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion, o.imagen_qr
+    `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion, o.imagen_qr, o.imagen
      FROM organizaciones o
      LEFT JOIN ciudades c ON c.id = o.ciudad_id
      WHERE o.activo = 1
@@ -66,6 +68,7 @@ export async function findPublicas() {
     ciudad: String(row.ciudad ?? ""),
     descripcion: String(row.descripcion ?? ""),
     imagenQr: row.imagen_qr ? String(row.imagen_qr) : null,
+    imagen: row.imagen ? String(row.imagen) : null,
   }));
 }
 
@@ -77,6 +80,7 @@ export async function updateByUsuarioCorreo(
     descripcion?: string;
     direccion?: string;
     imagenQr?: string | null;
+    imagen?: string | null;
   }
 ): Promise<OrganizacionPerfil | null> {
   const sets: string[] = [];
@@ -97,6 +101,10 @@ export async function updateByUsuarioCorreo(
   if (data.imagenQr !== undefined) {
     sets.push("imagen_qr = ?");
     values.push(data.imagenQr);
+  }
+  if (data.imagen !== undefined) {
+    sets.push("imagen = ?");
+    values.push(data.imagen);
   }
   if (data.ciudad !== undefined) {
     sets.push("ciudad_id = ?");

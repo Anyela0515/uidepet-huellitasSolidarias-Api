@@ -154,6 +154,7 @@ CREATE TABLE organizaciones (
   usuario_id INT UNSIGNED NOT NULL UNIQUE,
   activo TINYINT(1) NOT NULL DEFAULT 1,
   imagen_qr LONGTEXT NULL,
+  imagen LONGTEXT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_org_ciudad
     FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
