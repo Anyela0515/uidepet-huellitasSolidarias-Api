@@ -153,6 +153,7 @@ CREATE TABLE organizaciones (
   direccion VARCHAR(255),
   usuario_id INT UNSIGNED NOT NULL UNIQUE,
   activo TINYINT(1) NOT NULL DEFAULT 1,
+  imagen_qr LONGTEXT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_org_ciudad
     FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
@@ -378,6 +379,7 @@ CREATE TABLE donaciones (
   tipo_donacion_id SMALLINT UNSIGNED NOT NULL,
   cantidad_descripcion VARCHAR(120) NOT NULL,
   direccion VARCHAR(255),
+  organizacion_id INT UNSIGNED NULL,
   estado_donacion_id TINYINT UNSIGNED NOT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_don_usuario
@@ -385,7 +387,10 @@ CREATE TABLE donaciones (
   CONSTRAINT fk_don_tipo
     FOREIGN KEY (tipo_donacion_id) REFERENCES tipos_donacion(id),
   CONSTRAINT fk_don_estado
-    FOREIGN KEY (estado_donacion_id) REFERENCES estados_donacion(id)
+    FOREIGN KEY (estado_donacion_id) REFERENCES estados_donacion(id),
+  CONSTRAINT fk_don_organizacion
+    FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id) ON DELETE SET NULL,
+  INDEX idx_donaciones_organizacion (organizacion_id)
 );
 
 CREATE TABLE configuracion_sitio (

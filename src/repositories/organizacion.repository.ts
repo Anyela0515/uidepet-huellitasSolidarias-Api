@@ -12,12 +12,13 @@ export interface OrganizacionPerfil {
   direccion: string;
   correo: string;
   activo: boolean;
+  imagenQr: string | null;
 }
 
 const SELECT = `
   SELECT
     o.id, o.nombre, o.ruc, o.telefono, c.nombre AS ciudad,
-    o.descripcion, o.direccion, o.activo, u.correo
+    o.descripcion, o.direccion, o.activo, o.imagen_qr, u.correo
   FROM organizaciones o
   INNER JOIN usuarios u ON u.id = o.usuario_id
   LEFT JOIN ciudades c ON c.id = o.ciudad_id
@@ -34,6 +35,7 @@ function map(row: RowDataPacket): OrganizacionPerfil {
     direccion: String(row.direccion ?? ""),
     correo: String(row.correo ?? ""),
     activo: Boolean(row.activo),
+    imagenQr: row.imagen_qr ? String(row.imagen_qr) : null,
   };
 }
 
@@ -49,7 +51,7 @@ export async function findByUsuarioCorreo(correo: string): Promise<OrganizacionP
 
 export async function findPublicas() {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion
+    `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion, o.imagen_qr
      FROM organizaciones o
      LEFT JOIN ciudades c ON c.id = o.ciudad_id
      WHERE o.activo = 1
@@ -60,12 +62,19 @@ export async function findPublicas() {
     nombre: String(row.nombre ?? ""),
     ciudad: String(row.ciudad ?? ""),
     descripcion: String(row.descripcion ?? ""),
+    imagenQr: row.imagen_qr ? String(row.imagen_qr) : null,
   }));
 }
 
 export async function updateByUsuarioCorreo(
   correo: string,
-  data: { telefono?: string; ciudad?: string; descripcion?: string; direccion?: string }
+  data: {
+    telefono?: string;
+    ciudad?: string;
+    descripcion?: string;
+    direccion?: string;
+    imagenQr?: string | null;
+  }
 ): Promise<OrganizacionPerfil | null> {
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -81,6 +90,10 @@ export async function updateByUsuarioCorreo(
   if (data.direccion !== undefined) {
     sets.push("direccion = ?");
     values.push(data.direccion);
+  }
+  if (data.imagenQr !== undefined) {
+    sets.push("imagen_qr = ?");
+    values.push(data.imagenQr);
   }
   if (data.ciudad !== undefined) {
     sets.push("ciudad_id = ?");

@@ -37,12 +37,15 @@ const SELECT = `
     d.correo_donante,
     d.cantidad_descripcion,
     d.direccion,
+    d.organizacion_id,
     d.creado_en,
     td.nombre AS tipo_nombre,
-    ed.codigo AS estado_codigo
+    ed.codigo AS estado_codigo,
+    o.nombre AS organizacion_nombre
   FROM donaciones d
   INNER JOIN tipos_donacion td ON td.id = d.tipo_donacion_id
   INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
+  LEFT JOIN organizaciones o ON o.id = d.organizacion_id
 `;
 
 export async function findAll(
@@ -129,6 +132,7 @@ export async function create(data: {
   tipo: string;
   cantidad: string;
   direccion: string;
+  organizacionId: number;
 }) {
   const id = `DON-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const tipoId = await catalog.getOrCreateTipoDonacionId(data.tipo);
@@ -140,8 +144,8 @@ export async function create(data: {
   await pool.query(
     `INSERT INTO donaciones
       (id, donante_usuario_id, nombre_donante, correo_donante, tipo_donacion_id,
-       cantidad_descripcion, direccion, estado_donacion_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       cantidad_descripcion, direccion, organizacion_id, estado_donacion_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       usuarioId,
@@ -150,6 +154,7 @@ export async function create(data: {
       tipoId,
       data.cantidad,
       data.direccion,
+      data.organizacionId,
       estadoId,
     ]
   );

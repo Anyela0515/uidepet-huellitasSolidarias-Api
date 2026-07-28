@@ -162,7 +162,13 @@ export async function obtenerPerfilPropio(correo: string) {
 
 export async function actualizarPerfilPropio(
   correo: string,
-  data: { telefono?: string; ciudad?: string; descripcion?: string; direccion?: string }
+  data: {
+    telefono?: string;
+    ciudad?: string;
+    descripcion?: string;
+    direccion?: string;
+    imagenQr?: string | null;
+  }
 ) {
   const existing = await organizacionRepo.findByUsuarioCorreo(correo);
   if (!existing) {

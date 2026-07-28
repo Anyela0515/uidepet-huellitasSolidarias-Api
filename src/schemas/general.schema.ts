@@ -16,6 +16,7 @@ export const crearDonacionSchema = z.object({
   tipo: z.string().min(2),
   cantidad: z.string().min(2),
   direccion: z.string().min(5),
+  organizacionId: z.number().int().positive(),
 });
 
 export const actualizarRolSchema = z.object({

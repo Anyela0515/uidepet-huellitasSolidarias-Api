@@ -277,6 +277,8 @@ export function mapDonacion(row: Record<string, unknown>) {
     tipo: String(row.tipo_nombre ?? row.tipo ?? ""),
     cantidad: String(row.cantidad_descripcion ?? row.cantidad ?? ""),
     direccion: String(row.direccion ?? ""),
+    organizacionId: row.organizacion_id ? Number(row.organizacion_id) : null,
+    organizacion: row.organizacion_nombre ? String(row.organizacion_nombre) : "",
     fecha: formatFechaCorta(toDate(row.creado_en)),
     estado: String(row.estado_codigo ?? row.estado ?? "Completado"),
   };
