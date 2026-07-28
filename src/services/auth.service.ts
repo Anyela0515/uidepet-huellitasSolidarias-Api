@@ -55,6 +55,7 @@ export async function loginWithGoogle(data: GoogleLoginDTO) {
 
   const correo = payload.email.trim().toLowerCase();
   let row = await usuarioRepo.findByCorreo(correo);
+  const esNuevo = !row;
   if (!row) {
     const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12);
     await usuarioRepo.create({
@@ -69,7 +70,7 @@ export async function loginWithGoogle(data: GoogleLoginDTO) {
 
   const usuario = mapUsuario(row);
   if (usuario.estado === "Suspendido") return { error: "suspendido" };
-  return { token: signSessionToken(usuario), usuario };
+  return { token: signSessionToken(usuario), usuario, esNuevo };
 }
 
 export async function register(data: RegisterDTO) {
