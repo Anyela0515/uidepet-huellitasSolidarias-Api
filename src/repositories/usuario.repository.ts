@@ -245,8 +245,8 @@ export async function clearDebeCambiarPassword(correo: string) {
   ]);
 }
 
-export async function remove(correo: string) {
-  const [result] = await pool.query<ResultSetHeader>(
+export async function remove(correo: string, conn: Executor = pool) {
+  const [result] = await conn.query<ResultSetHeader>(
     "DELETE FROM usuarios WHERE correo = ?",
     [correo]
   );

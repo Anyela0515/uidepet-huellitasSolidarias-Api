@@ -48,6 +48,26 @@ export async function sendFundacionCredentialsEmail(
   });
 }
 
+export async function sendMensajeOrganizacionEmail(
+  correoOrganizacion: string,
+  nombreOrganizacion: string,
+  remitenteNombre: string,
+  remitenteCorreo: string,
+  asunto: string,
+  mensaje: string,
+  panelUrl: string
+) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correoOrganizacion,
+    subject: `Nuevo mensaje para ${nombreOrganizacion}: ${asunto}`,
+    text: `Hola ${nombreOrganizacion}. ${remitenteNombre} (${remitenteCorreo}) te envió un mensaje a través de Huellitas Solidarias.\n\nAsunto: ${asunto}\n\n${mensaje}\n\nIngresa a ${panelUrl} para responder.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p><strong>${escapeHtml(remitenteNombre)}</strong> (${escapeHtml(remitenteCorreo)}) te envió un mensaje a través de la plataforma.</p><p style="margin:20px 0"><strong>Asunto:</strong> ${escapeHtml(asunto)}<br/><strong>Mensaje:</strong><br/>${escapeHtml(mensaje).replace(/\n/g, "<br/>")}</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver e ingresar al panel</a></p></div>`,
+  });
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",

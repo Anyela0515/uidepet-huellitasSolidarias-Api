@@ -92,5 +92,6 @@ export interface FundacionPendiente {
   documento: string;
   documentoContenido: string | null;
   estado: string;
+  cuentaEstado: string | null;
   fecha: string;
 }

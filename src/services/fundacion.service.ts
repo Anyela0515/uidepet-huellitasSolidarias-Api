@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { pool } from "../config/database.js";
 import * as fundacionRepo from "../repositories/fundacion.repository.js";
 import * as organizacionRepo from "../repositories/organizacion.repository.js";
+import * as usuarioRepo from "../repositories/usuario.repository.js";
 import * as authService from "./auth.service.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { FUNDACION_SORT_FIELDS } from "../repositories/fundacion.repository.js";
@@ -189,17 +190,38 @@ export async function obtenerOrganizacion(id: number) {
   return organizacion;
 }
 
-/** Borrado lógico: nunca físico, para preservar mascotas/solicitudes/mensajes históricos. */
-export async function eliminarOrganizacion(id: number) {
-  const organizacion = await organizacionRepo.findById(id);
-  if (!organizacion) throw new NotFoundError("Organización no encontrada.");
+/**
+ * Elimina por completo una fundación aprobada: su cuenta de usuario, su
+ * organización y la solicitud de registro que la originó. Se bloquea si
+ * tiene mascotas o solicitudes de adopción asociadas (ahí se debe suspender
+ * en su lugar, para no perder ese historial).
+ */
+export async function eliminarOrganizacion(solicitudId: string) {
+  const solicitud = await fundacionRepo.findById(solicitudId);
+  if (!solicitud) throw new NotFoundError("Solicitud no encontrada.");
 
-  if (await organizacionRepo.hasMascotasOSolicitudes(id)) {
+  const organizacion = await organizacionRepo.findByUsuarioCorreo(solicitud.correo);
+  if (!organizacion) throw new NotFoundError("No existe una cuenta de fundación asociada.");
+
+  if (await organizacionRepo.hasMascotasOSolicitudes(organizacion.id)) {
     throw new ConflictError(
-      "No se puede desactivar: la organización tiene mascotas o solicitudes asociadas."
+      "No se puede eliminar: la fundación tiene mascotas o solicitudes asociadas. Puedes suspenderla en su lugar."
     );
   }
 
-  await organizacionRepo.softDelete(id);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await organizacionRepo.remove(organizacion.id, conn);
+    await usuarioRepo.remove(solicitud.correo, conn);
+    await fundacionRepo.deleteRequest(solicitudId, conn);
+    await conn.commit();
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
+
   return { ok: true };
 }

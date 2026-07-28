@@ -25,10 +25,13 @@ const SELECT = `
     s.documento_contenido,
     s.creado_en,
     c.nombre AS ciudad,
-    e.codigo AS estado_codigo
+    e.codigo AS estado_codigo,
+    ec.codigo AS cuenta_estado
   FROM solicitudes_registro_organizacion s
   INNER JOIN ciudades c ON c.id = s.ciudad_id
   INNER JOIN estados_solicitud_organizacion e ON e.id = s.estado_id
+  LEFT JOIN usuarios u ON u.correo = s.correo
+  LEFT JOIN estados_cuenta ec ON ec.id = u.estado_cuenta_id
 `;
 
 export async function findAll(

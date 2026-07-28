@@ -1,6 +1,9 @@
 import { pool } from "../config/database.js";
 import type { RowDataPacket } from "mysql2";
+import type { Pool, PoolConnection } from "mysql2/promise";
 import * as catalog from "./catalog.repository.js";
+
+type Executor = Pool | PoolConnection;
 
 export interface OrganizacionPerfil {
   id: number;
@@ -129,4 +132,9 @@ export async function hasMascotasOSolicitudes(id: number): Promise<boolean> {
 
 export async function softDelete(id: number) {
   await pool.query("UPDATE organizaciones SET activo = 0 WHERE id = ?", [id]);
+}
+
+/** Borrado físico: solo debe usarse tras confirmar que no tiene mascotas ni solicitudes asociadas. */
+export async function remove(id: number, conn: Executor = pool) {
+  await conn.query("DELETE FROM organizaciones WHERE id = ?", [id]);
 }

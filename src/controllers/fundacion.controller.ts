@@ -65,6 +65,6 @@ export const actualizarMe = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const eliminar = asyncHandler(async (req: Request, res: Response) => {
-  await fundacionService.eliminarOrganizacion(Number(req.params.id));
+  await fundacionService.eliminarOrganizacion(String(req.params.id));
   res.status(204).send();
 });

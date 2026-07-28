@@ -218,6 +218,7 @@ export function mapFundacion(row: Record<string, unknown>): FundacionPendiente {
     documento: String(row.nombre_documento ?? row.documento ?? ""),
     documentoContenido: row.documento_contenido ? String(row.documento_contenido) : null,
     estado: String(row.estado_codigo ?? row.estado ?? "pendiente"),
+    cuentaEstado: row.cuenta_estado ? String(row.cuenta_estado) : null,
     fecha: formatFechaCorta(creado),
   };
 }
