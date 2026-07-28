@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 export const crearFundacionSchema = z.object({
-  nombre: z.string().min(3),
-  organizacion: z.string().min(3).optional(),
-  ruc: z.string().min(10),
-  representante: z.string().min(3),
-  correo: z.string().email(),
-  telefono: z.string().min(10),
-  ciudad: z.string().min(2),
-  descripcion: z.string().min(10),
-  documento: z.string().optional(),
+  nombre: z.string().trim().min(3),
+  organizacion: z.string().trim().min(3).optional(),
+  ruc: z.string().trim().min(10),
+  representante: z.string().trim().min(3),
+  correo: z.string().trim().email(),
+  telefono: z.string().trim().min(10),
+  ciudad: z.string().trim().min(2),
+  descripcion: z.string().trim().min(10),
+  documento: z.string().trim().optional(),
   // Data URL en base64 (PDF, máx. ~5MB en el frontend); ~7MB en base64.
   documentoContenido: z.string().startsWith("data:application/pdf").max(7 * 1024 * 1024).optional(),
 });
@@ -20,10 +20,10 @@ export const actualizarEstadoFundacionSchema = z.object({
 
 export const actualizarPerfilFundacionSchema = z
   .object({
-    telefono: z.string().min(7).max(20).optional(),
-    ciudad: z.string().min(2).optional(),
-    descripcion: z.string().min(10).optional(),
-    direccion: z.string().min(5).optional(),
+    telefono: z.string().trim().min(7).max(20).optional(),
+    ciudad: z.string().trim().min(2).optional(),
+    descripcion: z.string().trim().min(10).optional(),
+    direccion: z.string().trim().min(5).optional(),
     // Data URL en base64; puede contener varios códigos QR combinados en
     // una sola imagen (distintos bancos/medios de pago de la organización).
     imagenQr: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
