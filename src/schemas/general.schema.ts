@@ -17,6 +17,13 @@ export const crearDonacionSchema = z.object({
   cantidad: z.string().min(2),
   direccion: z.string().min(5),
   organizacionId: z.number().int().positive(),
+  // Comprobante de pago del aporte económico (imagen o PDF en base64);
+  // se envía por correo a la organización beneficiaria.
+  comprobantePago: z
+    .string()
+    .regex(/^data:(image\/[a-zA-Z0-9.+-]+|application\/pdf);base64,/, "Formato de comprobante inválido.")
+    .max(7 * 1024 * 1024)
+    .optional(),
 });
 
 export const actualizarRolSchema = z.object({

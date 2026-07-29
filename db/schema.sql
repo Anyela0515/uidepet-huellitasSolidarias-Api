@@ -382,6 +382,7 @@ CREATE TABLE donaciones (
   direccion VARCHAR(255),
   organizacion_id INT UNSIGNED NULL,
   estado_donacion_id TINYINT UNSIGNED NOT NULL,
+  comprobante_pago LONGTEXT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_don_usuario
     FOREIGN KEY (donante_usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,

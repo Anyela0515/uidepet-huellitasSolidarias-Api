@@ -48,13 +48,40 @@ export async function sendFundacionCredentialsEmail(
   });
 }
 
-export async function sendMensajeOrganizacionEmail(
+export async function sendComprobanteDonacionEmail(
   correoOrganizacion: string,
   nombreOrganizacion: string,
-  remitenteNombre: string,
-  remitenteCorreo: string,
-  asunto: string,
-  mensaje: string,
+  donanteNombre: string,
+  donanteCorreo: string,
+  cantidadDescripcion: string,
+  comprobantePago: string
+) {
+  const { user, transporter } = createTransporter();
+
+  const match = comprobantePago.match(/^data:([^;]+);base64,(.+)$/);
+  const mime = match?.[1] || "application/octet-stream";
+  const base64Data = match?.[2] || "";
+  const extension = mime === "application/pdf" ? "pdf" : mime.split("/")[1] || "jpg";
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correoOrganizacion,
+    subject: `Comprobante de aporte económico de ${donanteNombre}`,
+    text: `Hola ${nombreOrganizacion}. ${donanteNombre} (${donanteCorreo}) realizó un aporte económico y adjuntó su comprobante de pago.\n\nDescripción: ${cantidadDescripcion}\n\nRevisa el archivo adjunto a este correo.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p><strong>${escapeHtml(donanteNombre)}</strong> (${escapeHtml(donanteCorreo)}) realizó un aporte económico para tu organización y adjuntó su comprobante de pago.</p><p style="margin:20px 0"><strong>Descripción:</strong> ${escapeHtml(cantidadDescripcion)}</p><p style="font-size:13px;color:#666">El comprobante va adjunto a este correo.</p></div>`,
+    attachments: [
+      {
+        filename: `comprobante-pago.${extension}`,
+        content: base64Data,
+        encoding: "base64",
+      },
+    ],
+  });
+}
+
+export async function sendNuevoMensajeNotificationEmail(
+  correoOrganizacion: string,
+  nombreOrganizacion: string,
   panelUrl: string
 ) {
   const { user, transporter } = createTransporter();
@@ -62,9 +89,9 @@ export async function sendMensajeOrganizacionEmail(
   await transporter.sendMail({
     from: `"Huellitas Solidarias" <${user}>`,
     to: correoOrganizacion,
-    subject: `Nuevo mensaje para ${nombreOrganizacion}: ${asunto}`,
-    text: `Hola ${nombreOrganizacion}. ${remitenteNombre} (${remitenteCorreo}) te envió un mensaje a través de Huellitas Solidarias.\n\nAsunto: ${asunto}\n\n${mensaje}\n\nIngresa a ${panelUrl} para responder.`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p><strong>${escapeHtml(remitenteNombre)}</strong> (${escapeHtml(remitenteCorreo)}) te envió un mensaje a través de la plataforma.</p><p style="margin:20px 0"><strong>Asunto:</strong> ${escapeHtml(asunto)}<br/><strong>Mensaje:</strong><br/>${escapeHtml(mensaje).replace(/\n/g, "<br/>")}</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver e ingresar al panel</a></p></div>`,
+    subject: "Tienes un nuevo mensaje pendiente en tu panel",
+    text: `Hola ${nombreOrganizacion}. Te llegó un nuevo mensaje en tu panel de Huellitas Solidarias. Ingresa a ${panelUrl} para revisarlo.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p>Tienes un nuevo mensaje pendiente en tu panel.</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver mensaje</a></p></div>`,
   });
 }
 

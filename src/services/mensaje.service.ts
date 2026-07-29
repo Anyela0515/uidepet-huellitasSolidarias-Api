@@ -3,7 +3,7 @@ import * as organizacionRepo from "../repositories/organizacion.repository.js";
 import { ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { MENSAJE_SORT_FIELDS } from "../repositories/mensaje.repository.js";
-import { sendMensajeOrganizacionEmail } from "./email.service.js";
+import { sendNuevoMensajeNotificationEmail } from "./email.service.js";
 
 /** Solo admin (todos) y fundación (los suyos) pueden listar mensajes de contacto. */
 export async function listarMensajes(
@@ -43,17 +43,13 @@ export async function crearMensaje(data: {
   if (organizacion) {
     const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
     try {
-      await sendMensajeOrganizacionEmail(
+      await sendNuevoMensajeNotificationEmail(
         organizacion.correo,
         organizacion.nombre,
-        data.de,
-        data.correo,
-        data.asunto,
-        data.mensaje,
         `${frontendUrl}/fundacion/mensajes`
       );
     } catch (error) {
-      console.error("No se pudo enviar el correo de notificación a la organización:", error);
+      console.error("No se pudo enviar el aviso de nuevo mensaje a la organización:", error);
     }
   }
 

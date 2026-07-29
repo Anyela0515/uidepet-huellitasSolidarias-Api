@@ -38,6 +38,7 @@ const SELECT = `
     d.cantidad_descripcion,
     d.direccion,
     d.organizacion_id,
+    d.comprobante_pago,
     d.creado_en,
     td.nombre AS tipo_nombre,
     ed.codigo AS estado_codigo,
@@ -133,6 +134,7 @@ export async function create(data: {
   cantidad: string;
   direccion: string;
   organizacionId: number;
+  comprobantePago?: string;
 }) {
   const id = `DON-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const tipoId = await catalog.getOrCreateTipoDonacionId(data.tipo);
@@ -144,8 +146,8 @@ export async function create(data: {
   await pool.query(
     `INSERT INTO donaciones
       (id, donante_usuario_id, nombre_donante, correo_donante, tipo_donacion_id,
-       cantidad_descripcion, direccion, organizacion_id, estado_donacion_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       cantidad_descripcion, direccion, organizacion_id, estado_donacion_id, comprobante_pago)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       usuarioId,
@@ -156,6 +158,7 @@ export async function create(data: {
       data.direccion,
       data.organizacionId,
       estadoId,
+      data.comprobantePago ?? null,
     ]
   );
 

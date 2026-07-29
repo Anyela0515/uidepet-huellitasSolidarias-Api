@@ -3,6 +3,7 @@ import * as organizacionRepo from "../repositories/organizacion.repository.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { DONACION_SORT_FIELDS, type DonacionFiltros } from "../repositories/donacion.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
+import { sendComprobanteDonacionEmail } from "./email.service.js";
 
 export async function listarDonaciones(
   rol: string,
@@ -26,12 +27,29 @@ export async function crearDonacion(data: {
   cantidad: string;
   direccion: string;
   organizacionId: number;
+  comprobantePago?: string;
 }) {
   const organizacion = await organizacionRepo.findById(data.organizacionId);
   if (!organizacion || !organizacion.activo) {
     throw new NotFoundError("Organización no disponible.");
   }
   const donacion = await donacionRepo.create(data);
+
+  if (data.comprobantePago) {
+    try {
+      await sendComprobanteDonacionEmail(
+        organizacion.correo,
+        organizacion.nombre,
+        data.nombre,
+        data.correo,
+        data.cantidad,
+        data.comprobantePago
+      );
+    } catch (error) {
+      console.error("No se pudo enviar el comprobante de pago a la organización:", error);
+    }
+  }
+
   return { donacion };
 }
 
