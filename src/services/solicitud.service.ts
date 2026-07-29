@@ -9,6 +9,7 @@ import { isAvailableForAdoption } from "./mascota.service.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { SOLICITUD_SORT_FIELDS } from "../repositories/solicitud.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
+import { sendNuevoMensajeNotificationEmail } from "./email.service.js";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   revision: ["aprobada", "rechazada"],
@@ -77,6 +78,19 @@ export async function crearSolicitud(
     solicitudId: solicitud?.id,
     fundacionEmail: pet.fundacionEmail,
   });
+
+  if (pet.fundacionEmail) {
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+    try {
+      await sendNuevoMensajeNotificationEmail(
+        pet.fundacionEmail,
+        pet.fundacion || "tu organización",
+        `${frontendUrl}/fundacion/mensajes`
+      );
+    } catch (error) {
+      console.error("No se pudo enviar el aviso de nueva solicitud a la organización:", error);
+    }
+  }
 
   return { solicitud };
 }
