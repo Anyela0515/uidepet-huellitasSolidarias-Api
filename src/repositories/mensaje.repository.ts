@@ -16,6 +16,7 @@ const SELECT = `
     m.asunto,
     m.cuerpo,
     m.solicitud_id,
+    m.donacion_id,
     m.leido,
     m.creado_en,
     u.correo AS fundacion_email
@@ -109,6 +110,7 @@ export async function create(data: {
   asunto: string;
   mensaje: string;
   solicitudId?: string | null;
+  donacionId?: string | null;
   fundacionEmail?: string | null;
   organizacionId?: number | null;
 }) {
@@ -123,8 +125,8 @@ export async function create(data: {
 
   await pool.query(
     `INSERT INTO mensajes
-      (id, nombre_remitente, correo_remitente, asunto, cuerpo, solicitud_id, organizacion_id, leido)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+      (id, nombre_remitente, correo_remitente, asunto, cuerpo, solicitud_id, donacion_id, organizacion_id, leido)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     [
       id,
       data.de,
@@ -132,6 +134,7 @@ export async function create(data: {
       data.asunto,
       data.mensaje,
       data.solicitudId ?? null,
+      data.donacionId ?? null,
       organizacionId,
     ]
   );

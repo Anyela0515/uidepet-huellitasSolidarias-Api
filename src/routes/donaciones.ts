@@ -9,6 +9,7 @@ router.post("/", controller.crear);
 router.use(requireJwt);
 
 router.get("/", controller.listar);
+router.get("/:id", controller.obtener);
 router.patch("/:id/estado", requireRole("admin"), controller.actualizarEstado);
 router.delete("/:id", requireRole("admin"), controller.eliminar);
 

@@ -231,6 +231,7 @@ export function mapMensaje(row: Record<string, unknown>) {
     asunto: String(row.asunto ?? ""),
     mensaje: String(row.cuerpo ?? row.mensaje ?? ""),
     solicitudId: row.solicitud_id ? String(row.solicitud_id) : null,
+    donacionId: row.donacion_id ? String(row.donacion_id) : null,
     fundacionEmail: row.fundacion_email ? String(row.fundacion_email) : null,
     fecha: formatFechaCorta(toDate(row.creado_en)),
     leido: Boolean(row.leido),

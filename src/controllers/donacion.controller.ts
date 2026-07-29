@@ -16,6 +16,15 @@ export const listar = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({ success: true, data, pagination: meta });
 });
 
+export const obtener = asyncHandler(async (req: Request, res: Response) => {
+  const donacion = await donacionService.obtenerDonacion(
+    String(req.params.id),
+    req.user!.rol,
+    req.user!.correo
+  );
+  res.status(200).json({ success: true, data: donacion });
+});
+
 export const crear = asyncHandler(async (req: Request, res: Response) => {
   const data = crearDonacionSchema.parse(req.body);
   const result = await donacionService.crearDonacion(data);

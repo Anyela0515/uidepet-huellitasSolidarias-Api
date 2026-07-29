@@ -3,17 +3,20 @@
 -- Aditivo e idempotente: CREATE TABLE IF NOT EXISTS + INSERT IGNORE, seguro
 -- de re-ejecutar sobre una base que ya tenga estas tablas.
 
+-- `codigo` es el único dato real (ver migración 2026_07_29 que elimina el
+-- `nombre` redundante de este y otros catálogos de estado); no se declara
+-- aquí para que esta tabla quede igual sin importar en qué orden corran
+-- las migraciones.
 CREATE TABLE IF NOT EXISTS estados_denuncia (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
-INSERT IGNORE INTO estados_denuncia (codigo, nombre) VALUES
-  ('recibida', 'Recibida'),
-  ('revision', 'En revisión'),
-  ('atendida', 'Atendida'),
-  ('cerrada', 'Cerrada');
+INSERT IGNORE INTO estados_denuncia (codigo) VALUES
+  ('recibida'),
+  ('revision'),
+  ('atendida'),
+  ('cerrada');
 
 CREATE TABLE IF NOT EXISTS denuncias_rescate (
   id VARCHAR(50) PRIMARY KEY,

@@ -354,6 +354,9 @@ CREATE TABLE mensajes (
   asunto VARCHAR(255) NOT NULL,
   cuerpo TEXT NOT NULL,
   solicitud_id VARCHAR(50),
+  -- FK a donaciones se agrega más abajo con ALTER TABLE porque esa tabla
+  -- todavía no existe en este punto del archivo.
+  donacion_id VARCHAR(50),
   organizacion_id INT UNSIGNED,
   leido TINYINT(1) NOT NULL DEFAULT 0,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -386,6 +389,10 @@ CREATE TABLE donaciones (
     FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id) ON DELETE SET NULL,
   INDEX idx_donaciones_organizacion (organizacion_id)
 );
+
+ALTER TABLE mensajes
+  ADD CONSTRAINT fk_msg_donacion
+    FOREIGN KEY (donacion_id) REFERENCES donaciones(id) ON DELETE SET NULL;
 
 CREATE TABLE configuracion_sitio (
   id TINYINT UNSIGNED PRIMARY KEY DEFAULT 1,

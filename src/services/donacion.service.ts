@@ -43,6 +43,7 @@ export async function crearDonacion(data: {
     mensaje: `${data.nombre} (${data.correo}) registró una donación: ${data.tipo} — ${data.cantidad}.${
       data.direccion ? ` Dirección: ${data.direccion}.` : ""
     }`,
+    donacionId: donacion?.id,
     organizacionId: data.organizacionId,
   });
 
@@ -73,6 +74,22 @@ export async function crearDonacion(data: {
   }
 
   return { donacion };
+}
+
+export async function obtenerDonacion(id: string, rol: string, correo: string) {
+  const donacion = await donacionRepo.findById(id);
+  if (!donacion) throw new NotFoundError("Donación no encontrada.");
+
+  if (rol === "admin") return donacion;
+
+  if (rol === "fundacion") {
+    const organizacion = await organizacionRepo.findByUsuarioCorreo(correo);
+    if (organizacion && donacion.organizacionId === organizacion.id) {
+      return donacion;
+    }
+  }
+
+  throw new ForbiddenError("No tienes permiso para consultar esta donación.");
 }
 
 export async function actualizarEstado(id: string, estado: string, rol: string) {
