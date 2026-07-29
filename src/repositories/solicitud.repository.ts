@@ -43,7 +43,7 @@ const SOLICITUD_SELECT = `
     (
       SELECT GROUP_CONCAT(tg.nombre ORDER BY tg.nombre SEPARATOR ',')
       FROM mascota_tag mt
-      INNER JOIN tags tg ON tg.id = mt.tag_id
+      INNER JOIN catalogos tg ON tg.id = mt.tag_id AND tg.tipo = 'tag'
       WHERE mt.mascota_id = m.id
     ) AS tags,
     f.nombre_declarado AS form_nombre_declarado,
@@ -112,14 +112,14 @@ const SOLICITUD_SELECT = `
   INNER JOIN mascotas m ON m.id = sa.mascota_id
   INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
   INNER JOIN categorias rz ON rz.id = m.raza_id AND rz.tipo = 'raza'
-  INNER JOIN ciudades ci ON ci.id = m.ciudad_id
+  INNER JOIN catalogos ci ON ci.id = m.ciudad_id AND ci.tipo = 'ciudad'
   INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
   INNER JOIN perfiles_usuario pu ON pu.usuario_id = ua.id
   INNER JOIN organizaciones o ON o.id = sa.organizacion_id
   INNER JOIN usuarios uf ON uf.id = o.usuario_id
   LEFT JOIN formularios_adopcion f ON f.solicitud_id = sa.id
-  LEFT JOIN ciudades cf ON cf.id = f.ciudad_id
-  LEFT JOIN tipos_vivienda tv ON tv.id = f.tipo_vivienda_id
+  LEFT JOIN catalogos cf ON cf.id = f.ciudad_id AND cf.tipo = 'ciudad'
+  LEFT JOIN catalogos tv ON tv.id = f.tipo_vivienda_id AND tv.tipo = 'tipo_vivienda'
 `;
 
 async function countWhere(where: string, values: unknown[]): Promise<number> {

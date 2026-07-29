@@ -28,7 +28,7 @@ const SELECT = `
     e.codigo AS estado_codigo,
     ec.codigo AS cuenta_estado
   FROM solicitudes_registro_organizacion s
-  INNER JOIN ciudades c ON c.id = s.ciudad_id
+  INNER JOIN catalogos c ON c.id = s.ciudad_id AND c.tipo = 'ciudad'
   INNER JOIN estados_solicitud_organizacion e ON e.id = s.estado_id
   LEFT JOIN usuarios u ON u.correo = s.correo
   LEFT JOIN estados_cuenta ec ON ec.id = u.estado_cuenta_id

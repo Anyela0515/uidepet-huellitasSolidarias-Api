@@ -4,18 +4,6 @@ import type { Pool, PoolConnection } from "mysql2/promise";
 
 type Executor = Pool | PoolConnection;
 
-async function findIdByNombre(
-  table: string,
-  nombre: string,
-  conn: Executor = pool
-): Promise<number | null> {
-  const [rows] = await conn.query<RowDataPacket[]>(
-    `SELECT id FROM ${table} WHERE nombre = ? LIMIT 1`,
-    [nombre]
-  );
-  return rows[0] ? Number(rows[0].id) : null;
-}
-
 async function findIdByCodigo(
   table: string,
   codigo: string,
@@ -39,6 +27,23 @@ async function findCategoriaId(
     [tipo, nombre, padreId]
   );
   return rows[0] ? Number(rows[0].id) : null;
+}
+
+async function getOrCreateCatalogoId(
+  tipo: string,
+  nombre: string,
+  conn: Executor = pool
+): Promise<number> {
+  const [rows] = await conn.query<RowDataPacket[]>(
+    "SELECT id FROM catalogos WHERE tipo = ? AND nombre = ? LIMIT 1",
+    [tipo, nombre]
+  );
+  if (rows[0]) return Number(rows[0].id);
+  const [result] = await conn.query<ResultSetHeader>(
+    "INSERT INTO catalogos (tipo, nombre) VALUES (?, ?)",
+    [tipo, nombre]
+  );
+  return result.insertId;
 }
 
 export async function getRolId(codigo: string, conn: Executor = pool): Promise<number> {
@@ -96,13 +101,7 @@ export async function getEstadoDenunciaId(codigo: string, conn: Executor = pool)
 }
 
 export async function getOrCreateCiudadId(nombre: string, conn: Executor = pool): Promise<number> {
-  const existing = await findIdByNombre("ciudades", nombre, conn);
-  if (existing) return existing;
-  const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO ciudades (nombre) VALUES (?)",
-    [nombre]
-  );
-  return result.insertId;
+  return getOrCreateCatalogoId("ciudad", nombre, conn);
 }
 
 export async function getOrCreateEspecieId(nombre: string, conn: Executor = pool): Promise<number> {
@@ -162,26 +161,14 @@ export async function getOrCreateTipoViviendaId(
   nombre: string,
   conn: Executor = pool
 ): Promise<number> {
-  const existing = await findIdByNombre("tipos_vivienda", nombre, conn);
-  if (existing) return existing;
-  const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO tipos_vivienda (nombre) VALUES (?)",
-    [nombre]
-  );
-  return result.insertId;
+  return getOrCreateCatalogoId("tipo_vivienda", nombre, conn);
 }
 
 export async function getOrCreateTipoDonacionId(
   nombre: string,
   conn: Executor = pool
 ): Promise<number> {
-  const existing = await findIdByNombre("tipos_donacion", nombre, conn);
-  if (existing) return existing;
-  const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO tipos_donacion (nombre) VALUES (?)",
-    [nombre]
-  );
-  return result.insertId;
+  return getOrCreateCatalogoId("tipo_donacion", nombre, conn);
 }
 
 export async function getOrCreateTagIds(
@@ -192,15 +179,7 @@ export async function getOrCreateTagIds(
   for (const nombre of nombres) {
     const trimmed = nombre.trim();
     if (!trimmed) continue;
-    let id = await findIdByNombre("tags", trimmed, conn);
-    if (!id) {
-      const [result] = await conn.query<ResultSetHeader>(
-        "INSERT INTO tags (nombre) VALUES (?)",
-        [trimmed]
-      );
-      id = result.insertId;
-    }
-    ids.push(id);
+    ids.push(await getOrCreateCatalogoId("tag", trimmed, conn));
   }
   return ids;
 }

@@ -25,7 +25,7 @@ const SELECT = `
     o.descripcion, o.direccion, o.activo, o.imagen_qr, o.imagen, u.correo
   FROM organizaciones o
   INNER JOIN usuarios u ON u.id = o.usuario_id
-  LEFT JOIN ciudades c ON c.id = o.ciudad_id
+  LEFT JOIN catalogos c ON c.id = o.ciudad_id AND c.tipo = 'ciudad'
 `;
 
 function map(row: RowDataPacket): OrganizacionPerfil {
@@ -58,7 +58,7 @@ export async function findPublicas() {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion, o.imagen_qr, o.imagen
      FROM organizaciones o
-     LEFT JOIN ciudades c ON c.id = o.ciudad_id
+     LEFT JOIN catalogos c ON c.id = o.ciudad_id AND c.tipo = 'ciudad'
      WHERE o.activo = 1
      ORDER BY o.nombre ASC`
   );

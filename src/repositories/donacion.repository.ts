@@ -44,7 +44,7 @@ const SELECT = `
     ed.codigo AS estado_codigo,
     o.nombre AS organizacion_nombre
   FROM donaciones d
-  INNER JOIN tipos_donacion td ON td.id = d.tipo_donacion_id
+  INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
   INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
   LEFT JOIN organizaciones o ON o.id = d.organizacion_id
 `;
@@ -61,7 +61,7 @@ export async function findAll(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM donaciones d
-     INNER JOIN tipos_donacion td ON td.id = d.tipo_donacion_id
+     INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
      INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
      ${where}`,
     values
@@ -92,7 +92,7 @@ export async function findByCorreo(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM donaciones d
-     INNER JOIN tipos_donacion td ON td.id = d.tipo_donacion_id
+     INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
      INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
      ${where}`,
     values

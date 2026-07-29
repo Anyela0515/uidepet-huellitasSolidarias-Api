@@ -11,16 +11,17 @@ export interface RazaItem extends CatalogoItem {
   especieId: number;
 }
 
-async function listSimple(table: string): Promise<CatalogoItem[]> {
+async function listCategoriaPorTipo(tipo: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT id, nombre FROM ${table} ORDER BY nombre ASC`
+    "SELECT id, nombre FROM categorias WHERE tipo = ? ORDER BY nombre ASC",
+    [tipo]
   );
   return rows.map((row) => ({ id: Number(row.id), nombre: String(row.nombre) }));
 }
 
-async function listCategoriaPorTipo(tipo: string): Promise<CatalogoItem[]> {
+async function listCatalogoPorTipo(tipo: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT id, nombre FROM categorias WHERE tipo = ? ORDER BY nombre ASC",
+    "SELECT id, nombre FROM catalogos WHERE tipo = ? ORDER BY nombre ASC",
     [tipo]
   );
   return rows.map((row) => ({ id: Number(row.id), nombre: String(row.nombre) }));
@@ -44,13 +45,13 @@ export const getSexos = () => listCategoriaPorTipo("sexo");
 export const getTamanos = () => listCategoriaPorTipo("tamano");
 export const getUnidadesEdad = () => listCategoriaPorTipo("unidad_edad");
 export const getEstadosMascota = () => listConCodigo("estados_mascota");
-export const getCiudades = () => listSimple("ciudades");
-export const getTags = () => listSimple("tags");
+export const getCiudades = () => listCatalogoPorTipo("ciudad");
+export const getTags = () => listCatalogoPorTipo("tag");
 export const getEstadosSolicitudAdopcion = () => listConCodigo("estados_solicitud_adopcion");
 export const getEstadosSolicitudOrganizacion = () =>
   listConCodigo("estados_solicitud_organizacion");
-export const getTiposVivienda = () => listSimple("tipos_vivienda");
-export const getTiposDonacion = () => listSimple("tipos_donacion");
+export const getTiposVivienda = () => listCatalogoPorTipo("tipo_vivienda");
+export const getTiposDonacion = () => listCatalogoPorTipo("tipo_donacion");
 export const getEstadosDonacion = () => listConCodigo("estados_donacion");
 export const getTiposMedio = () => listConCodigo("tipos_medio");
 

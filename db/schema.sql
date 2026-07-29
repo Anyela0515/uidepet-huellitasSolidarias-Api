@@ -52,14 +52,17 @@ CREATE TABLE estados_mascota (
   nombre VARCHAR(60) NOT NULL
 );
 
-CREATE TABLE ciudades (
+-- Catálogo consolidado de listas simples nombre-only que antes vivían en
+-- tablas separadas (ciudades, tags, tipos_vivienda, tipos_donacion): mismo
+-- shape y mismo caso de uso (getOrCreate por texto libre desde el
+-- frontend), sin relación jerárquica entre sí. Mismo patrón que
+-- `categorias`, pero sin padre_id porque ninguno de estos tipos lo necesita.
+CREATE TABLE catalogos (
   id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(80) NOT NULL UNIQUE
-);
-
-CREATE TABLE tags (
-  id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(60) NOT NULL UNIQUE
+  tipo VARCHAR(20) NOT NULL,
+  nombre VARCHAR(80) NOT NULL,
+  UNIQUE KEY uq_catalogo_tipo_nombre (tipo, nombre),
+  CONSTRAINT chk_catalogo_tipo CHECK (tipo IN ('ciudad','tag','tipo_vivienda','tipo_donacion'))
 );
 
 CREATE TABLE estados_solicitud_adopcion (
@@ -72,16 +75,6 @@ CREATE TABLE estados_solicitud_organizacion (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(30) NOT NULL UNIQUE,
   nombre VARCHAR(60) NOT NULL
-);
-
-CREATE TABLE tipos_vivienda (
-  id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(40) NOT NULL UNIQUE
-);
-
-CREATE TABLE tipos_donacion (
-  id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(80) NOT NULL UNIQUE
 );
 
 CREATE TABLE estados_donacion (
@@ -157,7 +150,7 @@ CREATE TABLE organizaciones (
   imagen LONGTEXT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_org_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
+    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_org_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
   CONSTRAINT chk_organizaciones_activo CHECK (activo IN (0, 1))
@@ -179,7 +172,7 @@ CREATE TABLE solicitudes_registro_organizacion (
   UNIQUE KEY uq_sol_org_correo (correo),
   UNIQUE KEY uq_sol_org_ruc (ruc),
   CONSTRAINT fk_sol_org_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
+    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_sol_org_estado
     FOREIGN KEY (estado_id) REFERENCES estados_solicitud_organizacion(id)
 );
@@ -212,7 +205,7 @@ CREATE TABLE mascotas (
   CONSTRAINT fk_mascota_tamano
     FOREIGN KEY (tamano_id) REFERENCES categorias(id),
   CONSTRAINT fk_mascota_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
+    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_mascota_org
     FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id),
   CONSTRAINT fk_mascota_estado
@@ -228,7 +221,7 @@ CREATE TABLE mascota_tag (
   CONSTRAINT fk_mt_mascota
     FOREIGN KEY (mascota_id) REFERENCES mascotas(id) ON DELETE CASCADE,
   CONSTRAINT fk_mt_tag
-    FOREIGN KEY (tag_id) REFERENCES tags(id)
+    FOREIGN KEY (tag_id) REFERENCES catalogos(id)
 );
 
 CREATE TABLE medios_mascota (
@@ -280,7 +273,7 @@ CREATE TABLE formularios_adopcion (
   correo_declarado VARCHAR(150) NOT NULL,
   direccion_declarada VARCHAR(255) NOT NULL,
   ciudad_id SMALLINT UNSIGNED NOT NULL,
-  tipo_vivienda_id TINYINT UNSIGNED NOT NULL,
+  tipo_vivienda_id SMALLINT UNSIGNED NOT NULL,
   personas_hogar VARCHAR(20) NOT NULL,
   acuerdo_hogar VARCHAR(10) NOT NULL,
   -- Descripción libre (el formulario del frontend usa un textarea, no un
@@ -300,9 +293,9 @@ CREATE TABLE formularios_adopcion (
   CONSTRAINT fk_form_solicitud
     FOREIGN KEY (solicitud_id) REFERENCES solicitudes_adopcion(id) ON DELETE CASCADE,
   CONSTRAINT fk_form_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES ciudades(id),
+    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_form_vivienda
-    FOREIGN KEY (tipo_vivienda_id) REFERENCES tipos_vivienda(id)
+    FOREIGN KEY (tipo_vivienda_id) REFERENCES catalogos(id)
 );
 
 CREATE TABLE evidencias_adopcion (
@@ -387,7 +380,7 @@ CREATE TABLE donaciones (
   CONSTRAINT fk_don_usuario
     FOREIGN KEY (donante_usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
   CONSTRAINT fk_don_tipo
-    FOREIGN KEY (tipo_donacion_id) REFERENCES tipos_donacion(id),
+    FOREIGN KEY (tipo_donacion_id) REFERENCES catalogos(id),
   CONSTRAINT fk_don_estado
     FOREIGN KEY (estado_donacion_id) REFERENCES estados_donacion(id),
   CONSTRAINT fk_don_organizacion
@@ -471,12 +464,12 @@ INSERT INTO estados_mascota (codigo, nombre) VALUES
   ('Adoptado', 'Adoptado'),
   ('Eliminado', 'Eliminado');
 
-INSERT INTO ciudades (nombre) VALUES
-  ('Loja'), ('Quito'), ('Guayaquil'), ('Cuenca'), ('Ambato');
+INSERT INTO catalogos (tipo, nombre) VALUES
+  ('ciudad', 'Loja'), ('ciudad', 'Quito'), ('ciudad', 'Guayaquil'), ('ciudad', 'Cuenca'), ('ciudad', 'Ambato');
 
-INSERT INTO tags (nombre) VALUES
-  ('Vacunada'), ('Vacunado'), ('Esterilizada'), ('Esterilizado'),
-  ('Desparasitada'), ('Desparasitado'), ('Sociable'), ('Entrenada');
+INSERT INTO catalogos (tipo, nombre) VALUES
+  ('tag', 'Vacunada'), ('tag', 'Vacunado'), ('tag', 'Esterilizada'), ('tag', 'Esterilizado'),
+  ('tag', 'Desparasitada'), ('tag', 'Desparasitado'), ('tag', 'Sociable'), ('tag', 'Entrenada');
 
 INSERT INTO estados_solicitud_adopcion (codigo, nombre) VALUES
   ('revision', 'En revisión'),
@@ -489,11 +482,12 @@ INSERT INTO estados_solicitud_organizacion (codigo, nombre) VALUES
   ('aprobada', 'Aprobada'),
   ('rechazada', 'Rechazada');
 
-INSERT INTO tipos_vivienda (nombre) VALUES
-  ('Casa'), ('Departamento'), ('Quinta'), ('Otro');
+INSERT INTO catalogos (tipo, nombre) VALUES
+  ('tipo_vivienda', 'Casa'), ('tipo_vivienda', 'Departamento'), ('tipo_vivienda', 'Quinta'), ('tipo_vivienda', 'Otro');
 
-INSERT INTO tipos_donacion (nombre) VALUES
-  ('Alimento'), ('Medicinas'), ('Accesorios'), ('Dinero'), ('Otro');
+INSERT INTO catalogos (tipo, nombre) VALUES
+  ('tipo_donacion', 'Alimento'), ('tipo_donacion', 'Medicinas'), ('tipo_donacion', 'Accesorios'),
+  ('tipo_donacion', 'Dinero'), ('tipo_donacion', 'Otro');
 
 INSERT INTO estados_donacion (codigo, nombre) VALUES
   ('Completado', 'Completado'),

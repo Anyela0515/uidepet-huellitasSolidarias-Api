@@ -41,7 +41,7 @@ const MASCOTA_SELECT = `
     (
       SELECT GROUP_CONCAT(tg.nombre ORDER BY tg.nombre SEPARATOR ',')
       FROM mascota_tag mt
-      INNER JOIN tags tg ON tg.id = mt.tag_id
+      INNER JOIN catalogos tg ON tg.id = mt.tag_id AND tg.tipo = 'tag'
       WHERE mt.mascota_id = m.id
     ) AS tags
   FROM mascotas m
@@ -50,7 +50,7 @@ const MASCOTA_SELECT = `
   INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
   INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
   INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-  INNER JOIN ciudades c ON c.id = m.ciudad_id
+  INNER JOIN catalogos c ON c.id = m.ciudad_id AND c.tipo = 'ciudad'
   INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
   INNER JOIN organizaciones o ON o.id = m.organizacion_id
   INNER JOIN usuarios u ON u.id = o.usuario_id
@@ -199,7 +199,7 @@ export async function findVisible(
      INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
      INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
      INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN ciudades c ON c.id = m.ciudad_id
+     INNER JOIN catalogos c ON c.id = m.ciudad_id AND c.tipo = 'ciudad'
      INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      ${where}`,
@@ -241,7 +241,7 @@ export async function findByFundacionEmail(
      INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
      INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
      INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN ciudades c ON c.id = m.ciudad_id
+     INNER JOIN catalogos c ON c.id = m.ciudad_id AND c.tipo = 'ciudad'
      INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      INNER JOIN usuarios u ON u.id = o.usuario_id

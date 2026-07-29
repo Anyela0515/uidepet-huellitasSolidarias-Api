@@ -23,24 +23,16 @@ async function idByCodigo(conn, table, codigo) {
   return rows[0].id;
 }
 
-async function idByNombre(conn, table, nombre) {
+async function idByTipoNombre(conn, table, tipo, nombre) {
   const [rows] = await conn.query(
-    `SELECT id FROM ${table} WHERE nombre = ? LIMIT 1`,
-    [nombre]
-  );
-  return rows[0].id;
-}
-
-async function idByTipoNombre(conn, tipo, nombre) {
-  const [rows] = await conn.query(
-    "SELECT id FROM categorias WHERE tipo = ? AND nombre = ? LIMIT 1",
+    `SELECT id FROM ${table} WHERE tipo = ? AND nombre = ? LIMIT 1`,
     [tipo, nombre]
   );
   return rows[0].id;
 }
 
 async function ensureRaza(conn, especieNombre, razaNombre) {
-  const especieId = await idByTipoNombre(conn, "especie", especieNombre);
+  const especieId = await idByTipoNombre(conn, "categorias", "especie", especieNombre);
   const [rows] = await conn.query(
     "SELECT id FROM categorias WHERE tipo = 'raza' AND padre_id = ? AND nombre = ? LIMIT 1",
     [especieId, razaNombre]
@@ -88,14 +80,14 @@ async function seed() {
     const rolFund = await idByCodigo(conn, "roles", "fundacion");
     const rolUser = await idByCodigo(conn, "roles", "usuario");
     const estadoActivo = await idByCodigo(conn, "estados_cuenta", "Activo");
-    const ciudadLoja = await idByNombre(conn, "ciudades", "Loja");
-    const sexoHembra = await idByTipoNombre(conn, "sexo", "Hembra");
-    const sexoMacho = await idByTipoNombre(conn, "sexo", "Macho");
-    const tamPeq = await idByTipoNombre(conn, "tamano", "Pequeño");
-    const tamMed = await idByTipoNombre(conn, "tamano", "Mediano");
-    const tamGran = await idByTipoNombre(conn, "tamano", "Grande");
-    const unidadAnios = await idByTipoNombre(conn, "unidad_edad", "Años");
-    const unidadMeses = await idByTipoNombre(conn, "unidad_edad", "Meses");
+    const ciudadLoja = await idByTipoNombre(conn, "catalogos", "ciudad", "Loja");
+    const sexoHembra = await idByTipoNombre(conn, "categorias", "sexo", "Hembra");
+    const sexoMacho = await idByTipoNombre(conn, "categorias", "sexo", "Macho");
+    const tamPeq = await idByTipoNombre(conn, "categorias", "tamano", "Pequeño");
+    const tamMed = await idByTipoNombre(conn, "categorias", "tamano", "Mediano");
+    const tamGran = await idByTipoNombre(conn, "categorias", "tamano", "Grande");
+    const unidadAnios = await idByTipoNombre(conn, "categorias", "unidad_edad", "Años");
+    const unidadMeses = await idByTipoNombre(conn, "categorias", "unidad_edad", "Meses");
     const estDisp = await idByCodigo(conn, "estados_mascota", "Disponible");
     const estProceso = await idByCodigo(conn, "estados_mascota", "En proceso");
     const tipoImg = await idByCodigo(conn, "tipos_medio", "imagen");
@@ -109,9 +101,9 @@ async function seed() {
       "estados_solicitud_organizacion",
       "pendiente"
     );
-    const tipoAlimento = await idByNombre(conn, "tipos_donacion", "Alimento");
+    const tipoAlimento = await idByTipoNombre(conn, "catalogos", "tipo_donacion", "Alimento");
     const estDonOk = await idByCodigo(conn, "estados_donacion", "Completado");
-    const viviendaCasa = await idByNombre(conn, "tipos_vivienda", "Casa");
+    const viviendaCasa = await idByTipoNombre(conn, "catalogos", "tipo_vivienda", "Casa");
 
     const razaPerro = await ensureRaza(conn, "Perro", "Mestizo");
     const razaGato = await ensureRaza(conn, "Gato", "Mestizo");
@@ -258,7 +250,7 @@ async function seed() {
       );
 
       for (const tagNombre of tags) {
-        const tagId = await idByNombre(conn, "tags", tagNombre);
+        const tagId = await idByTipoNombre(conn, "catalogos", "tag", tagNombre);
         await conn.query(
           "INSERT INTO mascota_tag (mascota_id, tag_id) VALUES (?, ?)",
           [result.insertId, tagId]
