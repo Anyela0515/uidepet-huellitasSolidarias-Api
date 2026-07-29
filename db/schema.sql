@@ -14,16 +14,19 @@ USE huellitas_solidarias_db;
 -- CATÁLOGOS
 -- =============================================================================
 
+-- `codigo` es el único dato real: es lo único que el backend consulta y
+-- devuelve (como `rol_codigo`/`estado_codigo`) en todas las queries. No se
+-- guarda un `nombre` aparte porque para estos catálogos de estado siempre
+-- terminaba siendo el mismo texto que `codigo` (o el mismo con mayúscula),
+-- y nada en la app lo leía.
 CREATE TABLE roles (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 CREATE TABLE estados_cuenta (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 -- Catálogo consolidado de atributos simples de mascota (especie, raza, sexo,
@@ -48,8 +51,7 @@ CREATE TABLE categorias (
 
 CREATE TABLE estados_mascota (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 -- Catálogo consolidado de listas simples nombre-only que antes vivían en
@@ -67,32 +69,27 @@ CREATE TABLE catalogos (
 
 CREATE TABLE estados_solicitud_adopcion (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 CREATE TABLE estados_solicitud_organizacion (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 CREATE TABLE estados_donacion (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 CREATE TABLE tipos_medio (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 CREATE TABLE estados_denuncia (
   id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  codigo VARCHAR(30) NOT NULL UNIQUE,
-  nombre VARCHAR(60) NOT NULL
+  codigo VARCHAR(30) NOT NULL UNIQUE
 );
 
 -- =============================================================================
@@ -189,7 +186,11 @@ CREATE TABLE mascotas (
   unidad_edad_id SMALLINT UNSIGNED NOT NULL,
   sexo_id SMALLINT UNSIGNED NOT NULL,
   tamano_id SMALLINT UNSIGNED NOT NULL,
-  ciudad_id SMALLINT UNSIGNED NOT NULL,
+  -- Texto libre (ej. "Ciudadela del Arquitecto"): es la ubicación específica
+  -- de la mascota, no una ciudad de una lista cerrada, por eso NO es un FK
+  -- al catálogo de ciudades (a diferencia de organizaciones/formularios de
+  -- adopción, que sí usan una ciudad de lista fija).
+  ubicacion VARCHAR(255) NOT NULL,
   historia TEXT NOT NULL,
   requisitos TEXT NOT NULL,
   organizacion_id INT UNSIGNED NOT NULL,
@@ -204,8 +205,6 @@ CREATE TABLE mascotas (
     FOREIGN KEY (sexo_id) REFERENCES categorias(id),
   CONSTRAINT fk_mascota_tamano
     FOREIGN KEY (tamano_id) REFERENCES categorias(id),
-  CONSTRAINT fk_mascota_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_mascota_org
     FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id),
   CONSTRAINT fk_mascota_estado
@@ -437,14 +436,14 @@ CREATE TABLE evidencias_denuncia (
 -- DATOS INICIALES DE CATÁLOGO
 -- =============================================================================
 
-INSERT INTO roles (codigo, nombre) VALUES
-  ('usuario', 'Usuario adoptante'),
-  ('fundacion', 'Fundación'),
-  ('admin', 'Administrador');
+INSERT INTO roles (codigo) VALUES
+  ('usuario'),
+  ('fundacion'),
+  ('admin');
 
-INSERT INTO estados_cuenta (codigo, nombre) VALUES
-  ('Activo', 'Activo'),
-  ('Suspendido', 'Suspendido');
+INSERT INTO estados_cuenta (codigo) VALUES
+  ('Activo'),
+  ('Suspendido');
 
 INSERT INTO categorias (tipo, nombre) VALUES
   ('especie', 'Perro'), ('especie', 'Gato'), ('especie', 'Otro');
@@ -458,11 +457,11 @@ INSERT INTO categorias (tipo, nombre) VALUES
 INSERT INTO categorias (tipo, nombre) VALUES
   ('unidad_edad', 'Años'), ('unidad_edad', 'Meses');
 
-INSERT INTO estados_mascota (codigo, nombre) VALUES
-  ('Disponible', 'Disponible'),
-  ('En proceso', 'En proceso'),
-  ('Adoptado', 'Adoptado'),
-  ('Eliminado', 'Eliminado');
+INSERT INTO estados_mascota (codigo) VALUES
+  ('Disponible'),
+  ('En proceso'),
+  ('Adoptado'),
+  ('Eliminado');
 
 INSERT INTO catalogos (tipo, nombre) VALUES
   ('ciudad', 'Loja'), ('ciudad', 'Quito'), ('ciudad', 'Guayaquil'), ('ciudad', 'Cuenca'), ('ciudad', 'Ambato');
@@ -471,16 +470,16 @@ INSERT INTO catalogos (tipo, nombre) VALUES
   ('tag', 'Vacunada'), ('tag', 'Vacunado'), ('tag', 'Esterilizada'), ('tag', 'Esterilizado'),
   ('tag', 'Desparasitada'), ('tag', 'Desparasitado'), ('tag', 'Sociable'), ('tag', 'Entrenada');
 
-INSERT INTO estados_solicitud_adopcion (codigo, nombre) VALUES
-  ('revision', 'En revisión'),
-  ('aprobada', 'Aprobada'),
-  ('rechazada', 'Rechazada'),
-  ('seguimiento', 'Seguimiento');
+INSERT INTO estados_solicitud_adopcion (codigo) VALUES
+  ('revision'),
+  ('aprobada'),
+  ('rechazada'),
+  ('seguimiento');
 
-INSERT INTO estados_solicitud_organizacion (codigo, nombre) VALUES
-  ('pendiente', 'Pendiente'),
-  ('aprobada', 'Aprobada'),
-  ('rechazada', 'Rechazada');
+INSERT INTO estados_solicitud_organizacion (codigo) VALUES
+  ('pendiente'),
+  ('aprobada'),
+  ('rechazada');
 
 INSERT INTO catalogos (tipo, nombre) VALUES
   ('tipo_vivienda', 'Casa'), ('tipo_vivienda', 'Departamento'), ('tipo_vivienda', 'Quinta'), ('tipo_vivienda', 'Otro');
@@ -489,20 +488,20 @@ INSERT INTO catalogos (tipo, nombre) VALUES
   ('tipo_donacion', 'Alimento'), ('tipo_donacion', 'Medicinas'), ('tipo_donacion', 'Accesorios'),
   ('tipo_donacion', 'Dinero'), ('tipo_donacion', 'Otro');
 
-INSERT INTO estados_donacion (codigo, nombre) VALUES
-  ('Completado', 'Completado'),
-  ('Pendiente', 'Pendiente'),
-  ('Cancelado', 'Cancelado');
+INSERT INTO estados_donacion (codigo) VALUES
+  ('Completado'),
+  ('Pendiente'),
+  ('Cancelado');
 
-INSERT INTO tipos_medio (codigo, nombre) VALUES
-  ('imagen', 'Imagen'),
-  ('documento', 'Documento');
+INSERT INTO tipos_medio (codigo) VALUES
+  ('imagen'),
+  ('documento');
 
-INSERT INTO estados_denuncia (codigo, nombre) VALUES
-  ('recibida', 'Recibida'),
-  ('revision', 'En revisión'),
-  ('atendida', 'Atendida'),
-  ('cerrada', 'Cerrada');
+INSERT INTO estados_denuncia (codigo) VALUES
+  ('recibida'),
+  ('revision'),
+  ('atendida'),
+  ('cerrada');
 
 INSERT INTO configuracion_sitio (id, correo, telefono, horario, direccion) VALUES
   (1, 'contacto@huellitas.com', '0990001122', 'Lun–Vie 09:00–18:00', 'Campus UIDE / Loja');

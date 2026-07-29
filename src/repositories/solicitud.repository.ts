@@ -29,7 +29,7 @@ const SOLICITUD_SELECT = `
     m.edad_valor,
     ue.nombre AS unidad_edad,
     rz.nombre AS raza,
-    ci.nombre AS ubicacion,
+    m.ubicacion,
     pu.nombre AS adoptante_nombre,
     ua.correo AS adoptante_email,
     o.nombre AS fundacion,
@@ -112,7 +112,6 @@ const SOLICITUD_SELECT = `
   INNER JOIN mascotas m ON m.id = sa.mascota_id
   INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
   INNER JOIN categorias rz ON rz.id = m.raza_id AND rz.tipo = 'raza'
-  INNER JOIN catalogos ci ON ci.id = m.ciudad_id AND ci.tipo = 'ciudad'
   INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
   INNER JOIN perfiles_usuario pu ON pu.usuario_id = ua.id
   INNER JOIN organizaciones o ON o.id = sa.organizacion_id

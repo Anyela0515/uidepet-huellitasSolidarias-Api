@@ -27,14 +27,17 @@ async function listCatalogoPorTipo(tipo: string): Promise<CatalogoItem[]> {
   return rows.map((row) => ({ id: Number(row.id), nombre: String(row.nombre) }));
 }
 
+// Estas tablas ya no guardan un `nombre` propio (ver schema.sql): siempre
+// terminaba siendo el mismo texto que `codigo`. Se sigue devolviendo
+// `nombre` en la respuesta para no romper el contrato de este endpoint.
 async function listConCodigo(table: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT id, codigo, nombre FROM ${table} ORDER BY nombre ASC`
+    `SELECT id, codigo FROM ${table} ORDER BY codigo ASC`
   );
   return rows.map((row) => ({
     id: Number(row.id),
     codigo: String(row.codigo),
-    nombre: String(row.nombre),
+    nombre: String(row.codigo),
   }));
 }
 

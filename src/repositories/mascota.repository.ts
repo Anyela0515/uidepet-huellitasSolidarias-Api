@@ -26,7 +26,7 @@ const MASCOTA_SELECT = `
     r.nombre AS raza,
     s.nombre AS sexo,
     t.nombre AS tamano,
-    c.nombre AS ubicacion,
+    m.ubicacion,
     em.codigo AS estado_codigo,
     o.nombre AS fundacion,
     u.correo AS fundacion_email,
@@ -50,7 +50,6 @@ const MASCOTA_SELECT = `
   INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
   INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
   INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-  INNER JOIN catalogos c ON c.id = m.ciudad_id AND c.tipo = 'ciudad'
   INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
   INNER JOIN organizaciones o ON o.id = m.organizacion_id
   INNER JOIN usuarios u ON u.id = o.usuario_id
@@ -59,7 +58,7 @@ const MASCOTA_SELECT = `
 export const MASCOTA_SORT_FIELDS: Record<string, string> = {
   nombre: "m.nombre",
   fecha: "m.publicada_en",
-  ciudad: "c.nombre",
+  ciudad: "m.ubicacion",
 };
 
 export interface MascotaFiltros {
@@ -102,7 +101,7 @@ function buildWhere(
     values.push(filtros.tamano);
   }
   if (filtros.ciudad) {
-    clauses.push("c.nombre = ?");
+    clauses.push("m.ubicacion = ?");
     values.push(filtros.ciudad);
   }
   if (filtros.estado) {
@@ -128,7 +127,6 @@ async function resolveMascotaFks(
     edad?: string;
     sexo?: string;
     tamano?: string;
-    ubicacion?: string;
     estado?: string;
   },
   conn: Executor = pool
@@ -148,9 +146,6 @@ async function resolveMascotaFks(
       : undefined,
     tamanoId: data.tamano
       ? await catalog.getOrCreateTamanoId(data.tamano, conn)
-      : undefined,
-    ciudadId: data.ubicacion
-      ? await catalog.getOrCreateCiudadId(data.ubicacion, conn)
       : undefined,
     estadoId: data.estado
       ? await catalog.getEstadoMascotaId(data.estado, conn)
@@ -199,7 +194,6 @@ export async function findVisible(
      INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
      INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
      INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN catalogos c ON c.id = m.ciudad_id AND c.tipo = 'ciudad'
      INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      ${where}`,
@@ -241,7 +235,6 @@ export async function findByFundacionEmail(
      INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
      INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
      INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN catalogos c ON c.id = m.ciudad_id AND c.tipo = 'ciudad'
      INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      INNER JOIN usuarios u ON u.id = o.usuario_id
@@ -295,7 +288,6 @@ export async function create(
         edad: data.edad,
         sexo: data.sexo,
         tamano: data.tamano,
-        ubicacion: data.ubicacion,
         estado: data.estado ?? "Disponible",
       },
       conn
@@ -303,7 +295,7 @@ export async function create(
 
     const [result] = await conn.query<ResultSetHeader>(
       `INSERT INTO mascotas
-        (nombre, raza_id, edad_valor, unidad_edad_id, sexo_id, tamano_id, ciudad_id,
+        (nombre, raza_id, edad_valor, unidad_edad_id, sexo_id, tamano_id, ubicacion,
          historia, requisitos, organizacion_id, estado_mascota_id, publicada_en, oculto)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -313,7 +305,7 @@ export async function create(
         fks.unidadEdadId,
         fks.sexoId,
         fks.tamanoId,
-        fks.ciudadId,
+        data.ubicacion,
         data.historia,
         data.requisitos,
         data.organizacionId,
@@ -353,7 +345,6 @@ export async function update(id: number, data: ActualizarMascotaDTO) {
         edad: data.edad ?? current.edad,
         sexo: data.sexo ?? current.sexo,
         tamano: data.tamano ?? current.tamano,
-        ubicacion: data.ubicacion ?? current.ubicacion,
         estado: data.estado ?? current.estado,
       },
       conn
@@ -383,8 +374,8 @@ export async function update(id: number, data: ActualizarMascotaDTO) {
       values.push(fks.tamanoId);
     }
     if (data.ubicacion !== undefined) {
-      sets.push("ciudad_id = ?");
-      values.push(fks.ciudadId);
+      sets.push("ubicacion = ?");
+      values.push(data.ubicacion);
     }
     if (data.historia !== undefined) {
       sets.push("historia = ?");
