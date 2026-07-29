@@ -31,6 +31,18 @@ export async function sendPasswordResetEmail(correo: string, nombre: string, res
   });
 }
 
+export async function sendEmailVerificationEmail(correo: string, nombre: string, verificationUrl: string) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: "Verifica tu cuenta en Huellitas Solidarias",
+    text: `Hola ${nombre}. Verifica tu cuenta aquí: ${verificationUrl}. El enlace vence en 15 minutos.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombre)},</p><p>Confirma que este correo te pertenece para activar tu cuenta.</p><p style="margin:28px 0"><a href="${verificationUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Verificar mi correo</a></p><p style="font-size:13px;color:#666">Este enlace vence en 15 minutos. Si no creaste esta cuenta, ignora el mensaje.</p></div>`,
+  });
+}
+
 export async function sendFundacionCredentialsEmail(
   correo: string,
   nombre: string,

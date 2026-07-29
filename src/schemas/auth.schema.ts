@@ -32,6 +32,19 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, "La contraseña debe tener mínimo 8 caracteres."),
 });
 
+export const sendEmailVerificationSchema = z.object({
+  correo: z.string().email("Correo inválido."),
+  nombre: z.string().trim().min(1).max(100).optional(),
+});
+
+export const verifyEmailQuerySchema = z.object({
+  token: z.string().min(32, "Token inválido."),
+});
+
+export const emailVerificationStatusQuerySchema = z.object({
+  correo: z.string().email("Correo inválido."),
+});
+
 export const updateProfileSchema = z.object({
   nombre: z.string().min(3).optional(),
   telefono: z.string().min(10).optional(),

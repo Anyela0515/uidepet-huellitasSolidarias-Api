@@ -10,7 +10,9 @@ import { mapUsuario } from "../utils/mappers.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuario.repository.js";
 import * as passwordResetRepo from "../repositories/passwordReset.repository.js";
-import { sendPasswordResetEmail } from "./email.service.js";
+import * as emailVerificationRepo from "../repositories/emailVerification.repository.js";
+import { sendPasswordResetEmail, sendEmailVerificationEmail } from "./email.service.js";
+import { NotFoundError } from "../utils/errors.js";
 
 function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
   const secret = process.env.JWT_SECRET;
@@ -101,6 +103,7 @@ export async function register(data: RegisterDTO) {
     telefono: data.telefono,
     direccion: data.direccion,
     rol: "usuario",
+    emailVerificado: false,
   });
 
   return { usuario };
@@ -149,6 +152,47 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
   const passwordHash = await bcrypt.hash(newPassword, 12);
   const consumed = await passwordResetRepo.consumeAndUpdatePassword(tokenHash, passwordHash);
   return consumed ? { ok: true } : { error: "El enlace es inválido, ya fue utilizado o venció." };
+}
+
+// A diferencia de requestPasswordReset, aquí SÍ se propaga el error de envío
+// (en vez de tragarlo con try/catch): el frontend llama esto justo después
+// de crear la cuenta y necesita poder avisar "se creó la cuenta pero no
+// pudimos enviar la verificación" si Gmail rechaza el correo.
+export async function sendEmailVerification(correoInput: string, nombreInput?: string) {
+  const correo = correoInput.trim().toLowerCase();
+  const row = await usuarioRepo.findByCorreo(correo);
+  if (!row) throw new NotFoundError("No existe una cuenta con ese correo.");
+
+  const usuario = mapUsuario(row);
+  if (usuario.emailVerificado) return { ok: true, alreadyVerified: true };
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  await emailVerificationRepo.create(usuario.id, tokenHash, expiresAt);
+
+  const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+  const verificationUrl = `${frontendUrl}/verificar-correo?token=${encodeURIComponent(token)}`;
+  await sendEmailVerificationEmail(correo, (nombreInput || usuario.nombre || "Usuario").trim(), verificationUrl);
+
+  return { ok: true };
+}
+
+export async function verifyEmail(token: string) {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const correo = await emailVerificationRepo.consumeAndVerify(tokenHash);
+  return correo
+    ? { ok: true, correo }
+    : { error: "El enlace es inválido, ya fue utilizado o venció." };
+}
+
+export async function getEmailVerificationStatus(correoInput: string) {
+  const correo = correoInput.trim().toLowerCase();
+  const row = await usuarioRepo.findByCorreo(correo);
+  if (!row) return { ok: true, status: "none", pending: false, verified: false };
+
+  const verified = mapUsuario(row).emailVerificado;
+  return { ok: true, status: verified ? "verified" : "pending", pending: !verified, verified };
 }
 
 export async function getMe(id: number) {

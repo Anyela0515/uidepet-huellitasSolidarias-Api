@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
 import {
   changePasswordSchema,
+  emailVerificationStatusQuerySchema,
   forgotPasswordSchema,
   googleLoginSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  sendEmailVerificationSchema,
   updateProfileSchema,
+  verifyEmailQuerySchema,
 } from "../schemas/auth.schema.js";
 import {
   actualizarEstadoUsuarioSchema,
@@ -86,6 +89,28 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     res.status(400).json(result);
     return;
   }
+  res.status(200).json(result);
+});
+
+export const sendEmailVerification = asyncHandler(async (req: Request, res: Response) => {
+  const { correo, nombre } = sendEmailVerificationSchema.parse(req.body);
+  const result = await authService.sendEmailVerification(correo, nombre);
+  res.status(200).json(result);
+});
+
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = verifyEmailQuerySchema.parse(req.query);
+  const result = await authService.verifyEmail(token);
+  if ("error" in result) {
+    res.status(400).json(result);
+    return;
+  }
+  res.status(200).json(result);
+});
+
+export const emailVerificationStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { correo } = emailVerificationStatusQuerySchema.parse(req.query);
+  const result = await authService.getEmailVerificationStatus(correo);
   res.status(200).json(result);
 });
 

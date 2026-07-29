@@ -25,6 +25,7 @@ const USER_SELECT = `
     u.correo,
     u.password_hash AS password,
     u.debe_cambiar_password,
+    u.email_verificado,
     u.creado_en,
     r.codigo AS rol_codigo,
     ec.codigo AS estado_codigo,
@@ -115,6 +116,7 @@ export async function create(
     ruc?: string;
     descripcion?: string;
     debeCambiarPassword?: boolean;
+    emailVerificado?: boolean;
   },
   externalConn?: PoolConnection
 ) {
@@ -128,9 +130,16 @@ export async function create(
     const estadoId = await catalog.getEstadoCuentaId("Activo", conn);
 
     const [userResult] = await conn.query<ResultSetHeader>(
-      `INSERT INTO usuarios (correo, password_hash, rol_id, estado_cuenta_id, debe_cambiar_password)
-       VALUES (?, ?, ?, ?, ?)`,
-      [data.correo, data.password, rolId, estadoId, data.debeCambiarPassword ? 1 : 0]
+      `INSERT INTO usuarios (correo, password_hash, rol_id, estado_cuenta_id, debe_cambiar_password, email_verificado)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        data.correo,
+        data.password,
+        rolId,
+        estadoId,
+        data.debeCambiarPassword ? 1 : 0,
+        data.emailVerificado === false ? 0 : 1,
+      ]
     );
 
     const usuarioId = userResult.insertId;

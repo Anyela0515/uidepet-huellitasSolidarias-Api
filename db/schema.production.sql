@@ -103,6 +103,11 @@ CREATE TABLE usuarios (
   rol_id TINYINT UNSIGNED NOT NULL,
   estado_cuenta_id TINYINT UNSIGNED NOT NULL,
   debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 0,
+  -- DEFAULT 1 a propósito: solo el autoregistro público de adoptantes exige
+  -- verificación (se inserta explícitamente en 0 ahí); cuentas creadas por
+  -- un admin, fundaciones, y logins de Google (que ya vienen con el correo
+  -- verificado por Google) quedan verificadas desde el inicio.
+  email_verificado TINYINT(1) NOT NULL DEFAULT 1,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_usuario_rol
     FOREIGN KEY (rol_id) REFERENCES roles(id),
@@ -130,6 +135,19 @@ CREATE TABLE password_reset_tokens (
   INDEX idx_password_reset_usuario (usuario_id),
   INDEX idx_password_reset_expires (expires_at),
   CONSTRAINT fk_password_reset_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+CREATE TABLE email_verification_tokens (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT UNSIGNED NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_email_verif_usuario (usuario_id),
+  INDEX idx_email_verif_expires (expires_at),
+  CONSTRAINT fk_email_verif_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 

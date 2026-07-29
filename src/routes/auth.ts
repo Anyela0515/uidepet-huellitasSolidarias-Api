@@ -10,6 +10,9 @@ router.post("/google", authRateLimiter, authController.googleLogin);
 router.post("/register", authRateLimiter, authController.register);
 router.post("/forgot-password", authRateLimiter, authController.forgotPassword);
 router.post("/reset-password", authRateLimiter, authController.resetPassword);
+router.post("/send-verification", authRateLimiter, authController.sendEmailVerification);
+router.get("/verify-email", authController.verifyEmail);
+router.get("/verification-status", authController.emailVerificationStatus);
 
 router.get("/me", requireJwt, authController.me);
 router.patch("/perfil", requireJwt, authController.updateProfile);

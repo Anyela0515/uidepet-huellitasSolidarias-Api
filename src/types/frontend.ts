@@ -10,6 +10,7 @@ export interface Usuario {
   organizacion?: string;
   miembroDesde?: string;
   debeCambiarPassword: boolean;
+  emailVerificado: boolean;
 }
 
 export interface Mascota {
