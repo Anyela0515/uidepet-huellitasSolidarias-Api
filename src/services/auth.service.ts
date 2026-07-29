@@ -18,11 +18,19 @@ function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
     throw new Error("JWT_SECRET no configurado correctamente.");
   }
 
-  return jwt.sign(
-    { sub: usuario.id, correo: usuario.correo, rol: usuario.rol },
-    secret,
-    { expiresIn: (process.env.JWT_EXPIRES_IN || "8h") as jwt.SignOptions["expiresIn"] }
-  );
+  const payload = { sub: usuario.id, correo: usuario.correo, rol: usuario.rol };
+
+  // El admin es una única cuenta interna de confianza: no se le vence la
+  // sesión, para que pueda trabajar el tiempo que necesite sin que se le
+  // cierre a mitad de una tarea. Usuarios y fundaciones sí expiran (8h por
+  // defecto) por ser cuentas más numerosas y de menor confianza.
+  if (usuario.rol === "admin") {
+    return jwt.sign(payload, secret);
+  }
+
+  return jwt.sign(payload, secret, {
+    expiresIn: (process.env.JWT_EXPIRES_IN || "4h") as jwt.SignOptions["expiresIn"],
+  });
 }
 
 export async function login(data: LoginDTO) {
