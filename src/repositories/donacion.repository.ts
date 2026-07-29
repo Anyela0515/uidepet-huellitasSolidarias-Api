@@ -134,7 +134,7 @@ export async function create(data: {
   cantidad: string;
   direccion: string;
   organizacionId: number;
-  comprobantePago?: string;
+  comprobantePago?: string | null;
 }) {
   const id = `DON-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const tipoId = await catalog.getOrCreateTipoDonacionId(data.tipo);

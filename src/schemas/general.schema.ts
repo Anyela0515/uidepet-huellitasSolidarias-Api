@@ -23,7 +23,8 @@ export const crearDonacionSchema = z.object({
     .string()
     .regex(/^data:(image\/[a-zA-Z0-9.+-]+|application\/pdf);base64,/, "Formato de comprobante inválido.")
     .max(7 * 1024 * 1024)
-    .optional(),
+    .optional()
+    .nullable(),
 });
 
 export const actualizarRolSchema = z.object({
