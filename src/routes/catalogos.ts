@@ -13,7 +13,10 @@ router.get("/sexos", controller.sexos);
 router.get("/tamanos", controller.tamanos);
 router.get("/unidades-edad", controller.unidadesEdad);
 router.get("/estados-mascota", controller.estadosMascota);
-router.get("/ciudades", controller.ciudades);
+// División política de Ecuador, en cascada: provincia -> cantón -> parroquia.
+router.get("/provincias", controller.provincias);
+router.get("/cantones", controller.cantones);
+router.get("/parroquias", controller.parroquias);
 router.get("/tags", controller.tags);
 router.get("/estados-solicitud-adopcion", controller.estadosSolicitudAdopcion);
 router.get(

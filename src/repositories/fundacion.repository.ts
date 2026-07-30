@@ -24,11 +24,14 @@ const SELECT = `
     s.nombre_documento,
     s.documento_contenido,
     s.creado_en,
-    c.nombre AS ciudad,
+    s.localidad_id,
+    CONCAT_WS(', ', c.nombre, c1.nombre, c2.nombre) AS ciudad,
     e.codigo AS estado_codigo,
     ec.codigo AS cuenta_estado
   FROM solicitudes_registro_organizacion s
-  INNER JOIN catalogos c ON c.id = s.ciudad_id AND c.tipo = 'ciudad'
+  INNER JOIN catalogos c ON c.id = s.localidad_id
+  LEFT JOIN catalogos c1 ON c1.id = c.padre_id
+  LEFT JOIN catalogos c2 ON c2.id = c1.padre_id
   INNER JOIN catalogos e ON e.id = s.estado_id AND e.tipo = 'estado_solicitud_organizacion'
   LEFT JOIN usuarios u ON u.correo = s.correo
   LEFT JOIN catalogos ec ON ec.id = u.estado_cuenta_id AND ec.tipo = 'estado_cuenta'
@@ -94,20 +97,20 @@ export async function create(data: {
   representante: string;
   correo: string;
   telefono: string;
-  ciudad: string;
+  localidadId: number;
   descripcion: string;
   documento?: string;
   documentoContenido?: string;
 }) {
   const id = `FUND-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const ciudadId = await catalog.getOrCreateCiudadId(data.ciudad);
+  const localidadId = await catalog.assertLocalidadId(Number(data.localidadId));
   const estadoId = await catalog.getEstadoSolicitudOrgId("pendiente");
   const nombreOrg = data.organizacion ?? data.nombre;
 
   await pool.query(
     `INSERT INTO solicitudes_registro_organizacion
       (id, nombre_organizacion, ruc, nombre_representante, correo, telefono,
-       ciudad_id, descripcion, nombre_documento, documento_contenido, estado_id)
+       localidad_id, descripcion, nombre_documento, documento_contenido, estado_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
@@ -116,7 +119,7 @@ export async function create(data: {
       data.representante,
       data.correo.trim().toLowerCase(),
       data.telefono,
-      ciudadId,
+      localidadId,
       data.descripcion,
       data.documento ?? "",
       data.documentoContenido ?? null,

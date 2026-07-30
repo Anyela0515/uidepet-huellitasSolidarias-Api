@@ -99,24 +99,36 @@ export function registrarToolsLecturaPublica(server: McpServer): void {
     {
       title: "Consultar un catálogo de referencia",
       description:
-        "Consulta las listas de referencia de la plataforma: especies, razas, ciudades o tags. " +
-        'Para "razas" se puede filtrar por especieId, porque cada raza pertenece a una especie ' +
-        '(p. ej. "Mestizo" existe por separado para Perro y para Gato).',
+        "Consulta las listas de referencia de la plataforma: especies, razas, tags, y la " +
+        "división política de Ecuador (provincias, cantones y parroquias). " +
+        'Para "razas" se filtra por especieId, porque cada raza pertenece a una especie ' +
+        '(p. ej. "Mestizo" existe por separado para Perro y para Gato). ' +
+        'Para "cantones" se filtra por padreId (la provincia) y para "parroquias" es ' +
+        "obligatorio (el cantón), porque hay más de 1300.",
       inputSchema: {
         tipo: z
-          .enum(["especies", "razas", "ciudades", "tags"])
+          .enum(["especies", "razas", "tags", "provincias", "cantones", "parroquias"])
           .describe("Catálogo a consultar."),
-        especieId: z
+        padreId: z
           .number()
           .int()
           .positive()
           .optional()
-          .describe('Solo para tipo="razas": filtra las razas de esa especie.'),
+          .describe(
+            'Id del elemento padre: la especie para "razas", la provincia para ' +
+              '"cantones", el cantón para "parroquias" (aquí es obligatorio).'
+          ),
       },
       annotations: SOLO_LECTURA,
     },
-    async ({ tipo, especieId }) => {
-      const query = tipo === "razas" && especieId ? { especieId } : undefined;
+    async ({ tipo, padreId }) => {
+      const claveFiltro: Record<string, string> = {
+        razas: "especieId",
+        cantones: "provinciaId",
+        parroquias: "cantonId",
+      };
+      const clave = claveFiltro[tipo];
+      const query = clave && padreId ? { [clave]: padreId } : undefined;
       const datos = await apiRequest("GET", `/catalogos/${tipo}`, { query });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }

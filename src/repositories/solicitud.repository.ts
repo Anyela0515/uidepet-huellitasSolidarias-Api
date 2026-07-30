@@ -46,7 +46,7 @@ const SOLICITUD_SELECT = `
     sa.telefono_declarado AS form_telefono_declarado,
     sa.correo_declarado AS form_correo_declarado,
     sa.direccion_declarada AS form_direccion_declarada,
-    cf.nombre AS form_ciudad,
+    CONCAT_WS(', ', loc.nombre, loc1.nombre, loc2.nombre) AS form_ciudad,
     tv.nombre AS form_tipo_vivienda,
     sa.personas_hogar AS form_personas_hogar,
     sa.acuerdo_hogar AS form_acuerdo_hogar,
@@ -110,7 +110,13 @@ const SOLICITUD_SELECT = `
   INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
   INNER JOIN organizaciones o ON o.id = sa.organizacion_id
   INNER JOIN usuarios uf ON uf.id = o.usuario_id
-  LEFT JOIN catalogos cf ON cf.id = sa.ciudad_id AND cf.tipo = 'ciudad'
+  -- La localidad apunta al nivel más específico elegido (normalmente una
+  -- parroquia); se sube por padre_id para armar "parroquia, cantón, provincia".
+  -- CONCAT_WS omite los niveles nulos, así que una fila que solo llega a
+  -- cantón devuelve "cantón, provincia" sin dejar comas sueltas.
+  LEFT JOIN catalogos loc  ON loc.id = sa.localidad_id
+  LEFT JOIN catalogos loc1 ON loc1.id = loc.padre_id
+  LEFT JOIN catalogos loc2 ON loc2.id = loc1.padre_id
   LEFT JOIN catalogos tv ON tv.id = sa.tipo_vivienda_id AND tv.tipo = 'tipo_vivienda'
 `;
 
@@ -318,9 +324,18 @@ export async function create(
   const estadoId = await catalog.getEstadoSolicitudAdopcionId("revision");
   const form = data.form as Record<string, unknown>;
 
-  const ciudadId = await catalog.getOrCreateCiudadId(
-    String(form.ciudad ?? pet.ubicacion ?? "Loja")
-  );
+  // El formulario manda el id de la localidad elegida en los selectores en
+  // cascada. Si viniera solo un nombre (cliente antiguo), se intenta resolver
+  // contra la división política antes de rendirse.
+  const localidadId = form.localidadId
+    ? await catalog.assertLocalidadId(Number(form.localidadId))
+    : await catalog.findLocalidadIdByNombre(
+        String(form.ciudad ?? pet.ubicacion ?? "")
+      );
+  if (!localidadId) {
+    throw new Error("Debes elegir provincia, cantón y parroquia.");
+  }
+
   const viviendaId = await catalog.getOrCreateTipoViviendaId(
     String(form.tipoVivienda ?? "Casa")
   );
@@ -333,7 +348,7 @@ export async function create(
       `INSERT INTO solicitudes_adopcion
         (id, mascota_id, adoptante_id, organizacion_id, estado_id, observaciones, proximo_paso,
          nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
-         direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
+         direccion_declarada, localidad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
          permanencia_animal, lugar_dormir, tiene_mascotas, cantidad_mascotas, tipos_mascotas,
          vacunas, esterilizacion, responsable_cuidado, responsable_gastos, acepta_seguimiento,
          acepta_contrato, declaracion_veracidad)
@@ -351,7 +366,7 @@ export async function create(
         String(form.telefono ?? ""),
         String(form.correo ?? user.correo),
         String(form.direccion ?? ""),
-        ciudadId,
+        localidadId,
         viviendaId,
         String(form.personasHogar ?? ""),
         String(form.acuerdoHogar ?? ""),

@@ -11,6 +11,9 @@ export interface OrganizacionPerfil {
   ruc: string;
   telefono: string;
   ciudad: string;
+  provinciaId: number | null;
+  cantonId: number | null;
+  localidadId: number | null;
   descripcion: string;
   direccion: string;
   correo: string;
@@ -21,11 +24,23 @@ export interface OrganizacionPerfil {
 
 const SELECT = `
   SELECT
-    o.id, o.nombre, o.ruc, o.telefono, c.nombre AS ciudad,
+    o.id, o.nombre, o.ruc, o.telefono,
+    CONCAT_WS(', ', c.nombre, c1.nombre, c2.nombre) AS ciudad,
+    -- Los ids se resuelven por tipo, no por posición: una organización
+    -- histórica puede tener guardado un cantón en vez de una parroquia, y
+    -- entonces el primer nivel es el cantón y el segundo la provincia.
+    CASE WHEN c.tipo = 'parroquia' THEN c.id END AS parroquia_id,
+    CASE WHEN c.tipo = 'canton' THEN c.id
+         WHEN c1.tipo = 'canton' THEN c1.id END AS canton_id,
+    CASE WHEN c.tipo = 'provincia' THEN c.id
+         WHEN c1.tipo = 'provincia' THEN c1.id
+         WHEN c2.tipo = 'provincia' THEN c2.id END AS provincia_id,
     o.descripcion, o.direccion, o.activo, o.imagen_qr, o.imagen, u.correo
   FROM organizaciones o
   INNER JOIN usuarios u ON u.id = o.usuario_id
-  LEFT JOIN catalogos c ON c.id = o.ciudad_id AND c.tipo = 'ciudad'
+  LEFT JOIN catalogos c  ON c.id = o.localidad_id
+  LEFT JOIN catalogos c1 ON c1.id = c.padre_id
+  LEFT JOIN catalogos c2 ON c2.id = c1.padre_id
 `;
 
 function map(row: RowDataPacket): OrganizacionPerfil {
@@ -35,6 +50,9 @@ function map(row: RowDataPacket): OrganizacionPerfil {
     ruc: String(row.ruc ?? ""),
     telefono: String(row.telefono ?? ""),
     ciudad: String(row.ciudad ?? ""),
+    provinciaId: row.provincia_id ? Number(row.provincia_id) : null,
+    cantonId: row.canton_id ? Number(row.canton_id) : null,
+    localidadId: row.parroquia_id ? Number(row.parroquia_id) : null,
     descripcion: String(row.descripcion ?? ""),
     direccion: String(row.direccion ?? ""),
     correo: String(row.correo ?? ""),
@@ -56,9 +74,13 @@ export async function findByUsuarioCorreo(correo: string): Promise<OrganizacionP
 
 export async function findPublicas() {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT o.id, o.nombre, c.nombre AS ciudad, o.descripcion, o.imagen_qr, o.imagen
+    `SELECT o.id, o.nombre,
+            CONCAT_WS(', ', c.nombre, c1.nombre, c2.nombre) AS ciudad,
+            o.descripcion, o.imagen_qr, o.imagen
      FROM organizaciones o
-     LEFT JOIN catalogos c ON c.id = o.ciudad_id AND c.tipo = 'ciudad'
+     LEFT JOIN catalogos c  ON c.id = o.localidad_id
+     LEFT JOIN catalogos c1 ON c1.id = c.padre_id
+     LEFT JOIN catalogos c2 ON c2.id = c1.padre_id
      WHERE o.activo = 1
      ORDER BY o.nombre ASC`
   );
@@ -66,6 +88,9 @@ export async function findPublicas() {
     id: Number(row.id),
     nombre: String(row.nombre ?? ""),
     ciudad: String(row.ciudad ?? ""),
+    provinciaId: row.provincia_id ? Number(row.provincia_id) : null,
+    cantonId: row.canton_id ? Number(row.canton_id) : null,
+    localidadId: row.parroquia_id ? Number(row.parroquia_id) : null,
     descripcion: String(row.descripcion ?? ""),
     imagenQr: row.imagen_qr ? String(row.imagen_qr) : null,
     imagen: row.imagen ? String(row.imagen) : null,
@@ -76,7 +101,7 @@ export async function updateByUsuarioCorreo(
   correo: string,
   data: {
     telefono?: string;
-    ciudad?: string;
+    localidadId?: number;
     descripcion?: string;
     direccion?: string;
     imagenQr?: string | null;
@@ -106,9 +131,9 @@ export async function updateByUsuarioCorreo(
     sets.push("imagen = ?");
     values.push(data.imagen);
   }
-  if (data.ciudad !== undefined) {
-    sets.push("ciudad_id = ?");
-    values.push(await catalog.getOrCreateCiudadId(data.ciudad));
+  if (data.localidadId !== undefined) {
+    sets.push("localidad_id = ?");
+    values.push(await catalog.assertLocalidadId(Number(data.localidadId)));
   }
 
   if (sets.length) {

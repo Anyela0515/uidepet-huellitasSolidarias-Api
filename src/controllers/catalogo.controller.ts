@@ -39,8 +39,22 @@ export const estadosMascota = asyncHandler(async (_req: Request, res: Response) 
   ok(res, await catalogoService.listarEstadosMascota());
 });
 
-export const ciudades = asyncHandler(async (_req: Request, res: Response) => {
-  ok(res, await catalogoService.listarCiudades());
+export const provincias = asyncHandler(async (_req: Request, res: Response) => {
+  ok(res, await catalogoService.listarProvincias());
+});
+
+export const cantones = asyncHandler(async (req: Request, res: Response) => {
+  const provinciaId = req.query.provinciaId ? Number(req.query.provinciaId) : undefined;
+  ok(res, await catalogoService.listarCantones(provinciaId));
+});
+
+export const parroquias = asyncHandler(async (req: Request, res: Response) => {
+  const cantonId = Number(req.query.cantonId);
+  if (!Number.isInteger(cantonId) || cantonId <= 0) {
+    res.status(422).json({ error: "Se requiere cantonId." });
+    return;
+  }
+  ok(res, await catalogoService.listarParroquias(cantonId));
 });
 
 export const tags = asyncHandler(async (_req: Request, res: Response) => {

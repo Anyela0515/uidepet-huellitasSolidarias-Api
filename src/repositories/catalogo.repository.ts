@@ -41,7 +41,35 @@ export const getSexos = () => listPorTipoNombre("sexo");
 export const getTamanos = () => listPorTipoNombre("tamano");
 export const getUnidadesEdad = () => listPorTipoNombre("unidad_edad");
 export const getEstadosMascota = () => listPorTipoCodigo("estado_mascota");
-export const getCiudades = () => listPorTipoNombre("ciudad");
+export const getProvincias = () => listPorTipoNombre("provincia");
+
+/** Cantones de una provincia (o todos, si no se filtra). */
+export async function getCantones(provinciaId?: number): Promise<RazaItem[]> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    provinciaId
+      ? "SELECT id, padre_id, nombre FROM catalogos WHERE tipo = 'canton' AND padre_id = ? ORDER BY nombre ASC"
+      : "SELECT id, padre_id, nombre FROM catalogos WHERE tipo = 'canton' ORDER BY nombre ASC",
+    provinciaId ? [provinciaId] : []
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    especieId: Number(row.padre_id),
+    nombre: String(row.nombre),
+  }));
+}
+
+/** Parroquias de un cantón. Se exige el filtro: son más de 1300 en total. */
+export async function getParroquias(cantonId: number): Promise<RazaItem[]> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT id, padre_id, nombre FROM catalogos WHERE tipo = 'parroquia' AND padre_id = ? ORDER BY nombre ASC",
+    [cantonId]
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    especieId: Number(row.padre_id),
+    nombre: String(row.nombre),
+  }));
+}
 export const getTags = () => listPorTipoNombre("tag");
 export const getEstadosSolicitudAdopcion = () => listPorTipoCodigo("estado_solicitud_adopcion");
 export const getEstadosSolicitudOrganizacion = () =>

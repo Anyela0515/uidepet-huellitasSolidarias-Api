@@ -97,7 +97,7 @@ describe("Mascotas", () => {
       representante: "Rep Vitest",
       correo,
       telefono: "0987654321",
-      ciudad: "Loja",
+      localidadId: (await request(app).get("/catalogos/provincias")).body.data[0].id,
       descripcion: "Fundación de prueba para aislar recursos entre tenants.",
     });
     expect(solicitud.status).toBe(201);

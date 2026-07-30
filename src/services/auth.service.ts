@@ -271,7 +271,7 @@ export async function createFundacionUser(
     organizacion?: string;
     password: string;
     ruc?: string;
-    ciudad?: string;
+    localidadId?: number;
     descripcion?: string;
   },
   conn?: PoolConnection
@@ -289,7 +289,7 @@ export async function createFundacionUser(
           usuarioId: Number(exists.id),
           organizacion: data.organizacion,
           ruc: data.ruc,
-          ciudad: data.ciudad,
+          localidadId: data.localidadId,
           telefono: data.telefono,
           descripcion: data.descripcion,
           direccion: undefined,
@@ -311,7 +311,7 @@ export async function createFundacionUser(
       rol: "fundacion",
       organizacion: data.organizacion,
       ruc: data.ruc,
-      ciudad: data.ciudad,
+      localidadId: data.localidadId,
       descripcion: data.descripcion,
       debeCambiarPassword: true,
     },

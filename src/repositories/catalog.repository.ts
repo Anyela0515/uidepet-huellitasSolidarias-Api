@@ -100,8 +100,38 @@ export async function getEstadoDenunciaId(codigo: string, conn: Executor = pool)
   return id;
 }
 
-export async function getOrCreateCiudadId(nombre: string, conn: Executor = pool): Promise<number> {
-  return getOrCreateCatalogoId("ciudad", nombre, conn);
+/**
+ * Valida que el id recibido sea realmente una localidad de la división
+ * política. No se hace getOrCreate como con los otros catálogos: las
+ * provincias, cantones y parroquias son una lista oficial cerrada, y dejar
+ * que el frontend inventara una nueva es justo lo que llenó el catálogo
+ * anterior de entradas escritas a mano.
+ */
+export async function assertLocalidadId(
+  localidadId: number,
+  conn: Executor = pool
+): Promise<number> {
+  const [rows] = await conn.query<RowDataPacket[]>(
+    "SELECT id FROM catalogos WHERE id = ? AND tipo IN ('provincia','canton','parroquia') LIMIT 1",
+    [localidadId]
+  );
+  if (!rows[0]) throw new Error(`Localidad no encontrada: ${localidadId}`);
+  return Number(rows[0].id);
+}
+
+/** Busca una localidad por nombre, del nivel más específico al más general. */
+export async function findLocalidadIdByNombre(
+  nombre: string,
+  conn: Executor = pool
+): Promise<number | null> {
+  const [rows] = await conn.query<RowDataPacket[]>(
+    `SELECT id FROM catalogos
+     WHERE tipo IN ('parroquia','canton','provincia') AND nombre = ?
+     ORDER BY FIELD(tipo, 'parroquia', 'canton', 'provincia')
+     LIMIT 1`,
+    [nombre.trim()]
+  );
+  return rows[0] ? Number(rows[0].id) : null;
 }
 
 export async function getOrCreateEspecieId(nombre: string, conn: Executor = pool): Promise<number> {

@@ -21,7 +21,7 @@ export const formularioAdopcionSchema = z
     telefono: z.string().min(7, "El teléfono declarado es obligatorio.").max(20),
     correo: z.string().email("Correo declarado inválido.").max(150),
     direccion: z.string().min(5, "La dirección declarada es obligatoria.").max(255),
-    ciudad: z.string().min(2, "La ciudad es obligatoria.").max(80),
+    localidadId: z.number().int().positive({ message: "Debes elegir provincia, cantón y parroquia." }),
     tipoVivienda: z.string().min(2, "El tipo de vivienda es obligatorio.").max(40),
     personasHogar: z.string().min(1, "Indica cuántas personas viven en el hogar.").max(20),
     acuerdoHogar: z.string().min(1, "Indica si todo el hogar está de acuerdo.").max(10),

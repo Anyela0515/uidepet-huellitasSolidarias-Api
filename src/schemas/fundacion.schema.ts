@@ -7,7 +7,7 @@ export const crearFundacionSchema = z.object({
   representante: z.string().trim().min(3),
   correo: z.string().trim().email(),
   telefono: z.string().trim().min(10),
-  ciudad: z.string().trim().min(2),
+  localidadId: z.number().int().positive(),
   descripcion: z.string().trim().min(10),
   documento: z.string().trim().optional(),
   // Data URL en base64 (PDF, máx. ~5MB en el frontend); ~7MB en base64.
@@ -21,7 +21,7 @@ export const actualizarEstadoFundacionSchema = z.object({
 export const actualizarPerfilFundacionSchema = z
   .object({
     telefono: z.string().trim().min(7).max(20).optional(),
-    ciudad: z.string().trim().min(2).optional(),
+    localidadId: z.number().int().positive().optional(),
     descripcion: z.string().trim().min(10).optional(),
     direccion: z.string().trim().min(5).optional(),
     // Data URL en base64; puede contener varios códigos QR combinados en

@@ -215,6 +215,7 @@ export function mapFundacion(row: Record<string, unknown>): FundacionPendiente {
     correo: String(row.correo ?? ""),
     telefono: String(row.telefono ?? ""),
     ciudad: String(row.ciudad ?? ""),
+    localidadId: row.localidad_id ? Number(row.localidad_id) : null,
     descripcion: String(row.descripcion ?? ""),
     documento: String(row.nombre_documento ?? row.documento ?? ""),
     documentoContenido: row.documento_contenido ? String(row.documento_contenido) : null,

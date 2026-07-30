@@ -45,7 +45,7 @@ export async function registrarFundacion(data: {
   representante: string;
   correo: string;
   telefono: string;
-  ciudad: string;
+  localidadId: number;
   descripcion: string;
   documento?: string;
   documentoContenido?: string;
@@ -115,7 +115,7 @@ export async function actualizarEstado(
           organizacion: updated.organizacion || updated.nombre,
           password: temporaryPassword,
           ruc: updated.ruc,
-          ciudad: updated.ciudad,
+          localidadId: updated.localidadId ?? undefined,
           descripcion: updated.descripcion,
         },
         conn
@@ -169,7 +169,7 @@ export async function actualizarPerfilPropio(
   correo: string,
   data: {
     telefono?: string;
-    ciudad?: string;
+    localidadId?: number;
     descripcion?: string;
     direccion?: string;
     imagenQr?: string | null;

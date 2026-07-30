@@ -843,13 +843,39 @@ paths:
       responses:
         "200": { description: OK }
 
-  /catalogos/ciudades:
+  /catalogos/provincias:
     get:
       tags: [Catalogos]
-      summary: Listar ciudades
+      summary: Listar las 24 provincias de Ecuador
       security: []
       responses:
         "200": { description: OK }
+
+  /catalogos/cantones:
+    get:
+      tags: [Catalogos]
+      summary: Listar cantones (opcionalmente filtrados por provincia)
+      security: []
+      parameters:
+        - name: provinciaId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+
+  /catalogos/parroquias:
+    get:
+      tags: [Catalogos]
+      summary: Listar las parroquias de un cantón
+      security: []
+      parameters:
+        - name: cantonId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: OK }
+        "422": { description: Falta cantonId }
 
   /catalogos/tags:
     get:

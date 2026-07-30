@@ -7,7 +7,7 @@ export const listarSexos = catalogoRepo.getSexos;
 export const listarTamanos = catalogoRepo.getTamanos;
 export const listarUnidadesEdad = catalogoRepo.getUnidadesEdad;
 export const listarEstadosMascota = catalogoRepo.getEstadosMascota;
-export const listarCiudades = catalogoRepo.getCiudades;
+export const listarProvincias = catalogoRepo.getProvincias;
 export const listarTags = catalogoRepo.getTags;
 export const listarEstadosSolicitudAdopcion = catalogoRepo.getEstadosSolicitudAdopcion;
 export const listarEstadosSolicitudOrganizacion =
@@ -19,4 +19,12 @@ export const listarTiposMedio = catalogoRepo.getTiposMedio;
 
 export function listarRazas(especieId?: number) {
   return catalogoRepo.getRazas(especieId);
+}
+
+export function listarCantones(provinciaId?: number) {
+  return catalogoRepo.getCantones(provinciaId);
+}
+
+export function listarParroquias(cantonId: number) {
+  return catalogoRepo.getParroquias(cantonId);
 }

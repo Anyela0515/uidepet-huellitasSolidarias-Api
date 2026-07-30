@@ -110,7 +110,7 @@ export async function create(
     direccion?: string;
     rol?: string;
     organizacion?: string;
-    ciudad?: string;
+    localidadId?: number;
     ruc?: string;
     descripcion?: string;
     debeCambiarPassword?: boolean;
@@ -148,19 +148,19 @@ export async function create(
     const usuarioId = userResult.insertId;
 
     if (data.rol === "fundacion" && data.organizacion) {
-      const ciudadId = data.ciudad
-        ? await catalog.getOrCreateCiudadId(data.ciudad, conn)
+      const localidadId = data.localidadId
+        ? await catalog.assertLocalidadId(Number(data.localidadId), conn)
         : null;
 
       await conn.query(
         `INSERT INTO organizaciones
-          (nombre, ruc, telefono, ciudad_id, descripcion, direccion, usuario_id)
+          (nombre, ruc, telefono, localidad_id, descripcion, direccion, usuario_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           data.organizacion,
           data.ruc ?? null,
           data.telefono ?? null,
-          ciudadId,
+          localidadId,
           data.descripcion ?? null,
           data.direccion ?? null,
           usuarioId,
@@ -270,7 +270,7 @@ export async function ensureOrganizacion(
     usuarioId: number;
     organizacion: string;
     ruc?: string;
-    ciudad?: string;
+    localidadId?: number;
     telefono?: string;
     descripcion?: string;
     direccion?: string;
@@ -280,19 +280,19 @@ export async function ensureOrganizacion(
   const existing = await catalog.findOrganizacionIdByUsuarioId(data.usuarioId, conn);
   if (existing) return existing;
 
-  const ciudadId = data.ciudad
-    ? await catalog.getOrCreateCiudadId(data.ciudad, conn)
+  const localidadId = data.localidadId
+    ? await catalog.assertLocalidadId(Number(data.localidadId), conn)
     : null;
 
   const [result] = await conn.query<ResultSetHeader>(
     `INSERT INTO organizaciones
-      (nombre, ruc, telefono, ciudad_id, descripcion, direccion, usuario_id)
+      (nombre, ruc, telefono, localidad_id, descripcion, direccion, usuario_id)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       data.organizacion,
       data.ruc ?? null,
       data.telefono ?? null,
-      ciudadId,
+      localidadId,
       data.descripcion ?? null,
       data.direccion ?? null,
       data.usuarioId,

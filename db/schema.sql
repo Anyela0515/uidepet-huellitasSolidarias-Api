@@ -38,8 +38,13 @@ CREATE TABLE schema_migrations (
 -- y `catalogos` por separado. `tipo` distingue el dominio; `codigo` es el
 -- valor real para los catálogos que antes solo tenían código (nunca se leía
 -- un nombre distinto); `nombre` es el valor real para los que sí tienen
--- texto propio. `padre_id` solo se usa en 'raza' (apunta a su propia
--- 'especie', otra fila de esta misma tabla).
+-- texto propio.
+--
+-- `padre_id` construye las dos jerarquías de la app, ambas dentro de esta
+-- misma tabla: 'raza' apunta a su 'especie', y la división política de
+-- Ecuador encadena tres niveles ('parroquia' -> 'canton' -> 'provincia').
+-- Las localidades las siembra db/migrations/2026_07_30_localidades_ecuador.sql
+-- (24 provincias, 221 cantones, 1362 parroquias).
 CREATE TABLE catalogos (
   id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tipo VARCHAR(32) NOT NULL,
@@ -53,10 +58,12 @@ CREATE TABLE catalogos (
     'rol','estado_cuenta','estado_mascota','estado_solicitud_adopcion',
     'estado_solicitud_organizacion','estado_donacion','tipo_medio','estado_denuncia',
     'especie','raza','sexo','tamano','unidad_edad',
-    'ciudad','tag','tipo_vivienda','tipo_donacion'
+    'ciudad','tag','tipo_vivienda','tipo_donacion',
+    'provincia','canton','parroquia'
   )),
-  CONSTRAINT chk_catalogo_raza_padre CHECK (
-    (tipo = 'raza' AND padre_id IS NOT NULL) OR (tipo <> 'raza' AND padre_id IS NULL)
+  CONSTRAINT chk_catalogo_jerarquia CHECK (
+    (tipo IN ('raza','canton','parroquia') AND padre_id IS NOT NULL) OR
+    (tipo NOT IN ('raza','canton','parroquia') AND padre_id IS NULL)
   ),
   CONSTRAINT fk_catalogo_padre
     FOREIGN KEY (padre_id) REFERENCES catalogos(id)
@@ -115,7 +122,7 @@ CREATE TABLE organizaciones (
   nombre VARCHAR(150) NOT NULL,
   ruc VARCHAR(13) UNIQUE,
   telefono VARCHAR(20),
-  ciudad_id SMALLINT UNSIGNED,
+  localidad_id SMALLINT UNSIGNED,
   descripcion TEXT,
   direccion VARCHAR(255),
   usuario_id INT UNSIGNED NOT NULL UNIQUE,
@@ -123,8 +130,8 @@ CREATE TABLE organizaciones (
   imagen_qr LONGTEXT NULL,
   imagen LONGTEXT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_org_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
+  CONSTRAINT fk_org_localidad
+    FOREIGN KEY (localidad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_org_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
   CONSTRAINT chk_organizaciones_activo CHECK (activo IN (0, 1))
@@ -140,7 +147,7 @@ CREATE TABLE solicitudes_registro_organizacion (
   nombre_representante VARCHAR(120) NOT NULL,
   correo VARCHAR(150) NOT NULL,
   telefono VARCHAR(20) NOT NULL,
-  ciudad_id SMALLINT UNSIGNED NOT NULL,
+  localidad_id SMALLINT UNSIGNED NOT NULL,
   descripcion TEXT NOT NULL,
   nombre_documento VARCHAR(255),
   documento_contenido LONGTEXT NULL,
@@ -148,8 +155,8 @@ CREATE TABLE solicitudes_registro_organizacion (
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_sol_org_correo (correo),
   UNIQUE KEY uq_sol_org_ruc (ruc),
-  CONSTRAINT fk_sol_org_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
+  CONSTRAINT fk_sol_org_localidad
+    FOREIGN KEY (localidad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_sol_org_estado
     FOREIGN KEY (estado_id) REFERENCES catalogos(id)
 );
@@ -231,7 +238,10 @@ CREATE TABLE solicitudes_adopcion (
   telefono_declarado VARCHAR(20) NOT NULL,
   correo_declarado VARCHAR(150) NOT NULL,
   direccion_declarada VARCHAR(255) NOT NULL,
-  ciudad_id SMALLINT UNSIGNED NOT NULL,
+  -- Apunta al nivel más específico que eligió la persona en la división
+  -- política (normalmente una 'parroquia'). La ruta completa
+  -- parroquia -> cantón -> provincia se obtiene subiendo por `padre_id`.
+  localidad_id SMALLINT UNSIGNED NOT NULL,
   tipo_vivienda_id SMALLINT UNSIGNED NOT NULL,
   personas_hogar VARCHAR(20) NOT NULL,
   acuerdo_hogar VARCHAR(10) NOT NULL,
@@ -259,8 +269,8 @@ CREATE TABLE solicitudes_adopcion (
     FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id),
   CONSTRAINT fk_sol_adop_estado
     FOREIGN KEY (estado_id) REFERENCES catalogos(id),
-  CONSTRAINT fk_sol_adop_ciudad
-    FOREIGN KEY (ciudad_id) REFERENCES catalogos(id),
+  CONSTRAINT fk_sol_adop_localidad
+    FOREIGN KEY (localidad_id) REFERENCES catalogos(id),
   CONSTRAINT fk_sol_adop_vivienda
     FOREIGN KEY (tipo_vivienda_id) REFERENCES catalogos(id),
   INDEX idx_sol_adop_mascota (mascota_id),
@@ -302,8 +312,9 @@ CREATE TABLE archivos (
     FOREIGN KEY (solicitud_id) REFERENCES solicitudes_adopcion(id) ON DELETE CASCADE,
   CONSTRAINT fk_archivo_seguimiento
     FOREIGN KEY (seguimiento_id) REFERENCES seguimientos_adopcion(id) ON DELETE CASCADE,
-  CONSTRAINT fk_archivo_denuncia
-    FOREIGN KEY (denuncia_id) REFERENCES denuncias_rescate(id) ON DELETE CASCADE,
+  -- La FK a denuncias_rescate se agrega más abajo con ALTER TABLE, porque esa
+  -- tabla todavía no existe en este punto del archivo (mismo caso que
+  -- mensajes -> donaciones).
   CONSTRAINT chk_archivo_un_dueno CHECK (
     (solicitud_id IS NOT NULL) + (seguimiento_id IS NOT NULL) + (denuncia_id IS NOT NULL) = 1
   ),
@@ -398,6 +409,10 @@ CREATE TABLE denuncias_rescate (
   INDEX idx_denuncia_estado (estado_id)
 );
 
+ALTER TABLE archivos
+  ADD CONSTRAINT fk_archivo_denuncia
+    FOREIGN KEY (denuncia_id) REFERENCES denuncias_rescate(id) ON DELETE CASCADE;
+
 -- =============================================================================
 -- DATOS INICIALES DE CATÁLOGO
 -- =============================================================================
@@ -424,8 +439,8 @@ INSERT INTO catalogos (tipo, codigo) VALUES
   ('estado_mascota', 'Disponible'), ('estado_mascota', 'En proceso'),
   ('estado_mascota', 'Adoptado'), ('estado_mascota', 'Eliminado');
 
-INSERT INTO catalogos (tipo, nombre) VALUES
-  ('ciudad', 'Loja'), ('ciudad', 'Quito'), ('ciudad', 'Guayaquil'), ('ciudad', 'Cuenca'), ('ciudad', 'Ambato');
+-- Las localidades (provincia / cantón / parroquia) NO se siembran aquí: son
+-- 1607 filas que carga db/migrations/2026_07_30_localidades_ecuador.sql.
 
 INSERT INTO catalogos (tipo, nombre) VALUES
   ('tag', 'Vacunada'), ('tag', 'Vacunado'), ('tag', 'Esterilizada'), ('tag', 'Esterilizado'),

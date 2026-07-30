@@ -31,6 +31,21 @@ async function idByTipoNombre(conn, tipo, nombre) {
   return rows[0].id;
 }
 
+/** Resuelve una parroquia por su ruta provincia > cantón > parroquia. */
+async function idPorRuta(conn, provincia, canton, parroquia) {
+  const [rows] = await conn.query(
+    `SELECT par.id
+       FROM catalogos par
+       INNER JOIN catalogos cant ON cant.id = par.padre_id AND cant.tipo = 'canton'
+       INNER JOIN catalogos prov ON prov.id = cant.padre_id AND prov.tipo = 'provincia'
+      WHERE par.tipo = 'parroquia'
+        AND par.nombre = ? AND cant.nombre = ? AND prov.nombre = ?
+      LIMIT 1`,
+    [parroquia, canton, provincia]
+  );
+  return rows[0].id;
+}
+
 async function ensureRaza(conn, especieNombre, razaNombre) {
   const especieId = await idByTipoNombre(conn, "especie", especieNombre);
   const [rows] = await conn.query(
@@ -75,7 +90,10 @@ async function seed() {
     const rolFund = await idByTipoCodigo(conn, "rol", "fundacion");
     const rolUser = await idByTipoCodigo(conn, "rol", "usuario");
     const estadoActivo = await idByTipoCodigo(conn, "estado_cuenta", "Activo");
-    const ciudadLoja = await idByTipoNombre(conn, "ciudad", "Loja");
+    // Parroquia Sucre, cantón Loja, provincia Loja. Hay que resolver la ruta
+    // completa: varios cantones del país tienen una parroquia llamada SUCRE,
+    // así que buscar solo por nombre devolvería la de otra provincia.
+    const localidadLoja = await idPorRuta(conn, "LOJA", "LOJA", "SUCRE");
     const sexoHembra = await idByTipoNombre(conn, "sexo", "Hembra");
     const sexoMacho = await idByTipoNombre(conn, "sexo", "Macho");
     const tamPeq = await idByTipoNombre(conn, "tamano", "Pequeño");
@@ -151,13 +169,13 @@ async function seed() {
 
     const [orgResult] = await conn.query(
       `INSERT INTO organizaciones
-        (nombre, ruc, telefono, ciudad_id, descripcion, direccion, usuario_id)
+        (nombre, ruc, telefono, localidad_id, descripcion, direccion, usuario_id)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         "Fundación Huellitas",
         "1790012345001",
         "0998887766",
-        ciudadLoja,
+        localidadLoja,
         "Fundación de adopción responsable vinculada a UIDE.",
         "Av. Universitaria y Lourdes, Loja",
         userIds["fundacion@huellitas.com"],
@@ -252,7 +270,7 @@ async function seed() {
       `INSERT INTO solicitudes_adopcion
         (id, mascota_id, adoptante_id, organizacion_id, estado_id, observaciones, proximo_paso,
          nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
-         direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
+         direccion_declarada, localidad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
          permanencia_animal, lugar_dormir, tiene_mascotas, responsable_cuidado,
          responsable_gastos, acepta_seguimiento, acepta_contrato, declaracion_veracidad)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -269,7 +287,7 @@ async function seed() {
         "0991234567",
         "maria.torres@correo.com",
         "Barrio Central, Loja",
-        ciudadLoja,
+        localidadLoja,
         viviendaCasa,
         "3",
         "si",
@@ -287,7 +305,7 @@ async function seed() {
     await conn.query(
       `INSERT INTO solicitudes_registro_organizacion
         (id, nombre_organizacion, ruc, nombre_representante, correo, telefono,
-         ciudad_id, descripcion, nombre_documento, estado_id)
+         localidad_id, descripcion, nombre_documento, estado_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         `FUND-${Date.now()}-demo`,
@@ -296,7 +314,7 @@ async function seed() {
         "Ana Pérez",
         "patitasloja@correo.com",
         "0987776655",
-        ciudadLoja,
+        localidadLoja,
         "Organización sin fines de lucro dedicada al rescate animal.",
         "estatutos.pdf",
         estOrgPend,

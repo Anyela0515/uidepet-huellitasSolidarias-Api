@@ -19,14 +19,28 @@ async function loginAs(correo: string, password: string) {
   return res.body.token as string;
 }
 
-function formularioValido(overrides: Record<string, unknown> = {}) {
+/**
+ * Recorre la cascada real provincia -> cantón -> parroquia y devuelve el id de
+ * la parroquia, que es lo que envía el formulario. De paso ejercita los tres
+ * endpoints de la división política.
+ */
+async function primeraParroquiaId(): Promise<number> {
+  const provincias = await request(app).get("/catalogos/provincias");
+  const provinciaId = provincias.body.data[0].id;
+  const cantones = await request(app).get(`/catalogos/cantones?provinciaId=${provinciaId}`);
+  const cantonId = cantones.body.data[0].id;
+  const parroquias = await request(app).get(`/catalogos/parroquias?cantonId=${cantonId}`);
+  return parroquias.body.data[0].id as number;
+}
+
+function formularioValido(localidadId: number, overrides: Record<string, unknown> = {}) {
   return {
     nombre: "Adoptante Vitest",
     cedula: randomCedula(),
     telefono: "0991234567",
     correo: "adoptante.vitest@correo.com",
     direccion: "Calle de prueba 123",
-    ciudad: "Loja",
+    localidadId,
     tipoVivienda: "Casa",
     personasHogar: "3",
     acuerdoHogar: "Si",
@@ -80,7 +94,7 @@ describe("Solicitudes", () => {
     const solicitud = await request(app)
       .post("/solicitudes")
       .set("Authorization", `Bearer ${adoptanteToken}`)
-      .send({ petId: mascotaId, form: formularioValido() });
+      .send({ petId: mascotaId, form: formularioValido(await primeraParroquiaId()) });
     expect(solicitud.status).toBe(201);
     const solicitudId = solicitud.body.solicitud.id;
 

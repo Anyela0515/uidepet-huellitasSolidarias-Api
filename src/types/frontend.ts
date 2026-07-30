@@ -89,6 +89,7 @@ export interface FundacionPendiente {
   correo: string;
   telefono: string;
   ciudad: string;
+  localidadId?: number | null;
   descripcion: string;
   documento: string;
   documentoContenido: string | null;
