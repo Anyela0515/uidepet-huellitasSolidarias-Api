@@ -9,7 +9,7 @@ import { isAvailableForAdoption } from "./mascota.service.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { SOLICITUD_SORT_FIELDS } from "../repositories/solicitud.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
-import { sendNuevoMensajeNotificationEmail } from "./email.service.js";
+import { sendNuevoMensajeNotificationEmail, sendSolicitudRechazadaEmail } from "./email.service.js";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   revision: ["aprobada", "rechazada"],
@@ -122,6 +122,20 @@ export async function actualizarEstado(
       data,
       ALLOWED_TRANSITIONS
     );
+
+    if (data.estado === "rechazada" && data.observaciones) {
+      try {
+        await sendSolicitudRechazadaEmail(
+          actual.adoptanteEmail,
+          actual.adoptante,
+          actual.mascota,
+          data.observaciones
+        );
+      } catch (error) {
+        console.error("No se pudo enviar el correo de solicitud rechazada:", error);
+      }
+    }
+
     return { solicitud };
   } catch (error) {
     if (error instanceof Error && error.message === "TRANSICION_NO_PERMITIDA") {

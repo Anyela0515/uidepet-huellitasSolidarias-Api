@@ -91,6 +91,23 @@ export async function sendComprobanteDonacionEmail(
   });
 }
 
+export async function sendSolicitudRechazadaEmail(
+  correo: string,
+  nombre: string,
+  mascotaNombre: string,
+  motivo: string
+) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: `Tu solicitud de adopción para ${mascotaNombre} fue rechazada`,
+    text: `Hola ${nombre}. Tu solicitud para adoptar a ${mascotaNombre} fue rechazada.\n\nMotivo: ${motivo}\n\nPuedes postular por otra mascota disponible.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombre)},</p><p>Tu solicitud para adoptar a <strong>${escapeHtml(mascotaNombre)}</strong> fue rechazada.</p><p style="margin:20px 0"><strong>Motivo:</strong><br/>${escapeHtml(motivo)}</p><p style="font-size:13px;color:#666">Puedes postular por otra mascota disponible cuando quieras.</p></div>`,
+  });
+}
+
 export async function sendNuevoMensajeNotificationEmail(
   correoOrganizacion: string,
   nombreOrganizacion: string,
