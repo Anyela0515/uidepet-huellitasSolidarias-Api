@@ -15,31 +15,31 @@ const pool = mysql.createPool({
   multipleStatements: false,
 });
 
-async function idByCodigo(conn, table, codigo) {
+async function idByTipoCodigo(conn, tipo, codigo) {
   const [rows] = await conn.query(
-    `SELECT id FROM ${table} WHERE codigo = ? LIMIT 1`,
-    [codigo]
+    "SELECT id FROM catalogos WHERE tipo = ? AND codigo = ? LIMIT 1",
+    [tipo, codigo]
   );
   return rows[0].id;
 }
 
-async function idByTipoNombre(conn, table, tipo, nombre) {
+async function idByTipoNombre(conn, tipo, nombre) {
   const [rows] = await conn.query(
-    `SELECT id FROM ${table} WHERE tipo = ? AND nombre = ? LIMIT 1`,
+    "SELECT id FROM catalogos WHERE tipo = ? AND nombre = ? LIMIT 1",
     [tipo, nombre]
   );
   return rows[0].id;
 }
 
 async function ensureRaza(conn, especieNombre, razaNombre) {
-  const especieId = await idByTipoNombre(conn, "categorias", "especie", especieNombre);
+  const especieId = await idByTipoNombre(conn, "especie", especieNombre);
   const [rows] = await conn.query(
-    "SELECT id FROM categorias WHERE tipo = 'raza' AND padre_id = ? AND nombre = ? LIMIT 1",
+    "SELECT id FROM catalogos WHERE tipo = 'raza' AND padre_id = ? AND nombre = ? LIMIT 1",
     [especieId, razaNombre]
   );
   if (rows[0]) return rows[0].id;
   const [result] = await conn.query(
-    "INSERT INTO categorias (tipo, padre_id, nombre) VALUES ('raza', ?, ?)",
+    "INSERT INTO catalogos (tipo, padre_id, nombre) VALUES ('raza', ?, ?)",
     [especieId, razaNombre]
   );
   return result.insertId;
@@ -52,23 +52,18 @@ async function seed() {
   try {
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
     const tables = [
-      "archivos_seguimiento",
+      "archivos",
       "seguimientos_adopcion",
-      "evidencias_adopcion",
-      "formularios_adopcion",
       "solicitudes_adopcion",
       "favoritos",
       "mensajes",
       "donaciones",
-      "evidencias_denuncia",
       "denuncias_rescate",
       "mascota_tag",
-      "medios_mascota",
       "mascotas",
       "solicitudes_registro_organizacion",
       "organizaciones",
-      "password_reset_tokens",
-      "perfiles_usuario",
+      "tokens_usuario",
       "usuarios",
     ];
     for (const table of tables) {
@@ -76,34 +71,25 @@ async function seed() {
     }
     await conn.query("SET FOREIGN_KEY_CHECKS = 1");
 
-    const rolAdmin = await idByCodigo(conn, "roles", "admin");
-    const rolFund = await idByCodigo(conn, "roles", "fundacion");
-    const rolUser = await idByCodigo(conn, "roles", "usuario");
-    const estadoActivo = await idByCodigo(conn, "estados_cuenta", "Activo");
-    const ciudadLoja = await idByTipoNombre(conn, "catalogos", "ciudad", "Loja");
-    const sexoHembra = await idByTipoNombre(conn, "categorias", "sexo", "Hembra");
-    const sexoMacho = await idByTipoNombre(conn, "categorias", "sexo", "Macho");
-    const tamPeq = await idByTipoNombre(conn, "categorias", "tamano", "Pequeño");
-    const tamMed = await idByTipoNombre(conn, "categorias", "tamano", "Mediano");
-    const tamGran = await idByTipoNombre(conn, "categorias", "tamano", "Grande");
-    const unidadAnios = await idByTipoNombre(conn, "categorias", "unidad_edad", "Años");
-    const unidadMeses = await idByTipoNombre(conn, "categorias", "unidad_edad", "Meses");
-    const estDisp = await idByCodigo(conn, "estados_mascota", "Disponible");
-    const estProceso = await idByCodigo(conn, "estados_mascota", "En proceso");
-    const tipoImg = await idByCodigo(conn, "tipos_medio", "imagen");
-    const estSolRev = await idByCodigo(
-      conn,
-      "estados_solicitud_adopcion",
-      "revision"
-    );
-    const estOrgPend = await idByCodigo(
-      conn,
-      "estados_solicitud_organizacion",
-      "pendiente"
-    );
-    const tipoAlimento = await idByTipoNombre(conn, "catalogos", "tipo_donacion", "Alimento");
-    const estDonOk = await idByCodigo(conn, "estados_donacion", "Completado");
-    const viviendaCasa = await idByTipoNombre(conn, "catalogos", "tipo_vivienda", "Casa");
+    const rolAdmin = await idByTipoCodigo(conn, "rol", "admin");
+    const rolFund = await idByTipoCodigo(conn, "rol", "fundacion");
+    const rolUser = await idByTipoCodigo(conn, "rol", "usuario");
+    const estadoActivo = await idByTipoCodigo(conn, "estado_cuenta", "Activo");
+    const ciudadLoja = await idByTipoNombre(conn, "ciudad", "Loja");
+    const sexoHembra = await idByTipoNombre(conn, "sexo", "Hembra");
+    const sexoMacho = await idByTipoNombre(conn, "sexo", "Macho");
+    const tamPeq = await idByTipoNombre(conn, "tamano", "Pequeño");
+    const tamMed = await idByTipoNombre(conn, "tamano", "Mediano");
+    const tamGran = await idByTipoNombre(conn, "tamano", "Grande");
+    const unidadAnios = await idByTipoNombre(conn, "unidad_edad", "Años");
+    const unidadMeses = await idByTipoNombre(conn, "unidad_edad", "Meses");
+    const estDisp = await idByTipoCodigo(conn, "estado_mascota", "Disponible");
+    const estProceso = await idByTipoCodigo(conn, "estado_mascota", "En proceso");
+    const estSolRev = await idByTipoCodigo(conn, "estado_solicitud_adopcion", "revision");
+    const estOrgPend = await idByTipoCodigo(conn, "estado_solicitud_organizacion", "pendiente");
+    const tipoAlimento = await idByTipoNombre(conn, "tipo_donacion", "Alimento");
+    const estDonOk = await idByTipoCodigo(conn, "estado_donacion", "Completado");
+    const viviendaCasa = await idByTipoNombre(conn, "tipo_vivienda", "Casa");
 
     const razaPerro = await ensureRaza(conn, "Perro", "Mestizo");
     const razaGato = await ensureRaza(conn, "Gato", "Mestizo");
@@ -154,17 +140,13 @@ async function seed() {
 
     const userIds = {};
     for (const u of users) {
+      const [nombre, cedula, telefono, direccion] = u.perfil;
       const [result] = await conn.query(
-        `INSERT INTO usuarios (correo, password_hash, rol_id, estado_cuenta_id)
-         VALUES (?, ?, ?, ?)`,
-        [u.correo, hash, u.rol, estadoActivo]
+        `INSERT INTO usuarios (correo, password_hash, nombre, cedula, telefono, direccion, rol_id, estado_cuenta_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [u.correo, hash, nombre, cedula, telefono, direccion, u.rol, estadoActivo]
       );
       userIds[u.correo] = result.insertId;
-      await conn.query(
-        `INSERT INTO perfiles_usuario (usuario_id, nombre, cedula, telefono, direccion)
-         VALUES (?, ?, ?, ?, ?)`,
-        [result.insertId, ...u.perfil]
-      );
     }
 
     const [orgResult] = await conn.query(
@@ -224,9 +206,9 @@ async function seed() {
       const [meta, requisitos, tags] = historias[nombre];
       const [result] = await conn.query(
         `INSERT INTO mascotas
-          (nombre, raza_id, edad_valor, unidad_edad_id, sexo_id, tamano_id, ciudad_id,
-           historia, requisitos, organizacion_id, estado_mascota_id, oculto)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+          (nombre, raza_id, edad_valor, unidad_edad_id, sexo_id, tamano_id, ubicacion,
+           historia, requisitos, imagen, organizacion_id, estado_mascota_id, oculto)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           nombre,
           razaId,
@@ -234,23 +216,18 @@ async function seed() {
           unidad,
           sexo,
           tamano,
-          ciudadLoja,
+          "Loja",
           meta,
           requisitos,
+          PLACEHOLDER_IMG,
           orgId,
           estado,
         ]
       );
       petIds[nombre] = result.insertId;
 
-      await conn.query(
-        `INSERT INTO medios_mascota (mascota_id, tipo_medio_id, contenido, es_principal)
-         VALUES (?, ?, ?, 1)`,
-        [result.insertId, tipoImg, PLACEHOLDER_IMG]
-      );
-
       for (const tagNombre of tags) {
-        const tagId = await idByTipoNombre(conn, "catalogos", "tag", tagNombre);
+        const tagId = await idByTipoNombre(conn, "tag", tagNombre);
         await conn.query(
           "INSERT INTO mascota_tag (mascota_id, tag_id) VALUES (?, ?)",
           [result.insertId, tagId]
@@ -273,8 +250,12 @@ async function seed() {
 
     await conn.query(
       `INSERT INTO solicitudes_adopcion
-        (id, mascota_id, adoptante_id, organizacion_id, estado_id, observaciones, proximo_paso)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, mascota_id, adoptante_id, organizacion_id, estado_id, observaciones, proximo_paso,
+         nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
+         direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
+         permanencia_animal, lugar_dormir, tiene_mascotas, responsable_cuidado,
+         responsable_gastos, acepta_seguimiento, acepta_contrato, declaracion_veracidad)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         solicitudId,
         petIds.Rocky,
@@ -283,18 +264,6 @@ async function seed() {
         estSolRev,
         "Tu solicitud fue recibida. El equipo está revisando tu información.",
         "Espera la respuesta de la fundación en un plazo máximo de 48 horas.",
-      ]
-    );
-
-    await conn.query(
-      `INSERT INTO formularios_adopcion
-        (solicitud_id, nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
-         direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
-         permanencia_animal, lugar_dormir, tiene_mascotas, cantidad_mascotas, responsable_cuidado,
-         responsable_gastos, acepta_seguimiento, acepta_contrato, declaracion_veracidad)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        solicitudId,
         "María Fernanda Torres",
         "1103567890",
         "0991234567",
@@ -307,7 +276,6 @@ async function seed() {
         "si",
         "Interior",
         "no",
-        null,
         "María Fernanda Torres",
         "María Fernanda Torres",
         "si",
@@ -352,7 +320,7 @@ async function seed() {
       ]
     );
 
-    console.log("Seed completado (esquema 3FN).");
+    console.log("Seed completado (esquema consolidado).");
     console.log(`Cuentas demo — password: ${PASSWORD}`);
     console.log("  admin@huellitas.com (admin)");
     console.log("  fundacion@huellitas.com (fundacion)");

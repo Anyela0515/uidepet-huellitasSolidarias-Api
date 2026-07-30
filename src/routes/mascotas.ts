@@ -40,15 +40,4 @@ router.delete(
   controller.quitarTag
 );
 
-router.post(
-  "/:id/medios",
-  requireRole("fundacion", "admin"),
-  controller.agregarMedio
-);
-router.delete(
-  "/:id/medios/:medioId",
-  requireRole("fundacion", "admin"),
-  controller.quitarMedio
-);
-
 export default router;

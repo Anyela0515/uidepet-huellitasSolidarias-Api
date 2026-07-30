@@ -30,54 +30,49 @@ const SOLICITUD_SELECT = `
     ue.nombre AS unidad_edad,
     rz.nombre AS raza,
     m.ubicacion,
-    pu.nombre AS adoptante_nombre,
+    m.imagen,
+    ua.nombre AS adoptante_nombre,
     ua.correo AS adoptante_email,
     o.nombre AS fundacion,
     uf.correo AS fundacion_email,
-    (
-      SELECT mm.contenido
-      FROM medios_mascota mm
-      WHERE mm.mascota_id = m.id AND mm.es_principal = 1
-      ORDER BY mm.id ASC LIMIT 1
-    ) AS imagen,
     (
       SELECT GROUP_CONCAT(tg.nombre ORDER BY tg.nombre SEPARATOR ',')
       FROM mascota_tag mt
       INNER JOIN catalogos tg ON tg.id = mt.tag_id AND tg.tipo = 'tag'
       WHERE mt.mascota_id = m.id
     ) AS tags,
-    f.nombre_declarado AS form_nombre_declarado,
-    f.cedula_declarada AS form_cedula_declarada,
-    f.telefono_declarado AS form_telefono_declarado,
-    f.correo_declarado AS form_correo_declarado,
-    f.direccion_declarada AS form_direccion_declarada,
+    sa.nombre_declarado AS form_nombre_declarado,
+    sa.cedula_declarada AS form_cedula_declarada,
+    sa.telefono_declarado AS form_telefono_declarado,
+    sa.correo_declarado AS form_correo_declarado,
+    sa.direccion_declarada AS form_direccion_declarada,
     cf.nombre AS form_ciudad,
     tv.nombre AS form_tipo_vivienda,
-    f.personas_hogar AS form_personas_hogar,
-    f.acuerdo_hogar AS form_acuerdo_hogar,
-    f.permanencia_animal AS form_permanencia_animal,
-    f.lugar_dormir AS form_lugar_dormir,
-    f.tiene_mascotas AS form_tiene_mascotas,
-    f.cantidad_mascotas AS form_cantidad_mascotas,
-    f.tipos_mascotas AS form_tipos_mascotas,
-    f.vacunas AS form_vacunas,
-    f.esterilizacion AS form_esterilizacion,
-    f.responsable_cuidado AS form_responsable_cuidado,
-    f.responsable_gastos AS form_responsable_gastos,
-    f.acepta_seguimiento AS form_acepta_seguimiento,
-    f.acepta_contrato AS form_acepta_contrato,
-    f.declaracion_veracidad AS form_declaracion_veracidad,
+    sa.personas_hogar AS form_personas_hogar,
+    sa.acuerdo_hogar AS form_acuerdo_hogar,
+    sa.permanencia_animal AS form_permanencia_animal,
+    sa.lugar_dormir AS form_lugar_dormir,
+    sa.tiene_mascotas AS form_tiene_mascotas,
+    sa.cantidad_mascotas AS form_cantidad_mascotas,
+    sa.tipos_mascotas AS form_tipos_mascotas,
+    sa.vacunas AS form_vacunas,
+    sa.esterilizacion AS form_esterilizacion,
+    sa.responsable_cuidado AS form_responsable_cuidado,
+    sa.responsable_gastos AS form_responsable_gastos,
+    sa.acepta_seguimiento AS form_acepta_seguimiento,
+    sa.acepta_contrato AS form_acepta_contrato,
+    sa.declaracion_veracidad AS form_declaracion_veracidad,
     (
       SELECT JSON_ARRAYAGG(
         JSON_OBJECT(
-          'name', ea.nombre_archivo,
-          'type', ea.mime_type,
-          'size', ea.tamanio_bytes,
-          'url', ea.contenido
+          'name', a.nombre_archivo,
+          'type', a.mime_type,
+          'size', a.tamanio_bytes,
+          'url', a.contenido
         )
       )
-      FROM evidencias_adopcion ea
-      WHERE ea.solicitud_id = sa.id
+      FROM archivos a
+      WHERE a.solicitud_id = sa.id
     ) AS evidencias_json,
     (
       SELECT JSON_ARRAYAGG(
@@ -97,7 +92,7 @@ const SOLICITUD_SELECT = `
                   'url', NULL
                 )
               )
-              FROM archivos_seguimiento asg
+              FROM archivos asg
               WHERE asg.seguimiento_id = seg.id
             ),
             JSON_ARRAY()
@@ -108,24 +103,22 @@ const SOLICITUD_SELECT = `
       WHERE seg.solicitud_id = sa.id
     ) AS seguimientos_json
   FROM solicitudes_adopcion sa
-  INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+  INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
   INNER JOIN mascotas m ON m.id = sa.mascota_id
-  INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
-  INNER JOIN categorias rz ON rz.id = m.raza_id AND rz.tipo = 'raza'
+  INNER JOIN catalogos ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
+  INNER JOIN catalogos rz ON rz.id = m.raza_id AND rz.tipo = 'raza'
   INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
-  INNER JOIN perfiles_usuario pu ON pu.usuario_id = ua.id
   INNER JOIN organizaciones o ON o.id = sa.organizacion_id
   INNER JOIN usuarios uf ON uf.id = o.usuario_id
-  LEFT JOIN formularios_adopcion f ON f.solicitud_id = sa.id
-  LEFT JOIN catalogos cf ON cf.id = f.ciudad_id AND cf.tipo = 'ciudad'
-  LEFT JOIN catalogos tv ON tv.id = f.tipo_vivienda_id AND tv.tipo = 'tipo_vivienda'
+  LEFT JOIN catalogos cf ON cf.id = sa.ciudad_id AND cf.tipo = 'ciudad'
+  LEFT JOIN catalogos tv ON tv.id = sa.tipo_vivienda_id AND tv.tipo = 'tipo_vivienda'
 `;
 
 async function countWhere(where: string, values: unknown[]): Promise<number> {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM solicitudes_adopcion sa
-     INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+     INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
      INNER JOIN usuarios ua ON ua.id = sa.adoptante_id
      INNER JOIN organizaciones o ON o.id = sa.organizacion_id
      INNER JOIN usuarios uf ON uf.id = o.usuario_id
@@ -231,7 +224,7 @@ async function findSeguimientosConContenido(solicitudId: string) {
        asg.tamanio_bytes,
        asg.contenido
      FROM seguimientos_adopcion seg
-     LEFT JOIN archivos_seguimiento asg ON asg.seguimiento_id = seg.id
+     LEFT JOIN archivos asg ON asg.seguimiento_id = seg.id
      WHERE seg.solicitud_id = ?
      ORDER BY seg.creado_en DESC, asg.id ASC`,
     [solicitudId]
@@ -283,7 +276,7 @@ export async function hasActiveForUserAndPet(correo: string, petId: number) {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT sa.id
      FROM solicitudes_adopcion sa
-     INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+     INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
      INNER JOIN usuarios u ON u.id = sa.adoptante_id
      WHERE u.correo = ? AND sa.mascota_id = ? AND es.codigo IN (?, ?, ?)
      LIMIT 1`,
@@ -297,12 +290,12 @@ export async function hasActiveForPet(petId: number, excludeId?: string) {
     excludeId
       ? `SELECT sa.id
          FROM solicitudes_adopcion sa
-         INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+         INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
          WHERE sa.mascota_id = ? AND es.codigo IN (?, ?, ?) AND sa.id <> ?
          LIMIT 1`
       : `SELECT sa.id
          FROM solicitudes_adopcion sa
-         INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+         INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
          WHERE sa.mascota_id = ? AND es.codigo IN (?, ?, ?)
          LIMIT 1`,
     excludeId
@@ -338,8 +331,13 @@ export async function create(
 
     await conn.query(
       `INSERT INTO solicitudes_adopcion
-        (id, mascota_id, adoptante_id, organizacion_id, estado_id, observaciones, proximo_paso)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, mascota_id, adoptante_id, organizacion_id, estado_id, observaciones, proximo_paso,
+         nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
+         direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
+         permanencia_animal, lugar_dormir, tiene_mascotas, cantidad_mascotas, tipos_mascotas,
+         vacunas, esterilizacion, responsable_cuidado, responsable_gastos, acepta_seguimiento,
+         acepta_contrato, declaracion_veracidad)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.petId,
@@ -348,19 +346,6 @@ export async function create(
         estadoId,
         "Tu solicitud fue recibida. El equipo está revisando tu información.",
         "Espera la respuesta de la fundación en un plazo máximo de 48 horas.",
-      ]
-    );
-
-    await conn.query(
-      `INSERT INTO formularios_adopcion
-        (solicitud_id, nombre_declarado, cedula_declarada, telefono_declarado, correo_declarado,
-         direccion_declarada, ciudad_id, tipo_vivienda_id, personas_hogar, acuerdo_hogar,
-         permanencia_animal, lugar_dormir, tiene_mascotas, cantidad_mascotas, tipos_mascotas,
-         vacunas, esterilizacion, responsable_cuidado, responsable_gastos, acepta_seguimiento,
-         acepta_contrato, declaracion_veracidad)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
         String(form.nombre ?? user.nombre),
         String(form.cedula ?? ""),
         String(form.telefono ?? ""),
@@ -388,7 +373,7 @@ export async function create(
     const evidencias = Array.isArray(form.evidencias) ? form.evidencias : [];
     for (const ev of evidencias as Array<Record<string, unknown>>) {
       await conn.query(
-        `INSERT INTO evidencias_adopcion
+        `INSERT INTO archivos
           (solicitud_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
          VALUES (?, ?, ?, ?, ?)`,
         [
@@ -432,7 +417,7 @@ export async function updateEstadoConBloqueo(
     const [lockedSolicitud] = await conn.query<RowDataPacket[]>(
       `SELECT sa.id, es.codigo AS estado_codigo
        FROM solicitudes_adopcion sa
-       INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+       INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
        WHERE sa.id = ?
        FOR UPDATE`,
       [id]
@@ -471,7 +456,7 @@ export async function updateEstadoConBloqueo(
       const estadoRechazadaId = await catalog.getEstadoSolicitudAdopcionId("rechazada", conn);
       await conn.query(
         `UPDATE solicitudes_adopcion sa
-         INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+         INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
          SET sa.estado_id = ?,
              sa.observaciones = 'Otra solicitud fue aprobada para esta mascota.',
              sa.proximo_paso = 'Puedes postular por otra mascota disponible.'
@@ -484,7 +469,7 @@ export async function updateEstadoConBloqueo(
       const [others] = await conn.query<RowDataPacket[]>(
         `SELECT sa.id
          FROM solicitudes_adopcion sa
-         INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+         INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
          WHERE sa.mascota_id = ? AND es.codigo IN (?, ?, ?) AND sa.id <> ?
          LIMIT 1`,
         [petId, ...ACTIVE_STATES, id]
@@ -522,20 +507,21 @@ export async function addSeguimiento(
       tamanioBytes: number;
       contenido: string;
     }>;
-  }
+  },
+  creadoPor?: number
 ) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const [result] = await conn.query<ResultSetHeader>(
-      `INSERT INTO seguimientos_adopcion (solicitud_id, periodo, comentario)
-       VALUES (?, ?, ?)`,
-      [id, data.periodo, data.comentario]
+      `INSERT INTO seguimientos_adopcion (solicitud_id, periodo, comentario, creado_por)
+       VALUES (?, ?, ?, ?)`,
+      [id, data.periodo, data.comentario, creadoPor ?? null]
     );
 
     for (const archivo of data.archivos) {
       await conn.query(
-        `INSERT INTO archivos_seguimiento
+        `INSERT INTO archivos
           (seguimiento_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
          VALUES (?, ?, ?, ?, ?)`,
         [
@@ -575,7 +561,7 @@ export async function addEvidencia(
   data: { nombreArchivo: string; mimeType?: string; tamanioBytes?: number; contenido?: string }
 ) {
   const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO evidencias_adopcion
+    `INSERT INTO archivos
       (solicitud_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
      VALUES (?, ?, ?, ?, ?)`,
     [
@@ -591,7 +577,7 @@ export async function addEvidencia(
 
 export async function removeEvidencia(solicitudId: string, evidenciaId: number) {
   await pool.query(
-    "DELETE FROM evidencias_adopcion WHERE id = ? AND solicitud_id = ?",
+    "DELETE FROM archivos WHERE id = ? AND solicitud_id = ?",
     [evidenciaId, solicitudId]
   );
   return findById(solicitudId);
@@ -643,7 +629,7 @@ export async function updateSeguimientoComentario(id: number, comentario: string
 
 export async function addArchivoSeguimiento(seguimientoId: number, nombreArchivo: string) {
   await pool.query(
-    "INSERT INTO archivos_seguimiento (seguimiento_id, nombre_archivo) VALUES (?, ?)",
+    "INSERT INTO archivos (seguimiento_id, nombre_archivo) VALUES (?, ?)",
     [seguimientoId, nombreArchivo]
   );
   return findSeguimientoById(seguimientoId);
@@ -651,7 +637,7 @@ export async function addArchivoSeguimiento(seguimientoId: number, nombreArchivo
 
 export async function removeArchivoSeguimiento(seguimientoId: number, archivoId: number) {
   await pool.query(
-    "DELETE FROM archivos_seguimiento WHERE id = ? AND seguimiento_id = ?",
+    "DELETE FROM archivos WHERE id = ? AND seguimiento_id = ?",
     [archivoId, seguimientoId]
   );
   return findSeguimientoById(seguimientoId);
@@ -662,7 +648,7 @@ export async function cancelActiveByPetId(petId: number) {
     await catalog.getEstadoSolicitudAdopcionId("rechazada");
   await pool.query(
     `UPDATE solicitudes_adopcion sa
-     INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+     INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
      SET sa.estado_id = ?,
          sa.observaciones = 'La mascota fue retirada del catálogo.',
          sa.proximo_paso = 'Puedes postular por otra mascota disponible.'

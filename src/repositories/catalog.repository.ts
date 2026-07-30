@@ -4,14 +4,14 @@ import type { Pool, PoolConnection } from "mysql2/promise";
 
 type Executor = Pool | PoolConnection;
 
-async function findIdByCodigo(
-  table: string,
+async function findIdByTipoCodigo(
+  tipo: string,
   codigo: string,
   conn: Executor = pool
 ): Promise<number | null> {
   const [rows] = await conn.query<RowDataPacket[]>(
-    `SELECT id FROM ${table} WHERE codigo = ? LIMIT 1`,
-    [codigo]
+    "SELECT id FROM catalogos WHERE tipo = ? AND codigo = ? LIMIT 1",
+    [tipo, codigo]
   );
   return rows[0] ? Number(rows[0].id) : null;
 }
@@ -23,7 +23,7 @@ async function findCategoriaId(
   conn: Executor = pool
 ): Promise<number | null> {
   const [rows] = await conn.query<RowDataPacket[]>(
-    "SELECT id FROM categorias WHERE tipo = ? AND nombre = ? AND padre_id <=> ? LIMIT 1",
+    "SELECT id FROM catalogos WHERE tipo = ? AND nombre = ? AND padre_id <=> ? LIMIT 1",
     [tipo, nombre, padreId]
   );
   return rows[0] ? Number(rows[0].id) : null;
@@ -47,19 +47,19 @@ async function getOrCreateCatalogoId(
 }
 
 export async function getRolId(codigo: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByCodigo("roles", codigo, conn);
+  const id = await findIdByTipoCodigo("rol", codigo, conn);
   if (!id) throw new Error(`Rol no encontrado: ${codigo}`);
   return id;
 }
 
 export async function getEstadoCuentaId(codigo: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByCodigo("estados_cuenta", codigo, conn);
+  const id = await findIdByTipoCodigo("estado_cuenta", codigo, conn);
   if (!id) throw new Error(`Estado de cuenta no encontrado: ${codigo}`);
   return id;
 }
 
 export async function getEstadoMascotaId(codigo: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByCodigo("estados_mascota", codigo, conn);
+  const id = await findIdByTipoCodigo("estado_mascota", codigo, conn);
   if (!id) throw new Error(`Estado de mascota no encontrado: ${codigo}`);
   return id;
 }
@@ -68,7 +68,7 @@ export async function getEstadoSolicitudAdopcionId(
   codigo: string,
   conn: Executor = pool
 ): Promise<number> {
-  const id = await findIdByCodigo("estados_solicitud_adopcion", codigo, conn);
+  const id = await findIdByTipoCodigo("estado_solicitud_adopcion", codigo, conn);
   if (!id) throw new Error(`Estado de solicitud no encontrado: ${codigo}`);
   return id;
 }
@@ -77,25 +77,25 @@ export async function getEstadoSolicitudOrgId(
   codigo: string,
   conn: Executor = pool
 ): Promise<number> {
-  const id = await findIdByCodigo("estados_solicitud_organizacion", codigo, conn);
+  const id = await findIdByTipoCodigo("estado_solicitud_organizacion", codigo, conn);
   if (!id) throw new Error(`Estado de solicitud org no encontrado: ${codigo}`);
   return id;
 }
 
 export async function getEstadoDonacionId(codigo: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByCodigo("estados_donacion", codigo, conn);
+  const id = await findIdByTipoCodigo("estado_donacion", codigo, conn);
   if (!id) throw new Error(`Estado de donación no encontrado: ${codigo}`);
   return id;
 }
 
 export async function getTipoMedioId(codigo: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByCodigo("tipos_medio", codigo, conn);
+  const id = await findIdByTipoCodigo("tipo_medio", codigo, conn);
   if (!id) throw new Error(`Tipo de medio no encontrado: ${codigo}`);
   return id;
 }
 
 export async function getEstadoDenunciaId(codigo: string, conn: Executor = pool): Promise<number> {
-  const id = await findIdByCodigo("estados_denuncia", codigo, conn);
+  const id = await findIdByTipoCodigo("estado_denuncia", codigo, conn);
   if (!id) throw new Error(`Estado de denuncia no encontrado: ${codigo}`);
   return id;
 }
@@ -108,7 +108,7 @@ export async function getOrCreateEspecieId(nombre: string, conn: Executor = pool
   const existing = await findCategoriaId("especie", nombre, null, conn);
   if (existing) return existing;
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO categorias (tipo, nombre) VALUES ('especie', ?)",
+    "INSERT INTO catalogos (tipo, nombre) VALUES ('especie', ?)",
     [nombre]
   );
   return result.insertId;
@@ -125,7 +125,7 @@ export async function getOrCreateRazaId(
   if (existing) return existing;
 
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO categorias (tipo, padre_id, nombre) VALUES ('raza', ?, ?)",
+    "INSERT INTO catalogos (tipo, padre_id, nombre) VALUES ('raza', ?, ?)",
     [especieId, nombre]
   );
   return result.insertId;
@@ -135,7 +135,7 @@ export async function getOrCreateSexoId(nombre: string, conn: Executor = pool): 
   const existing = await findCategoriaId("sexo", nombre, null, conn);
   if (existing) return existing;
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO categorias (tipo, nombre) VALUES ('sexo', ?)",
+    "INSERT INTO catalogos (tipo, nombre) VALUES ('sexo', ?)",
     [nombre]
   );
   return result.insertId;
@@ -145,7 +145,7 @@ export async function getOrCreateTamanoId(nombre: string, conn: Executor = pool)
   const existing = await findCategoriaId("tamano", nombre, null, conn);
   if (existing) return existing;
   const [result] = await conn.query<ResultSetHeader>(
-    "INSERT INTO categorias (tipo, nombre) VALUES ('tamano', ?)",
+    "INSERT INTO catalogos (tipo, nombre) VALUES ('tamano', ?)",
     [nombre]
   );
   return result.insertId;

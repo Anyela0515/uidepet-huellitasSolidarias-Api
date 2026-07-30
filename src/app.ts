@@ -20,7 +20,6 @@ import favoritosRouter from "./routes/favoritos.js";
 import mensajesRouter from "./routes/mensajes.js";
 import donacionesRouter from "./routes/donaciones.js";
 import catalogosRouter from "./routes/catalogos.js";
-import configuracionSitioRouter from "./routes/configuracionSitio.js";
 import seguimientosAdopcionRouter from "./routes/seguimientosAdopcion.js";
 import reportesRouter from "./routes/reportes.js";
 
@@ -145,7 +144,6 @@ export function createApp() {
   app.use("/mensajes", mensajesRouter);
   app.use("/donaciones", donacionesRouter);
   app.use("/catalogos", catalogosRouter);
-  app.use("/configuracion-sitio", configuracionSitioRouter);
   app.use("/seguimientos-adopcion", seguimientosAdopcionRouter);
   app.use("/reportes", reportesRouter);
 

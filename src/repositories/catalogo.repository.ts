@@ -11,15 +11,7 @@ export interface RazaItem extends CatalogoItem {
   especieId: number;
 }
 
-async function listCategoriaPorTipo(tipo: string): Promise<CatalogoItem[]> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT id, nombre FROM categorias WHERE tipo = ? ORDER BY nombre ASC",
-    [tipo]
-  );
-  return rows.map((row) => ({ id: Number(row.id), nombre: String(row.nombre) }));
-}
-
-async function listCatalogoPorTipo(tipo: string): Promise<CatalogoItem[]> {
+async function listPorTipoNombre(tipo: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT id, nombre FROM catalogos WHERE tipo = ? ORDER BY nombre ASC",
     [tipo]
@@ -27,12 +19,13 @@ async function listCatalogoPorTipo(tipo: string): Promise<CatalogoItem[]> {
   return rows.map((row) => ({ id: Number(row.id), nombre: String(row.nombre) }));
 }
 
-// Estas tablas ya no guardan un `nombre` propio (ver schema.sql): siempre
+// Estos catálogos no guardan un `nombre` propio (ver schema.sql): siempre
 // terminaba siendo el mismo texto que `codigo`. Se sigue devolviendo
 // `nombre` en la respuesta para no romper el contrato de este endpoint.
-async function listConCodigo(table: string): Promise<CatalogoItem[]> {
+async function listPorTipoCodigo(tipo: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT id, codigo FROM ${table} ORDER BY codigo ASC`
+    "SELECT id, codigo FROM catalogos WHERE tipo = ? ORDER BY codigo ASC",
+    [tipo]
   );
   return rows.map((row) => ({
     id: Number(row.id),
@@ -41,28 +34,28 @@ async function listConCodigo(table: string): Promise<CatalogoItem[]> {
   }));
 }
 
-export const getRoles = () => listConCodigo("roles");
-export const getEstadosCuenta = () => listConCodigo("estados_cuenta");
-export const getEspecies = () => listCategoriaPorTipo("especie");
-export const getSexos = () => listCategoriaPorTipo("sexo");
-export const getTamanos = () => listCategoriaPorTipo("tamano");
-export const getUnidadesEdad = () => listCategoriaPorTipo("unidad_edad");
-export const getEstadosMascota = () => listConCodigo("estados_mascota");
-export const getCiudades = () => listCatalogoPorTipo("ciudad");
-export const getTags = () => listCatalogoPorTipo("tag");
-export const getEstadosSolicitudAdopcion = () => listConCodigo("estados_solicitud_adopcion");
+export const getRoles = () => listPorTipoCodigo("rol");
+export const getEstadosCuenta = () => listPorTipoCodigo("estado_cuenta");
+export const getEspecies = () => listPorTipoNombre("especie");
+export const getSexos = () => listPorTipoNombre("sexo");
+export const getTamanos = () => listPorTipoNombre("tamano");
+export const getUnidadesEdad = () => listPorTipoNombre("unidad_edad");
+export const getEstadosMascota = () => listPorTipoCodigo("estado_mascota");
+export const getCiudades = () => listPorTipoNombre("ciudad");
+export const getTags = () => listPorTipoNombre("tag");
+export const getEstadosSolicitudAdopcion = () => listPorTipoCodigo("estado_solicitud_adopcion");
 export const getEstadosSolicitudOrganizacion = () =>
-  listConCodigo("estados_solicitud_organizacion");
-export const getTiposVivienda = () => listCatalogoPorTipo("tipo_vivienda");
-export const getTiposDonacion = () => listCatalogoPorTipo("tipo_donacion");
-export const getEstadosDonacion = () => listConCodigo("estados_donacion");
-export const getTiposMedio = () => listConCodigo("tipos_medio");
+  listPorTipoCodigo("estado_solicitud_organizacion");
+export const getTiposVivienda = () => listPorTipoNombre("tipo_vivienda");
+export const getTiposDonacion = () => listPorTipoNombre("tipo_donacion");
+export const getEstadosDonacion = () => listPorTipoCodigo("estado_donacion");
+export const getTiposMedio = () => listPorTipoCodigo("tipo_medio");
 
 export async function getRazas(especieId?: number): Promise<RazaItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     especieId
-      ? "SELECT id, padre_id AS especie_id, nombre FROM categorias WHERE tipo = 'raza' AND padre_id = ? ORDER BY nombre ASC"
-      : "SELECT id, padre_id AS especie_id, nombre FROM categorias WHERE tipo = 'raza' ORDER BY nombre ASC",
+      ? "SELECT id, padre_id AS especie_id, nombre FROM catalogos WHERE tipo = 'raza' AND padre_id = ? ORDER BY nombre ASC"
+      : "SELECT id, padre_id AS especie_id, nombre FROM catalogos WHERE tipo = 'raza' ORDER BY nombre ASC",
     especieId ? [especieId] : []
   );
   return rows.map((row) => ({

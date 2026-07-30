@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import {
   actualizarMascotaSchema,
-  agregarMedioSchema,
   agregarTagSchema,
   crearMascotaSchema,
 } from "../schemas/mascota.schema.js";
@@ -133,29 +132,6 @@ export const quitarTag = asyncHandler(async (req: Request, res: Response) => {
   const mascota = await mascotaService.quitarTag(
     Number(req.params.id),
     Number(req.params.tagId),
-    fundacionEmailDe(req)
-  );
-  res.status(200).json({ success: true, data: mascota });
-});
-
-export const agregarMedio = asyncHandler(async (req: Request, res: Response) => {
-  const data = agregarMedioSchema.parse(req.body);
-  const result = await mascotaService.agregarMedio(
-    Number(req.params.id),
-    data,
-    fundacionEmailDe(req)
-  );
-  res.status(201).json({
-    success: true,
-    message: "Medio agregado correctamente.",
-    data: result.mascota,
-  });
-});
-
-export const quitarMedio = asyncHandler(async (req: Request, res: Response) => {
-  const mascota = await mascotaService.quitarMedio(
-    Number(req.params.id),
-    Number(req.params.medioId),
     fundacionEmailDe(req)
   );
   res.status(200).json({ success: true, data: mascota });

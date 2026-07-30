@@ -390,28 +390,6 @@ paths:
       responses:
         "200": { description: OK }
 
-  /mascotas/{id}/medios:
-    post:
-      tags: [Mascotas]
-      summary: Agregar un medio (imagen/documento)
-      parameters:
-        - $ref: "#/components/parameters/idNumerico"
-      responses:
-        "201": { description: OK }
-
-  /mascotas/{id}/medios/{medioId}:
-    delete:
-      tags: [Mascotas]
-      summary: Quitar un medio
-      parameters:
-        - $ref: "#/components/parameters/idNumerico"
-        - name: medioId
-          in: path
-          required: true
-          schema: { type: integer }
-      responses:
-        "200": { description: OK }
-
   /solicitudes:
     get:
       tags: [Solicitudes]
@@ -886,19 +864,6 @@ paths:
   # /estados-mascota, /estados-solicitud-adopcion,
   # /estados-solicitud-organizacion, /tipos-vivienda, /tipos-donacion,
   # /estados-donacion, /tipos-medio — ver ENDPOINTS_FRONTEND.md.
-
-  /configuracion-sitio:
-    get:
-      tags: [ConfiguracionSitio]
-      summary: Obtener configuración pública del sitio
-      security: []
-      responses:
-        "200": { description: OK }
-    patch:
-      tags: [ConfiguracionSitio]
-      summary: Actualizar configuración del sitio (admin)
-      responses:
-        "200": { description: OK }
 
 components:
   securitySchemes:

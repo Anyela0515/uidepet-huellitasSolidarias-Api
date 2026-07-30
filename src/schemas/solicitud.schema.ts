@@ -7,8 +7,9 @@ const evidenciaFormSchema = z.object({
   url: z.string().optional(),
 });
 
-// Los límites de longitud coinciden con las columnas VARCHAR reales de
-// formularios_adopcion en db/schema.sql, para rechazar con 422 en vez de
+// Los límites de longitud coinciden con las columnas VARCHAR reales
+// (los campos "declarado_*" de solicitudes_adopcion en db/schema.sql), para
+// rechazar con 422 en vez de
 // reventar con un error de MySQL (ER_DATA_TOO_LONG) si el cliente envía
 // texto libre más largo de lo que la tabla admite. permanenciaAnimal y
 // lugarDormir son descripciones libres (el frontend usa un textarea), por

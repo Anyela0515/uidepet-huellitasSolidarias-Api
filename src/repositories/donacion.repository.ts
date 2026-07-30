@@ -45,7 +45,7 @@ const SELECT = `
     o.nombre AS organizacion_nombre
   FROM donaciones d
   INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
-  INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
+  INNER JOIN catalogos ed ON ed.id = d.estado_donacion_id AND ed.tipo = 'estado_donacion'
   LEFT JOIN organizaciones o ON o.id = d.organizacion_id
 `;
 
@@ -62,7 +62,7 @@ export async function findAll(
     `SELECT COUNT(*) AS total
      FROM donaciones d
      INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
-     INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
+     INNER JOIN catalogos ed ON ed.id = d.estado_donacion_id AND ed.tipo = 'estado_donacion'
      ${where}`,
     values
   );
@@ -93,7 +93,7 @@ export async function findByCorreo(
     `SELECT COUNT(*) AS total
      FROM donaciones d
      INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
-     INNER JOIN estados_donacion ed ON ed.id = d.estado_donacion_id
+     INNER JOIN catalogos ed ON ed.id = d.estado_donacion_id AND ed.tipo = 'estado_donacion'
      ${where}`,
     values
   );

@@ -8,7 +8,7 @@ import { buildPaginationMeta, type PaginationParams } from "../utils/pagination.
 type Executor = Pool | PoolConnection;
 
 export const USUARIO_SORT_FIELDS: Record<string, string> = {
-  nombre: "p.nombre",
+  nombre: "u.nombre",
   fecha: "u.creado_en",
   correo: "u.correo",
 };
@@ -29,15 +29,14 @@ const USER_SELECT = `
     u.creado_en,
     r.codigo AS rol_codigo,
     ec.codigo AS estado_codigo,
-    p.nombre,
-    p.cedula,
-    p.telefono,
-    p.direccion,
+    u.nombre,
+    u.cedula,
+    u.telefono,
+    u.direccion,
     o.nombre AS organizacion_nombre
   FROM usuarios u
-  INNER JOIN roles r ON r.id = u.rol_id
-  INNER JOIN estados_cuenta ec ON ec.id = u.estado_cuenta_id
-  INNER JOIN perfiles_usuario p ON p.usuario_id = u.id
+  INNER JOIN catalogos r ON r.id = u.rol_id AND r.tipo = 'rol'
+  INNER JOIN catalogos ec ON ec.id = u.estado_cuenta_id AND ec.tipo = 'estado_cuenta'
   LEFT JOIN organizaciones o ON o.usuario_id = u.id
 `;
 
@@ -74,7 +73,7 @@ export async function findAll(
     values.push(filtros.estado);
   }
   if (filtros.search) {
-    clauses.push("(p.nombre LIKE ? OR u.correo LIKE ?)");
+    clauses.push("(u.nombre LIKE ? OR u.correo LIKE ?)");
     values.push(`%${filtros.search}%`, `%${filtros.search}%`);
   }
 
@@ -83,9 +82,8 @@ export async function findAll(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM usuarios u
-     INNER JOIN roles r ON r.id = u.rol_id
-     INNER JOIN estados_cuenta ec ON ec.id = u.estado_cuenta_id
-     INNER JOIN perfiles_usuario p ON p.usuario_id = u.id
+     INNER JOIN catalogos r ON r.id = u.rol_id AND r.tipo = 'rol'
+     INNER JOIN catalogos ec ON ec.id = u.estado_cuenta_id AND ec.tipo = 'estado_cuenta'
      ${where}`,
     values
   );
@@ -130,11 +128,16 @@ export async function create(
     const estadoId = await catalog.getEstadoCuentaId("Activo", conn);
 
     const [userResult] = await conn.query<ResultSetHeader>(
-      `INSERT INTO usuarios (correo, password_hash, rol_id, estado_cuenta_id, debe_cambiar_password, email_verificado)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO usuarios
+        (correo, password_hash, nombre, cedula, telefono, direccion, rol_id, estado_cuenta_id, debe_cambiar_password, email_verificado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.correo,
         data.password,
+        data.nombre,
+        data.cedula ?? null,
+        data.telefono ?? null,
+        data.direccion ?? null,
         rolId,
         estadoId,
         data.debeCambiarPassword ? 1 : 0,
@@ -143,18 +146,6 @@ export async function create(
     );
 
     const usuarioId = userResult.insertId;
-
-    await conn.query(
-      `INSERT INTO perfiles_usuario (usuario_id, nombre, cedula, telefono, direccion)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        usuarioId,
-        data.nombre,
-        data.cedula ?? null,
-        data.telefono ?? null,
-        data.direccion ?? null,
-      ]
-    );
 
     if (data.rol === "fundacion" && data.organizacion) {
       const ciudadId = data.ciudad
@@ -207,9 +198,6 @@ export async function updateProfile(
     cedula?: string;
   }
 ) {
-  const user = await findByCorreo(correo);
-  if (!user) return null;
-
   const sets: string[] = [];
   const values: unknown[] = [];
 
@@ -221,9 +209,9 @@ export async function updateProfile(
   }
 
   if (sets.length) {
-    values.push(user.id);
+    values.push(correo);
     await pool.query(
-      `UPDATE perfiles_usuario SET ${sets.join(", ")} WHERE usuario_id = ?`,
+      `UPDATE usuarios SET ${sets.join(", ")} WHERE correo = ?`,
       values
     );
   }
@@ -270,12 +258,8 @@ export async function existsByCorreo(correo: string) {
 export async function existsByCedula(cedula: string, excludeCorreo?: string) {
   const [rows] = await pool.query<RowDataPacket[]>(
     excludeCorreo
-      ? `SELECT p.usuario_id
-         FROM perfiles_usuario p
-         INNER JOIN usuarios u ON u.id = p.usuario_id
-         WHERE p.cedula = ? AND u.correo <> ?
-         LIMIT 1`
-      : `SELECT usuario_id FROM perfiles_usuario WHERE cedula = ? LIMIT 1`,
+      ? "SELECT id FROM usuarios WHERE cedula = ? AND correo <> ? LIMIT 1"
+      : "SELECT id FROM usuarios WHERE cedula = ? LIMIT 1",
     excludeCorreo ? [cedula, excludeCorreo] : [cedula]
   );
   return rows.length > 0;

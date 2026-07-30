@@ -22,6 +22,7 @@ const MASCOTA_SELECT = `
     m.requisitos,
     m.publicada_en,
     m.oculto,
+    m.imagen,
     e.nombre AS especie,
     r.nombre AS raza,
     s.nombre AS sexo,
@@ -32,25 +33,18 @@ const MASCOTA_SELECT = `
     u.correo AS fundacion_email,
     o.id AS organizacion_id,
     (
-      SELECT mm.contenido
-      FROM medios_mascota mm
-      WHERE mm.mascota_id = m.id AND mm.es_principal = 1
-      ORDER BY mm.id ASC
-      LIMIT 1
-    ) AS imagen,
-    (
       SELECT GROUP_CONCAT(tg.nombre ORDER BY tg.nombre SEPARATOR ',')
       FROM mascota_tag mt
       INNER JOIN catalogos tg ON tg.id = mt.tag_id AND tg.tipo = 'tag'
       WHERE mt.mascota_id = m.id
     ) AS tags
   FROM mascotas m
-  INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-  INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
-  INNER JOIN categorias ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
-  INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
-  INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-  INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
+  INNER JOIN catalogos r ON r.id = m.raza_id AND r.tipo = 'raza'
+  INNER JOIN catalogos e ON e.id = r.padre_id AND e.tipo = 'especie'
+  INNER JOIN catalogos ue ON ue.id = m.unidad_edad_id AND ue.tipo = 'unidad_edad'
+  INNER JOIN catalogos s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+  INNER JOIN catalogos t ON t.id = m.tamano_id AND t.tipo = 'tamano'
+  INNER JOIN catalogos em ON em.id = m.estado_mascota_id AND em.tipo = 'estado_mascota'
   INNER JOIN organizaciones o ON o.id = m.organizacion_id
   INNER JOIN usuarios u ON u.id = o.usuario_id
 `;
@@ -164,20 +158,6 @@ async function syncTags(mascotaId: number, tags: string[], conn: Executor = pool
   }
 }
 
-async function syncImagen(mascotaId: number, imagen: string, conn: Executor = pool) {
-  const tipoId = await catalog.getTipoMedioId("imagen", conn);
-  await conn.query("DELETE FROM medios_mascota WHERE mascota_id = ?", [
-    mascotaId,
-  ]);
-  if (imagen) {
-    await conn.query(
-      `INSERT INTO medios_mascota (mascota_id, tipo_medio_id, contenido, es_principal)
-       VALUES (?, ?, ?, 1)`,
-      [mascotaId, tipoId, imagen]
-    );
-  }
-}
-
 export async function findVisible(
   pagination: PaginationParams,
   sortClause: string,
@@ -198,11 +178,11 @@ export async function findVisible(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM mascotas m
-     INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-     INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
-     INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
-     INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
+     INNER JOIN catalogos r ON r.id = m.raza_id AND r.tipo = 'raza'
+     INNER JOIN catalogos e ON e.id = r.padre_id AND e.tipo = 'especie'
+     INNER JOIN catalogos s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+     INNER JOIN catalogos t ON t.id = m.tamano_id AND t.tipo = 'tamano'
+     INNER JOIN catalogos em ON em.id = m.estado_mascota_id AND em.tipo = 'estado_mascota'
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      ${where}`,
     values
@@ -235,11 +215,11 @@ export async function findAllAdmin(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM mascotas m
-     INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-     INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
-     INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
-     INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
+     INNER JOIN catalogos r ON r.id = m.raza_id AND r.tipo = 'raza'
+     INNER JOIN catalogos e ON e.id = r.padre_id AND e.tipo = 'especie'
+     INNER JOIN catalogos s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+     INNER JOIN catalogos t ON t.id = m.tamano_id AND t.tipo = 'tamano'
+     INNER JOIN catalogos em ON em.id = m.estado_mascota_id AND em.tipo = 'estado_mascota'
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      ${where}`,
     values
@@ -276,11 +256,11 @@ export async function findByFundacionEmail(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM mascotas m
-     INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
-     INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
-     INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
-     INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
-     INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
+     INNER JOIN catalogos r ON r.id = m.raza_id AND r.tipo = 'raza'
+     INNER JOIN catalogos e ON e.id = r.padre_id AND e.tipo = 'especie'
+     INNER JOIN catalogos s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+     INNER JOIN catalogos t ON t.id = m.tamano_id AND t.tipo = 'tamano'
+     INNER JOIN catalogos em ON em.id = m.estado_mascota_id AND em.tipo = 'estado_mascota'
      INNER JOIN organizaciones o ON o.id = m.organizacion_id
      INNER JOIN usuarios u ON u.id = o.usuario_id
      ${where}`,
@@ -341,8 +321,8 @@ export async function create(
     const [result] = await conn.query<ResultSetHeader>(
       `INSERT INTO mascotas
         (nombre, raza_id, edad_valor, unidad_edad_id, sexo_id, tamano_id, ubicacion,
-         historia, requisitos, organizacion_id, estado_mascota_id, publicada_en, oculto)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         historia, requisitos, imagen, organizacion_id, estado_mascota_id, publicada_en, oculto)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.nombre,
         fks.razaId,
@@ -353,6 +333,7 @@ export async function create(
         data.ubicacion,
         data.historia,
         data.requisitos,
+        data.imagen || null,
         data.organizacionId,
         fks.estadoId,
         data.fechaPublicacion ? new Date(data.fechaPublicacion) : new Date(),
@@ -362,7 +343,6 @@ export async function create(
 
     id = result.insertId;
     await syncTags(id, data.tags ?? [], conn);
-    await syncImagen(id, data.imagen ?? "", conn);
 
     await conn.commit();
   } catch (error) {
@@ -430,6 +410,10 @@ export async function update(id: number, data: ActualizarMascotaDTO) {
       sets.push("requisitos = ?");
       values.push(data.requisitos);
     }
+    if (data.imagen !== undefined) {
+      sets.push("imagen = ?");
+      values.push(data.imagen || null);
+    }
     if (data.estado !== undefined) {
       sets.push("estado_mascota_id = ?");
       values.push(fks.estadoId);
@@ -449,7 +433,6 @@ export async function update(id: number, data: ActualizarMascotaDTO) {
     }
 
     if (data.tags !== undefined) await syncTags(id, data.tags, conn);
-    if (data.imagen !== undefined) await syncImagen(id, data.imagen, conn);
 
     await conn.commit();
   } catch (error) {
@@ -483,7 +466,7 @@ export async function hasActiveSolicitud(petId: number) {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT sa.id
      FROM solicitudes_adopcion sa
-     INNER JOIN estados_solicitud_adopcion es ON es.id = sa.estado_id
+     INNER JOIN catalogos es ON es.id = sa.estado_id AND es.tipo = 'estado_solicitud_adopcion'
      WHERE sa.mascota_id = ? AND es.codigo IN ('revision', 'aprobada', 'seguimiento')
      LIMIT 1`,
     [petId]
@@ -513,54 +496,6 @@ export async function removeTagById(mascotaId: number, tagId: number) {
   await pool.query(
     "DELETE FROM mascota_tag WHERE mascota_id = ? AND tag_id = ?",
     [mascotaId, tagId]
-  );
-  return findById(mascotaId);
-}
-
-export interface MedioInput {
-  tipo?: string;
-  contenido: string;
-  esPrincipal?: boolean;
-}
-
-/** Inserta un medio nuevo; si se marca como principal, desmarca el anterior en una transacción. */
-export async function addMedio(mascotaId: number, data: MedioInput) {
-  const conn = await pool.getConnection();
-  let insertId!: number;
-  try {
-    await conn.beginTransaction();
-
-    const tipoId = await catalog.getTipoMedioId(data.tipo ?? "imagen", conn);
-
-    if (data.esPrincipal) {
-      await conn.query(
-        "UPDATE medios_mascota SET es_principal = 0 WHERE mascota_id = ?",
-        [mascotaId]
-      );
-    }
-
-    const [result] = await conn.query<ResultSetHeader>(
-      `INSERT INTO medios_mascota (mascota_id, tipo_medio_id, contenido, es_principal)
-       VALUES (?, ?, ?, ?)`,
-      [mascotaId, tipoId, data.contenido, data.esPrincipal ? 1 : 0]
-    );
-    insertId = result.insertId;
-
-    await conn.commit();
-  } catch (error) {
-    await conn.rollback();
-    throw error;
-  } finally {
-    conn.release();
-  }
-
-  return { mascota: await findById(mascotaId), medioId: insertId };
-}
-
-export async function removeMedio(mascotaId: number, medioId: number) {
-  await pool.query(
-    "DELETE FROM medios_mascota WHERE id = ? AND mascota_id = ?",
-    [medioId, mascotaId]
   );
   return findById(mascotaId);
 }

@@ -29,9 +29,9 @@ const SELECT = `
     ec.codigo AS cuenta_estado
   FROM solicitudes_registro_organizacion s
   INNER JOIN catalogos c ON c.id = s.ciudad_id AND c.tipo = 'ciudad'
-  INNER JOIN estados_solicitud_organizacion e ON e.id = s.estado_id
+  INNER JOIN catalogos e ON e.id = s.estado_id AND e.tipo = 'estado_solicitud_organizacion'
   LEFT JOIN usuarios u ON u.correo = s.correo
-  LEFT JOIN estados_cuenta ec ON ec.id = u.estado_cuenta_id
+  LEFT JOIN catalogos ec ON ec.id = u.estado_cuenta_id AND ec.tipo = 'estado_cuenta'
 `;
 
 export async function findAll(
@@ -46,7 +46,7 @@ export async function findAll(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM solicitudes_registro_organizacion s
-     INNER JOIN estados_solicitud_organizacion e ON e.id = s.estado_id
+     INNER JOIN catalogos e ON e.id = s.estado_id AND e.tipo = 'estado_solicitud_organizacion'
      ${where}`,
     values
   );

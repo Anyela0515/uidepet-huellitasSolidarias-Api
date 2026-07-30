@@ -84,7 +84,8 @@ export const agregarSeguimiento = asyncHandler(async (req: Request, res: Respons
   const result = await solicitudService.agregarSeguimiento(
     String(req.params.id),
     data,
-    req.user!.correo
+    req.user!.correo,
+    req.user!.sub
   );
 
   if ("error" in result) {

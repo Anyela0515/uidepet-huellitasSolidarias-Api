@@ -31,11 +31,11 @@ const SELECT = `
           'url', ev.contenido
         )
       )
-      FROM evidencias_denuncia ev
+      FROM archivos ev
       WHERE ev.denuncia_id = dr.id
     ) AS evidencias_json
   FROM denuncias_rescate dr
-  INNER JOIN estados_denuncia ed ON ed.id = dr.estado_id
+  INNER JOIN catalogos ed ON ed.id = dr.estado_id AND ed.tipo = 'estado_denuncia'
 `;
 
 export interface DenunciaFiltros {
@@ -58,7 +58,7 @@ export async function findAll(
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM denuncias_rescate dr
-     INNER JOIN estados_denuncia ed ON ed.id = dr.estado_id
+     INNER JOIN catalogos ed ON ed.id = dr.estado_id AND ed.tipo = 'estado_denuncia'
      ${where}`,
     values
   );
@@ -132,7 +132,7 @@ export async function create(data: {
 
     for (const ev of data.evidencias) {
       await conn.query(
-        `INSERT INTO evidencias_denuncia
+        `INSERT INTO archivos
           (denuncia_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
          VALUES (?, ?, ?, ?, ?)`,
         [

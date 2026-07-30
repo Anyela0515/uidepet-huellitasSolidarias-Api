@@ -10,7 +10,7 @@ function randomEmail() {
   return `vitest.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@correo.com`;
 }
 
-// Cédula única por corrida: es un UNIQUE real en BD (perfiles_usuario.cedula)
+// Cédula única por corrida: es un UNIQUE real en BD (usuarios.cedula)
 // y no hay BD de pruebas descartable, así que un valor fijo colisionaría con
 // corridas anteriores contra la misma base de desarrollo.
 function randomCedula() {

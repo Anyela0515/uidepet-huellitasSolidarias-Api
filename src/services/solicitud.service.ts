@@ -159,7 +159,8 @@ export async function agregarSeguimiento(
       contenido: string;
     }>;
   },
-  userCorreo: string
+  userCorreo: string,
+  userId?: number
 ) {
   const actual = await solicitudRepo.findById(id);
   if (!actual) return { error: "Solicitud no encontrada." };
@@ -175,7 +176,7 @@ export async function agregarSeguimiento(
     return { error: "Ya enviaste el reporte de seguimiento de este mes." };
   }
 
-  const solicitud = await solicitudRepo.addSeguimiento(id, { ...data, periodo });
+  const solicitud = await solicitudRepo.addSeguimiento(id, { ...data, periodo }, userId);
 
   await mensajeRepo.create({
     de: actual.adoptante,

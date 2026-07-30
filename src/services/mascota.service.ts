@@ -135,17 +135,3 @@ export async function quitarTag(id: number, tagId: number, fundacionEmail?: stri
   await assertOwnership(id, fundacionEmail);
   return mascotaRepo.removeTagById(id, tagId);
 }
-
-export async function agregarMedio(
-  id: number,
-  data: { tipo?: string; contenido: string; esPrincipal?: boolean },
-  fundacionEmail?: string
-) {
-  await assertOwnership(id, fundacionEmail);
-  return mascotaRepo.addMedio(id, data);
-}
-
-export async function quitarMedio(id: number, medioId: number, fundacionEmail?: string) {
-  await assertOwnership(id, fundacionEmail);
-  return mascotaRepo.removeMedio(id, medioId);
-}
