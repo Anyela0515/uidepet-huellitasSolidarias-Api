@@ -34,6 +34,13 @@ export async function listarVisibles(query: Record<string, unknown> = {}) {
   return mascotaRepo.findVisible(pagination, sortClause, parseFiltros(query));
 }
 
+/** Sin restricción de estado: el admin puede ver mascotas adoptadas/eliminadas. */
+export async function listarTodas(query: Record<string, unknown> = {}) {
+  const pagination = parsePagination(query);
+  const sortClause = buildSortClause(query.sortBy, query.sortOrder, MASCOTA_SORT_FIELDS, "fecha");
+  return mascotaRepo.findAllAdmin(pagination, sortClause, parseFiltros(query));
+}
+
 export async function listarPorFundacion(
   fundacionEmail: string,
   query: Record<string, unknown> = {}

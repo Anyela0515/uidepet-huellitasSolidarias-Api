@@ -184,7 +184,52 @@ export async function findVisible(
   filtros: MascotaFiltros = {}
 ) {
   const values: unknown[] = [];
-  const clauses = buildWhere(filtros, ["em.codigo <> 'Eliminado'", "m.oculto = 0"], values);
+  // "Adoptado" se oculta igual que "Eliminado": una vez adoptada, la mascota
+  // ya no debe verse en el catálogo público ni para un usuario adoptante
+  // normal. Solo la fundación dueña (findByFundacionEmail) y el admin
+  // (findAllAdmin) siguen viéndola.
+  const clauses = buildWhere(
+    filtros,
+    ["em.codigo <> 'Eliminado'", "em.codigo <> 'Adoptado'", "m.oculto = 0"],
+    values
+  );
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+
+  const [countRows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS total
+     FROM mascotas m
+     INNER JOIN categorias r ON r.id = m.raza_id AND r.tipo = 'raza'
+     INNER JOIN categorias e ON e.id = r.padre_id AND e.tipo = 'especie'
+     INNER JOIN categorias s ON s.id = m.sexo_id AND s.tipo = 'sexo'
+     INNER JOIN categorias t ON t.id = m.tamano_id AND t.tipo = 'tamano'
+     INNER JOIN estados_mascota em ON em.id = m.estado_mascota_id
+     INNER JOIN organizaciones o ON o.id = m.organizacion_id
+     ${where}`,
+    values
+  );
+  const total = Number(countRows[0]?.total ?? 0);
+
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `${MASCOTA_SELECT}
+     ${where}
+     ORDER BY ${sortClause}
+     LIMIT ? OFFSET ?`,
+    [...values, pagination.limit, pagination.offset]
+  );
+
+  return {
+    data: rows.map((row) => mapMascota(row)),
+    meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+  };
+}
+
+export async function findAllAdmin(
+  pagination: PaginationParams,
+  sortClause: string,
+  filtros: MascotaFiltros = {}
+) {
+  const values: unknown[] = [];
+  const clauses = buildWhere(filtros, [], values);
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
   const [countRows] = await pool.query<RowDataPacket[]>(

@@ -17,9 +17,11 @@ export const listar = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user;
   const query = req.query as Record<string, unknown>;
   const { data, meta } =
-    user?.rol === "fundacion"
-      ? await mascotaService.listarPorFundacion(user.correo, query)
-      : await mascotaService.listarVisibles(query);
+    user?.rol === "admin"
+      ? await mascotaService.listarTodas(query)
+      : user?.rol === "fundacion"
+        ? await mascotaService.listarPorFundacion(user.correo, query)
+        : await mascotaService.listarVisibles(query);
 
   res.status(200).json({ success: true, data, pagination: meta });
 });
@@ -35,7 +37,20 @@ export const obtener = asyncHandler(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const mascota = await mascotaService.obtenerMascota(id);
 
-  if (!mascota || mascota.estado === "Eliminado" || mascota.hidden) {
+  if (!mascota) {
+    res.status(404).json({ error: "Mascota no encontrada." });
+    return;
+  }
+
+  // "Adoptado"/"Eliminado" (y ocultas) solo las puede ver el admin o la
+  // fundación dueña; para cualquier otro visitante (o anónimo) es como si
+  // no existieran.
+  const oculta = mascota.estado === "Eliminado" || mascota.estado === "Adoptado" || mascota.hidden;
+  const esDuenoOAdmin =
+    req.user?.rol === "admin" ||
+    (req.user?.rol === "fundacion" && req.user.correo === mascota.fundacionEmail);
+
+  if (oculta && !esDuenoOAdmin) {
     res.status(404).json({ error: "Mascota no encontrada." });
     return;
   }

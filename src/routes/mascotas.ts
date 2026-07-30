@@ -1,11 +1,11 @@
 import { Router } from "express";
 import * as controller from "../controllers/mascota.controller.js";
-import { requireJwt, requireRole } from "../middlewares/auth.js";
+import { optionalJwt, requireJwt, requireRole } from "../middlewares/auth.js";
 
 const router = Router();
 
 router.get("/publicas", controller.listarPublicas);
-router.get("/:id", controller.obtener);
+router.get("/:id", optionalJwt, controller.obtener);
 
 router.use(requireJwt);
 

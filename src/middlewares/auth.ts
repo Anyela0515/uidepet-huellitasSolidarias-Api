@@ -44,6 +44,20 @@ export function requireJwt(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+/** Igual que requireJwt, pero nunca bloquea: si no hay token (o es inválido), sigue como anónimo. */
+export function optionalJwt(req: Request, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    try {
+      const token = header.split(" ")[1];
+      req.user = jwt.verify(token, process.env.JWT_SECRET as string) as unknown as AppJwtPayload;
+    } catch {
+      // Token ausente/inválido: se continúa sin req.user, como visitante anónimo.
+    }
+  }
+  next();
+}
+
 export function requireRole(...rolesPermitidos: RolUsuario[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
