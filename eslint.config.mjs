@@ -3,7 +3,10 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**"],
+    // mcp-server/ es un paquete npm aparte, con su propio tsconfig y sus
+    // propias dependencias; se valida con sus propios scripts, no con el lint
+    // del backend (que ni conoce sus globals de Node ni su configuración).
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "mcp-server/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

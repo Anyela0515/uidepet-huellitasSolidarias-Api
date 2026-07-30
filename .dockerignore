@@ -21,3 +21,8 @@ README.md
 
 coverage
 *.log
+
+# El servidor MCP es una herramienta local que se ejecuta en la máquina de
+# quien usa Claude; no forma parte de la imagen del API. Excluirlo evita
+# enviar sus node_modules al daemon de Docker en cada build.
+mcp-server
