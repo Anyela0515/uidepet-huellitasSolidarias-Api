@@ -112,27 +112,27 @@ export async function updateByUsuarioCorreo(
   const values: unknown[] = [];
 
   if (data.telefono !== undefined) {
-    sets.push("telefono = ?");
+    sets.push("o.telefono = ?");
     values.push(data.telefono);
   }
   if (data.descripcion !== undefined) {
-    sets.push("descripcion = ?");
+    sets.push("o.descripcion = ?");
     values.push(data.descripcion);
   }
   if (data.direccion !== undefined) {
-    sets.push("direccion = ?");
+    sets.push("o.direccion = ?");
     values.push(data.direccion);
   }
   if (data.imagenQr !== undefined) {
-    sets.push("imagen_qr = ?");
+    sets.push("o.imagen_qr = ?");
     values.push(data.imagenQr);
   }
   if (data.imagen !== undefined) {
-    sets.push("imagen = ?");
+    sets.push("o.imagen = ?");
     values.push(data.imagen);
   }
   if (data.localidadId !== undefined) {
-    sets.push("localidad_id = ?");
+    sets.push("o.localidad_id = ?");
     values.push(await catalog.assertLocalidadId(Number(data.localidadId)));
   }
 
