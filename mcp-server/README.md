@@ -12,6 +12,27 @@ que documenta los 60+ endpoints de la API.
 
 ---
 
+## Uso de IA en este trabajo
+
+Este servidor se construyó con apoyo de un asistente de IA (Claude): ayudó a
+redactar el andamiaje inicial del código, las *tools* y este mismo documento.
+Lo que no delegamos al modelo fue el criterio: qué endpoints exponer y cuáles
+dejar fuera, qué transporte usar y por qué, y dónde poner cada límite de
+seguridad — esas decisiones se discutieron y se tomaron como equipo.
+
+Cada afirmación de este documento se contrastó a mano contra el servidor real
+antes de darla por buena; no nos quedamos con lo que la IA "dijo que
+funcionaba". La sección 5 ("Verificación realizada") es justamente eso: la
+lista de pruebas que corrimos nosotros, con sus resultados reales, para
+confirmar que el comportamiento descrito es el que efectivamente tiene el
+servidor.
+
+En corto: la IA fue una herramienta de redacción y de primer borrador: quien
+decidió la arquitectura, definió los límites de seguridad y verificó que todo
+funcionara fue el equipo.
+
+---
+
 ## 1. Puesta en marcha
 
 ```bash
