@@ -70,22 +70,15 @@ export async function crearSolicitud(
   const solicitud = await solicitudRepo.create(data, pet, user);
   await mascotaRepo.update(data.petId, { estado: "En proceso" });
 
-  await mensajeRepo.create({
-    de: user.nombre,
-    correo: user.correo,
-    asunto: `Nueva solicitud de adopción — ${pet.nombre}`,
-    mensaje: `${user.nombre} envió una solicitud para adoptar a ${pet.nombre}. Revisar en Solicitudes.`,
-    solicitudId: solicitud?.id,
-    fundacionEmail: pet.fundacionEmail,
-  });
-
   if (pet.fundacionEmail) {
     const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
     try {
       await sendNuevoMensajeNotificationEmail(
         pet.fundacionEmail,
         pet.fundacion || "tu organización",
-        `${frontendUrl}/fundacion/mensajes`
+        `${frontendUrl}/fundacion/solicitudes`,
+        user.nombre,
+        `Nueva solicitud de adopción — ${pet.nombre}`
       );
     } catch (error) {
       console.error("No se pudo enviar el aviso de nueva solicitud a la organización:", error);

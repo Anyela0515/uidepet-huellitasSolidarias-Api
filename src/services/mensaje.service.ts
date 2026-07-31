@@ -46,7 +46,9 @@ export async function crearMensaje(data: {
       await sendNuevoMensajeNotificationEmail(
         organizacion.correo,
         organizacion.nombre,
-        `${frontendUrl}/fundacion/mensajes`
+        `${frontendUrl}/fundacion/mensajes`,
+        data.de,
+        data.asunto
       );
     } catch (error) {
       console.error("No se pudo enviar el aviso de nuevo mensaje a la organización:", error);

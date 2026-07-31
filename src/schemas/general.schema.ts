@@ -13,8 +13,9 @@ export const crearMensajeSchema = z.object({
 export const crearDonacionSchema = z.object({
   nombre: z.string().min(2),
   correo: z.string().email(),
+  telefono: z.string().regex(/^09\d{8}$/, "Ingresa un celular ecuatoriano válido."),
   tipo: z.string().min(2),
-  cantidad: z.string().min(2),
+  cantidad: z.string().min(2).max(500),
   direccion: z.string().min(5),
   organizacionId: z.number().int().positive(),
   // Comprobante de pago del aporte económico (imagen o PDF en base64);

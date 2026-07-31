@@ -111,16 +111,18 @@ export async function sendSolicitudRechazadaEmail(
 export async function sendNuevoMensajeNotificationEmail(
   correoOrganizacion: string,
   nombreOrganizacion: string,
-  panelUrl: string
+  panelUrl: string,
+  deNombre: string,
+  asunto: string
 ) {
   const { user, transporter } = createTransporter();
 
   await transporter.sendMail({
     from: `"Huellitas Solidarias" <${user}>`,
     to: correoOrganizacion,
-    subject: "Tienes un nuevo mensaje pendiente en tu panel",
-    text: `Hola ${nombreOrganizacion}. Te llegó un nuevo mensaje en tu panel de Huellitas Solidarias. Ingresa a ${panelUrl} para revisarlo.`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p>Tienes un nuevo mensaje pendiente en tu panel.</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver mensaje</a></p></div>`,
+    subject: `Nuevo mensaje de ${deNombre}: ${asunto}`,
+    text: `Hola ${nombreOrganizacion}. ${deNombre} te escribió: "${asunto}". Ingresa a ${panelUrl} para revisarlo.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p><strong>${escapeHtml(deNombre)}</strong> te escribió:</p><p style="margin:12px 0;padding:12px 16px;background:#faf5f7;border-radius:8px;font-weight:700">${escapeHtml(asunto)}</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver mensaje</a></p></div>`,
   });
 }
 

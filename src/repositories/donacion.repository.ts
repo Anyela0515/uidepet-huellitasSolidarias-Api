@@ -35,6 +35,7 @@ const SELECT = `
     d.id,
     d.nombre_donante,
     d.correo_donante,
+    d.telefono_donante,
     d.cantidad_descripcion,
     d.direccion,
     d.organizacion_id,
@@ -110,6 +111,37 @@ export async function findByCorreo(
   };
 }
 
+export async function findByOrganizacion(
+  organizacionId: number,
+  pagination: PaginationParams,
+  sortClause: string,
+  filtros: DonacionFiltros = {}
+) {
+  const values: unknown[] = [organizacionId];
+  const clauses = buildDonacionWhere(filtros, ["d.organizacion_id = ?"], values);
+  const where = `WHERE ${clauses.join(" AND ")}`;
+
+  const [countRows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS total
+     FROM donaciones d
+     INNER JOIN catalogos td ON td.id = d.tipo_donacion_id AND td.tipo = 'tipo_donacion'
+     INNER JOIN catalogos ed ON ed.id = d.estado_donacion_id AND ed.tipo = 'estado_donacion'
+     ${where}`,
+    values
+  );
+  const total = Number(countRows[0]?.total ?? 0);
+
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `${SELECT} ${where} ORDER BY ${sortClause} LIMIT ? OFFSET ?`,
+    [...values, pagination.limit, pagination.offset]
+  );
+
+  return {
+    data: rows.map((row) => mapDonacion(row)),
+    meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+  };
+}
+
 export async function findById(id: string) {
   const [rows] = await pool.query<RowDataPacket[]>(
     `${SELECT} WHERE d.id = ? LIMIT 1`,
@@ -130,6 +162,7 @@ export async function updateEstado(id: string, estado: string) {
 export async function create(data: {
   nombre: string;
   correo: string;
+  telefono: string;
   tipo: string;
   cantidad: string;
   direccion: string;
@@ -145,14 +178,15 @@ export async function create(data: {
 
   await pool.query(
     `INSERT INTO donaciones
-      (id, donante_usuario_id, nombre_donante, correo_donante, tipo_donacion_id,
+      (id, donante_usuario_id, nombre_donante, correo_donante, telefono_donante, tipo_donacion_id,
        cantidad_descripcion, direccion, organizacion_id, estado_donacion_id, comprobante_pago)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       usuarioId,
       data.nombre,
       data.correo.trim().toLowerCase(),
+      data.telefono,
       tipoId,
       data.cantidad,
       data.direccion,

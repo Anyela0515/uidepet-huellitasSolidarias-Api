@@ -1,7 +1,6 @@
 import * as donacionRepo from "../repositories/donacion.repository.js";
 import * as organizacionRepo from "../repositories/organizacion.repository.js";
-import * as mensajeRepo from "../repositories/mensaje.repository.js";
-import { buildSortClause, parsePagination } from "../utils/pagination.js";
+import { buildPaginationMeta, buildSortClause, parsePagination } from "../utils/pagination.js";
 import { DONACION_SORT_FIELDS, type DonacionFiltros } from "../repositories/donacion.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { sendComprobanteDonacionEmail, sendNuevoMensajeNotificationEmail } from "./email.service.js";
@@ -18,12 +17,22 @@ export async function listarDonaciones(
   if (query.estado) filtros.estado = String(query.estado);
 
   if (rol === "admin") return donacionRepo.findAll(pagination, sortClause, filtros);
+
+  if (rol === "fundacion") {
+    const organizacion = await organizacionRepo.findByUsuarioCorreo(correo);
+    if (!organizacion) {
+      return { data: [], meta: buildPaginationMeta(pagination.page, pagination.limit, 0) };
+    }
+    return donacionRepo.findByOrganizacion(organizacion.id, pagination, sortClause, filtros);
+  }
+
   return donacionRepo.findByCorreo(correo, pagination, sortClause, filtros);
 }
 
 export async function crearDonacion(data: {
   nombre: string;
   correo: string;
+  telefono: string;
   tipo: string;
   cantidad: string;
   direccion: string;
@@ -36,23 +45,14 @@ export async function crearDonacion(data: {
   }
   const donacion = await donacionRepo.create(data);
 
-  await mensajeRepo.create({
-    de: data.nombre,
-    correo: data.correo,
-    asunto: `Nueva donación — ${data.tipo}`,
-    mensaje: `${data.nombre} (${data.correo}) registró una donación: ${data.tipo} — ${data.cantidad}.${
-      data.direccion ? ` Dirección: ${data.direccion}.` : ""
-    }`,
-    donacionId: donacion?.id,
-    organizacionId: data.organizacionId,
-  });
-
   const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
   try {
     await sendNuevoMensajeNotificationEmail(
       organizacion.correo,
       organizacion.nombre,
-      `${frontendUrl}/fundacion/mensajes`
+      `${frontendUrl}/fundacion/donaciones`,
+      data.nombre,
+      `Nueva donación — ${data.tipo}`
     );
   } catch (error) {
     console.error("No se pudo enviar el aviso de nueva donación a la organización:", error);
