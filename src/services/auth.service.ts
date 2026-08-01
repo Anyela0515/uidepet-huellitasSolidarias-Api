@@ -5,7 +5,13 @@ import { OAuth2Client } from "google-auth-library";
 import type { PoolConnection } from "mysql2/promise";
 import * as usuarioRepo from "../repositories/usuario.repository.js";
 import * as catalog from "../repositories/catalog.repository.js";
-import { GoogleLoginDTO, LoginDTO, RegisterDTO } from "../schemas/auth.schema.js";
+import {
+  CORREO_INSTITUCIONAL_MSG,
+  esCorreoInstitucional,
+  GoogleLoginDTO,
+  LoginDTO,
+  RegisterDTO,
+} from "../schemas/auth.schema.js";
 import { mapUsuario } from "../utils/mappers.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuario.repository.js";
@@ -64,6 +70,9 @@ export async function loginWithGoogle(data: GoogleLoginDTO) {
   let row = await usuarioRepo.findByCorreo(correo);
   const esNuevo = !row;
   if (!row) {
+    if (esCorreoInstitucional(correo)) {
+      return { error: CORREO_INSTITUCIONAL_MSG };
+    }
     const randomPassword = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12);
     await usuarioRepo.create({
       nombre: payload.name?.trim() || correo.split("@")[0],

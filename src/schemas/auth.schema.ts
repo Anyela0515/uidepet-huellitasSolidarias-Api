@@ -12,6 +12,16 @@ const PASSWORD_SEGURA_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])
 const PASSWORD_SEGURA_MSG =
   "Debe tener entre 8 y 12 caracteres, con mayúscula, minúscula, número y símbolo especial.";
 
+// Registro cerrado temporalmente para correos institucionales: por ahora la
+// plataforma es solo para el publico general, no para la comunidad UIDE.
+// Pensado para habilitarse en el futuro.
+export const DOMINIO_INSTITUCIONAL = "@uide.edu.ec";
+export const CORREO_INSTITUCIONAL_MSG =
+  "El registro con correo institucional (@uide.edu.ec) no está disponible por el momento.";
+export function esCorreoInstitucional(correo: string) {
+  return correo.trim().toLowerCase().endsWith(DOMINIO_INSTITUCIONAL);
+}
+
 export const loginSchema = z.object({
   correo: z.string().email("Correo inválido."),
   password: z.string().min(8, "La contraseña debe tener mínimo 8 caracteres."),
@@ -19,7 +29,9 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   nombre: z.string().min(3),
-  correo: z.string().email(),
+  correo: z.string().email().refine((correo) => !esCorreoInstitucional(correo), {
+    message: CORREO_INSTITUCIONAL_MSG,
+  }),
   password: z
     .string()
     .min(PASSWORD_MIN, PASSWORD_SEGURA_MSG)
