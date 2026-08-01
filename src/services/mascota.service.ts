@@ -13,6 +13,7 @@ import {
 } from "../utils/pagination.js";
 import { MASCOTA_SORT_FIELDS, type MascotaFiltros } from "../repositories/mascota.repository.js";
 import { ForbiddenError, NotFoundError } from "../utils/errors.js";
+import { compressImageDataUrl } from "../utils/image.js";
 
 function parseFiltros(query: Record<string, unknown>): MascotaFiltros {
   const filtros: MascotaFiltros = {};
@@ -73,8 +74,11 @@ export async function crearMascota(
     );
   }
 
+  const imagen = data.imagen ? await compressImageDataUrl(data.imagen) : data.imagen;
+
   return mascotaRepo.create({
     ...data,
+    imagen,
     organizacionId,
   });
 }
@@ -91,7 +95,11 @@ export async function actualizarMascota(
     return { error: "No tienes permiso para editar esta mascota." };
   }
 
-  const mascota = await mascotaRepo.update(id, data);
+  const datosActualizados = data.imagen
+    ? { ...data, imagen: await compressImageDataUrl(data.imagen) }
+    : data;
+
+  const mascota = await mascotaRepo.update(id, datosActualizados);
   return mascota ? { mascota } : { error: "Mascota no encontrada." };
 }
 
