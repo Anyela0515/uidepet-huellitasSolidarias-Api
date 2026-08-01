@@ -97,6 +97,16 @@ export async function findPublicas() {
   }));
 }
 
+export async function findAllActivasConCorreo(): Promise<Array<{ correo: string; nombre: string }>> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT u.correo, o.nombre
+     FROM organizaciones o
+     INNER JOIN usuarios u ON u.id = o.usuario_id
+     WHERE o.activo = 1`
+  );
+  return rows.map((row) => ({ correo: String(row.correo ?? ""), nombre: String(row.nombre ?? "") }));
+}
+
 export async function updateByUsuarioCorreo(
   correo: string,
   data: {

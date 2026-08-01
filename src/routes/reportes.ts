@@ -8,7 +8,7 @@ router.post("/", controller.crear);
 
 router.use(requireJwt);
 
-router.get("/", requireRole("admin"), controller.listar);
-router.patch("/:id/estado", requireRole("admin"), controller.actualizarEstado);
+router.get("/", requireRole("admin", "fundacion"), controller.listar);
+router.patch("/:id/estado", requireRole("admin", "fundacion"), controller.actualizarEstado);
 
 export default router;

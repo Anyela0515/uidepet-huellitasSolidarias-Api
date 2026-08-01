@@ -1,4 +1,6 @@
 import * as denunciaRepo from "../repositories/denuncia.repository.js";
+import * as organizacionRepo from "../repositories/organizacion.repository.js";
+import { sendNuevoReporteRescateEmail } from "./email.service.js";
 import { NotFoundError } from "../utils/errors.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { DENUNCIA_SORT_FIELDS } from "../repositories/denuncia.repository.js";
@@ -22,7 +24,31 @@ export async function crearDenuncia(data: {
   evidencias: Array<{ name: string; type?: string | null; size?: number | null; url?: string | null }>;
 }) {
   const reporte = await denunciaRepo.create(data);
+  if (reporte) await notificarFundaciones(reporte);
   return { reporte };
+}
+
+async function notificarFundaciones(reporte: {
+  tipoAnimal: string;
+  urgencia: string;
+  ubicacion: string;
+  descripcion: string;
+}) {
+  const panelUrl = `${process.env.FRONTEND_URL || "https://huellitassolidarias.com"}/fundacion/reportes`;
+  let fundaciones: Array<{ correo: string; nombre: string }> = [];
+  try {
+    fundaciones = await organizacionRepo.findAllActivasConCorreo();
+  } catch (error) {
+    console.error("No se pudieron obtener las fundaciones para notificar el reporte:", error);
+    return;
+  }
+
+  const envios = fundaciones.map((fundacion) =>
+    sendNuevoReporteRescateEmail(fundacion.correo, fundacion.nombre, panelUrl, reporte).catch((error) => {
+      console.error(`No se pudo notificar el reporte a ${fundacion.correo}:`, error);
+    })
+  );
+  await Promise.allSettled(envios);
 }
 
 export async function actualizarEstado(id: string, estado: string) {
