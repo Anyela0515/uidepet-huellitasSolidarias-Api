@@ -19,7 +19,7 @@ function randomCedula() {
 
 describe("Auth", () => {
   const correo = randomEmail();
-  const password = "ClaveSegura123";
+  const password = "Clave123!";
   const cedula = randomCedula();
 
   it("registra un usuario nuevo como rol 'usuario'", async () => {
@@ -112,20 +112,20 @@ describe("Auth", () => {
     const wrong = await request(app)
       .patch("/auth/password")
       .set("Authorization", `Bearer ${token}`)
-      .send({ currentPassword: "incorrecta123", newPassword: "OtraClave456" });
+      .send({ currentPassword: "incorrecta123", newPassword: "Nueva123!" });
     expect(wrong.status).toBe(401);
 
     const ok = await request(app)
       .patch("/auth/password")
       .set("Authorization", `Bearer ${token}`)
-      .send({ currentPassword: password, newPassword: "OtraClave456" });
+      .send({ currentPassword: password, newPassword: "Nueva123!" });
     expect(ok.status).toBe(200);
 
     // revertir
     await request(app)
       .patch("/auth/password")
       .set("Authorization", `Bearer ${token}`)
-      .send({ currentPassword: "OtraClave456", newPassword: password });
+      .send({ currentPassword: "Nueva123!", newPassword: password });
   });
 
   it("recupera la contraseña con un token de un solo uso", async () => {
@@ -136,7 +136,7 @@ describe("Auth", () => {
     expect(requestReset.status).toBe(202);
     expect(typeof requestReset.body.token).toBe("string");
 
-    const newPassword = "Recuperada789";
+    const newPassword = "Reset123!";
     const reset = await request(app)
       .post("/auth/reset-password")
       .send({ token: requestReset.body.token, newPassword });

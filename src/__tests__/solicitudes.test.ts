@@ -79,7 +79,7 @@ describe("Solicitudes", () => {
     const mascotaId = mascota.body.mascota.id;
 
     const adoptanteCorreo = randomEmail("adoptante");
-    const adoptantePassword = "ClaveSegura123";
+    const adoptantePassword = "Clave123!";
     const registro = await request(app).post("/auth/register").send({
       nombre: "Adoptante Vitest",
       correo: adoptanteCorreo,
@@ -119,7 +119,7 @@ describe("Solicitudes", () => {
 
     // Un usuario ajeno NO puede ver los datos personales de esta solicitud.
     const otroCorreo = randomEmail("ajeno");
-    const otroPassword = "ClaveSegura123";
+    const otroPassword = "Clave123!";
     await request(app).post("/auth/register").send({
       nombre: "Usuario Ajeno Vitest",
       correo: otroCorreo,
@@ -146,7 +146,7 @@ describe("Solicitudes", () => {
     const mascotaId = visibles.body.data[0]?.id;
 
     const adoptanteCorreo = randomEmail("incompleto");
-    const adoptantePassword = "ClaveSegura123";
+    const adoptantePassword = "Clave123!";
     await request(app).post("/auth/register").send({
       nombre: "Adoptante Incompleto",
       correo: adoptanteCorreo,
