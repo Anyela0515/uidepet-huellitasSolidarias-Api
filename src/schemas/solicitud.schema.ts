@@ -71,6 +71,7 @@ export const actualizarEntregaSolicitudSchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida."),
   hora: z.string().regex(/^\d{2}:\d{2}$/, "Hora inválida."),
   lugar: z.string().trim().min(5, "Indica la dirección del refugio.").max(255),
+  contacto: z.string().trim().min(7, "Indica un teléfono de contacto.").max(20),
 });
 
 const archivoEvidenciaSeguimientoSchema = z.object({

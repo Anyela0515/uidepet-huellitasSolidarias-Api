@@ -26,6 +26,7 @@ const SOLICITUD_SELECT = `
     sa.entrega_fecha,
     sa.entrega_hora,
     sa.entrega_lugar,
+    sa.entrega_contacto,
     sa.creado_en,
     es.codigo AS estado_codigo,
     m.nombre AS mascota_nombre,
@@ -212,13 +213,13 @@ export async function findByFundacion(
 
 export async function updateEntrega(
   id: string,
-  data: { fecha: string; hora: string; lugar: string }
+  data: { fecha: string; hora: string; lugar: string; contacto: string }
 ) {
   await pool.query(
     `UPDATE solicitudes_adopcion
-     SET entrega_fecha = ?, entrega_hora = ?, entrega_lugar = ?
+     SET entrega_fecha = ?, entrega_hora = ?, entrega_lugar = ?, entrega_contacto = ?
      WHERE id = ?`,
-    [data.fecha, data.hora, data.lugar, id]
+    [data.fecha, data.hora, data.lugar, data.contacto, id]
   );
   return findById(id);
 }

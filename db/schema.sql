@@ -235,6 +235,7 @@ CREATE TABLE solicitudes_adopcion (
   entrega_fecha DATE NULL,
   entrega_hora VARCHAR(5) NULL,
   entrega_lugar VARCHAR(255) NULL,
+  entrega_contacto VARCHAR(20) NULL,
 
   nombre_declarado VARCHAR(120) NOT NULL,
   cedula_declarada VARCHAR(10) NOT NULL,

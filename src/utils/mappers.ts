@@ -103,6 +103,7 @@ export function mapSolicitud(row: Record<string, unknown>): Solicitud {
     entregaFechaISO: row.entrega_fecha ? fechaToISO(toDate(row.entrega_fecha)) : null,
     entregaHora: row.entrega_hora ? String(row.entrega_hora) : null,
     entregaLugar: row.entrega_lugar ? String(row.entrega_lugar) : null,
+    entregaContacto: row.entrega_contacto ? String(row.entrega_contacto) : null,
     imagen: String(row.imagen ?? ""),
     tags:
       typeof row.tags === "string"

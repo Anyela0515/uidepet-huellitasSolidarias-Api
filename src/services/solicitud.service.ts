@@ -143,7 +143,7 @@ export async function actualizarEstado(
 
 export async function actualizarEntrega(
   id: string,
-  data: { fecha: string; hora: string; lugar: string },
+  data: { fecha: string; hora: string; lugar: string; contacto: string },
   fundacionEmail?: string
 ) {
   const actual = await solicitudRepo.findById(id);

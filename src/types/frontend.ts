@@ -56,6 +56,7 @@ export interface Solicitud {
   entregaFechaISO: string | null;
   entregaHora: string | null;
   entregaLugar: string | null;
+  entregaContacto: string | null;
   imagen: string;
   tags: string[];
   formData: Record<string, unknown>;
