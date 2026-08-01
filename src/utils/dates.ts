@@ -30,6 +30,26 @@ export function formatMiembroDesde(date: Date = new Date()): string {
   });
 }
 
+/** Para columnas DATE (sin hora): la conexión usa timezone "Z", así que
+ * mysql2 devuelve estas fechas como medianoche UTC. Hay que leerlas con
+ * los getters UTC*, no los locales, o el día se corre en zonas con offset
+ * negativo (America/Guayaquil, UTC-5) al aplicar la zona del proceso. */
+export function fechaToISO(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function formatFechaCortaUTC(date: Date): string {
+  return date.toLocaleDateString("es-EC", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function toDate(value: unknown): Date {
   if (value instanceof Date) return value;
   if (typeof value === "string" || typeof value === "number") {

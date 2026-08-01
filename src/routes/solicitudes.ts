@@ -16,6 +16,12 @@ router.patch(
   controller.actualizarEstado
 );
 
+router.patch(
+  "/:id/entrega",
+  requireRole("fundacion", "admin"),
+  controller.actualizarEntrega
+);
+
 router.post("/:id/seguimiento", requireRole("usuario"), controller.agregarSeguimiento);
 
 router.post("/:id/evidencias", controller.agregarEvidencia);

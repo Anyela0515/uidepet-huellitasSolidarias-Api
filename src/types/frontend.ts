@@ -52,6 +52,10 @@ export interface Solicitud {
   fundacionEmail: string;
   observaciones: string;
   proximoPaso: string;
+  entregaFecha: string | null;
+  entregaFechaISO: string | null;
+  entregaHora: string | null;
+  entregaLugar: string | null;
   imagen: string;
   tags: string[];
   formData: Record<string, unknown>;

@@ -23,6 +23,9 @@ const SOLICITUD_SELECT = `
     sa.mascota_id,
     sa.observaciones,
     sa.proximo_paso,
+    sa.entrega_fecha,
+    sa.entrega_hora,
+    sa.entrega_lugar,
     sa.creado_en,
     es.codigo AS estado_codigo,
     m.nombre AS mascota_nombre,
@@ -205,6 +208,19 @@ export async function findByFundacion(
     data: rows.map((row) => mapSolicitud(row)),
     meta: buildPaginationMeta(pagination.page, pagination.limit, total),
   };
+}
+
+export async function updateEntrega(
+  id: string,
+  data: { fecha: string; hora: string; lugar: string }
+) {
+  await pool.query(
+    `UPDATE solicitudes_adopcion
+     SET entrega_fecha = ?, entrega_hora = ?, entrega_lugar = ?
+     WHERE id = ?`,
+    [data.fecha, data.hora, data.lugar, id]
+  );
+  return findById(id);
 }
 
 export async function findById(id: string) {

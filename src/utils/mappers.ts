@@ -6,7 +6,9 @@ import type {
 } from "../types/frontend.js";
 import { computeEdadGrupo, formatEdad } from "./edad.js";
 import {
+  fechaToISO,
   formatFechaCorta,
+  formatFechaCortaUTC,
   formatFechaLarga,
   formatHora,
   formatMiembroDesde,
@@ -97,6 +99,10 @@ export function mapSolicitud(row: Record<string, unknown>): Solicitud {
     fundacionEmail: String(row.fundacion_email ?? ""),
     observaciones: String(row.observaciones ?? ""),
     proximoPaso: String(row.proximo_paso ?? ""),
+    entregaFecha: row.entrega_fecha ? formatFechaCortaUTC(toDate(row.entrega_fecha)) : null,
+    entregaFechaISO: row.entrega_fecha ? fechaToISO(toDate(row.entrega_fecha)) : null,
+    entregaHora: row.entrega_hora ? String(row.entrega_hora) : null,
+    entregaLugar: row.entrega_lugar ? String(row.entrega_lugar) : null,
     imagen: String(row.imagen ?? ""),
     tags:
       typeof row.tags === "string"

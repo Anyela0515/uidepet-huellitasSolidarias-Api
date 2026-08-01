@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  actualizarEntregaSolicitudSchema,
   actualizarEstadoSolicitudSchema,
   actualizarSeguimientoSchema,
   archivoSeguimientoSchema,
@@ -65,6 +66,26 @@ export const actualizarEstado = asyncHandler(async (req: Request, res: Response)
     req.user?.rol === "fundacion" ? req.user.correo : undefined;
 
   const result = await solicitudService.actualizarEstado(
+    String(req.params.id),
+    data,
+    fundacionEmail
+  );
+
+  if ("error" in result) {
+    const status = (result.error ?? "").includes("permiso") ? 403 : 400;
+    res.status(status).json({ error: result.error });
+    return;
+  }
+
+  res.status(200).json(result);
+});
+
+export const actualizarEntrega = asyncHandler(async (req: Request, res: Response) => {
+  const data = actualizarEntregaSolicitudSchema.parse(req.body);
+  const fundacionEmail =
+    req.user?.rol === "fundacion" ? req.user.correo : undefined;
+
+  const result = await solicitudService.actualizarEntrega(
     String(req.params.id),
     data,
     fundacionEmail

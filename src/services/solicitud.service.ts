@@ -141,6 +141,26 @@ export async function actualizarEstado(
   }
 }
 
+export async function actualizarEntrega(
+  id: string,
+  data: { fecha: string; hora: string; lugar: string },
+  fundacionEmail?: string
+) {
+  const actual = await solicitudRepo.findById(id);
+  if (!actual) return { error: "Solicitud no encontrada." };
+
+  if (fundacionEmail && actual.fundacionEmail !== fundacionEmail) {
+    return { error: "No tienes permiso para modificar esta solicitud." };
+  }
+
+  if (actual.estado !== "aprobada") {
+    return { error: "Solo se puede agendar la entrega de una solicitud aprobada." };
+  }
+
+  const solicitud = await solicitudRepo.updateEntrega(id, data);
+  return { solicitud };
+}
+
 export async function agregarSeguimiento(
   id: string,
   data: {

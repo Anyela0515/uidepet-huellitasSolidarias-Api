@@ -232,6 +232,9 @@ CREATE TABLE solicitudes_adopcion (
   estado_id SMALLINT UNSIGNED NOT NULL,
   observaciones TEXT,
   proximo_paso TEXT,
+  entrega_fecha DATE NULL,
+  entrega_hora VARCHAR(5) NULL,
+  entrega_lugar VARCHAR(255) NULL,
 
   nombre_declarado VARCHAR(120) NOT NULL,
   cedula_declarada VARCHAR(10) NOT NULL,
