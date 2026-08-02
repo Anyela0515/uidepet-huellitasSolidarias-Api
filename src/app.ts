@@ -55,7 +55,7 @@ export function createApp() {
       credentials: true,
     })
   );
-  app.use(express.json({ limit: "15mb" }));
+  app.use(express.json({ limit: "30mb" }));
   app.use(requestLogger);
   app.use(rateLimiter);
 

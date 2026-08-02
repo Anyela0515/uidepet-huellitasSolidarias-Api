@@ -80,13 +80,16 @@ export const actualizarEntregaSolicitudSchema = z.object({
   contacto: z.string().trim().min(7, "Indica un teléfono de contacto.").max(20),
 });
 
+const MAX_FOTO_SEGUIMIENTO_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_SEGUIMIENTO_BYTES = 10 * 1024 * 1024;
+
 const archivoEvidenciaSeguimientoSchema = z.object({
   nombreArchivo: z.string().min(1).max(255),
   mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4"]),
-  tamanioBytes: z.number().int().positive().max(5 * 1024 * 1024),
+  tamanioBytes: z.number().int().positive().max(MAX_VIDEO_SEGUIMIENTO_BYTES),
   contenido: z
     .string()
-    .max(7_100_000)
+    .max(14_000_000)
     .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
 });
 
@@ -96,12 +99,24 @@ export const seguimientoSolicitudSchema = z
     archivos: z.array(archivoEvidenciaSeguimientoSchema).min(1).max(5),
   })
   .superRefine((data, ctx) => {
+    data.archivos.forEach((archivo, index) => {
+      const esVideo = archivo.mimeType === "video/mp4";
+      const limite = esVideo ? MAX_VIDEO_SEGUIMIENTO_BYTES : MAX_FOTO_SEGUIMIENTO_BYTES;
+      if (archivo.tamanioBytes > limite) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["archivos", index, "tamanioBytes"],
+          message: `${archivo.nombreArchivo}: supera el tamaño máximo (${Math.round(limite / (1024 * 1024))} MB).`,
+        });
+      }
+    });
+
     const total = data.archivos.reduce((sum, archivo) => sum + archivo.tamanioBytes, 0);
-    if (total > 10 * 1024 * 1024) {
+    if (total > 20 * 1024 * 1024) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["archivos"],
-        message: "El total de archivos no puede superar 10 MB.",
+        message: "El total de archivos no puede superar 20 MB.",
       });
     }
     const videos = data.archivos.filter((archivo) => archivo.mimeType === "video/mp4");
