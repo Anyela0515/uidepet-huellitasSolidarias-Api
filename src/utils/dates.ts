@@ -50,6 +50,19 @@ export function formatFechaCortaUTC(date: Date): string {
   });
 }
 
+/** "Hoy" en la fecha calendario de Ecuador (UTC-5, sin horario de verano),
+ * no la del servidor (los contenedores corren en UTC). Sirve para validar
+ * fechas de negocio como "no agendar una entrega en el pasado": si se
+ * comparara contra la fecha UTC del servidor, entre las 19:00 y 23:59 hora
+ * de Ecuador el servidor ya estaria un dia adelante y rechazaria "hoy". */
+export function hoyEcuadorISO(): string {
+  const ahoraEcuador = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  const y = ahoraEcuador.getUTCFullYear();
+  const m = String(ahoraEcuador.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(ahoraEcuador.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function toDate(value: unknown): Date {
   if (value instanceof Date) return value;
   if (typeof value === "string" || typeof value === "number") {
