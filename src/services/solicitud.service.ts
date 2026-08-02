@@ -12,6 +12,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js
 import {
   sendEntregaReagendadaEmail,
   sendNuevoMensajeNotificationEmail,
+  sendSeguimientoActualizadoEmail,
   sendSolicitudAprobadaEmail,
   sendSolicitudRechazadaEmail,
 } from "./email.service.js";
@@ -235,6 +236,21 @@ export async function agregarSeguimiento(
     solicitudId: id,
     fundacionEmail: actual.fundacionEmail,
   });
+
+  if (actual.fundacionEmail) {
+    try {
+      const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+      await sendSeguimientoActualizadoEmail(
+        actual.fundacionEmail,
+        actual.fundacion,
+        actual.mascota,
+        actual.adoptante,
+        `${frontendUrl}/fundacion/solicitudes/${id}?vista=seguimiento`
+      );
+    } catch (error) {
+      console.error("No se pudo enviar el aviso de seguimiento actualizado a la fundación:", error);
+    }
+  }
 
   return { solicitud };
 }
