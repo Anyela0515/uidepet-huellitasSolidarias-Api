@@ -22,6 +22,11 @@ export const crearMascotaSchema = z.object({
 
 export const actualizarMascotaSchema = crearMascotaSchema.partial();
 
+export const verificarImagenMascotaSchema = z.object({
+  imagen: z.string().min(1),
+  excludeId: z.number().int().positive().optional(),
+});
+
 export const agregarTagSchema = z.object({
   tag: z.string().min(1).max(60),
 });

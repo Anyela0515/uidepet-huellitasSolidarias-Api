@@ -12,6 +12,12 @@ router.use(requireJwt);
 router.get("/", controller.listar);
 
 router.post(
+  "/verificar-imagen",
+  requireRole("fundacion"),
+  controller.verificarImagen
+);
+
+router.post(
   "/",
   requireRole("fundacion", "admin"),
   controller.crear

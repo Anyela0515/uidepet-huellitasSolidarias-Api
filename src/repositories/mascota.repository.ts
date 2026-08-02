@@ -457,6 +457,33 @@ export async function softDelete(id: number) {
   );
 }
 
+export async function findImagenesByFundacion(
+  fundacionEmail: string,
+  excludeId?: number
+): Promise<Array<{ id: number; nombre: string; imagen: string }>> {
+  const values: unknown[] = [fundacionEmail];
+  let where = "WHERE u.correo = ? AND m.imagen IS NOT NULL AND m.imagen <> ''";
+  if (excludeId !== undefined) {
+    where += " AND m.id <> ?";
+    values.push(excludeId);
+  }
+
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT m.id, m.nombre, m.imagen
+     FROM mascotas m
+     INNER JOIN organizaciones o ON o.id = m.organizacion_id
+     INNER JOIN usuarios u ON u.id = o.usuario_id
+     ${where}`,
+    values
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    nombre: String(row.nombre ?? ""),
+    imagen: String(row.imagen ?? ""),
+  }));
+}
+
 export async function belongsToFundacion(id: number, fundacionEmail: string) {
   const pet = await findById(id);
   return Boolean(pet && pet.fundacionEmail === fundacionEmail);

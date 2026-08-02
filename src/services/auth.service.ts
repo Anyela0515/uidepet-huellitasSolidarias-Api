@@ -40,7 +40,7 @@ function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
 
 export async function login(data: LoginDTO) {
   const row = await usuarioRepo.findByCorreo(data.correo.trim().toLowerCase());
-  if (!row) return { error: "Credenciales incorrectas." };
+  if (!row) return { error: "Usuario no encontrado." };
 
   const valid = await bcrypt.compare(data.password, String(row.password));
   if (!valid) return { error: "Credenciales incorrectas." };

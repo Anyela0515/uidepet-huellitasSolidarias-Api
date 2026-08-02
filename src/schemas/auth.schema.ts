@@ -16,8 +16,7 @@ const PASSWORD_SEGURA_MSG =
 // plataforma es solo para el publico general, no para la comunidad UIDE.
 // Pensado para habilitarse en el futuro.
 export const DOMINIO_INSTITUCIONAL = "@uide.edu.ec";
-export const CORREO_INSTITUCIONAL_MSG =
-  "El registro con correo institucional (@uide.edu.ec) no está disponible por el momento.";
+export const CORREO_INSTITUCIONAL_MSG = "Correo no permitido.";
 export function esCorreoInstitucional(correo: string) {
   return correo.trim().toLowerCase().endsWith(DOMINIO_INSTITUCIONAL);
 }

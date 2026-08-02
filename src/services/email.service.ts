@@ -108,6 +108,44 @@ export async function sendSolicitudRechazadaEmail(
   });
 }
 
+export async function sendSolicitudAprobadaEmail(
+  correo: string,
+  nombre: string,
+  mascotaNombre: string,
+  fundacionNombre: string,
+  panelUrl: string
+) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: `Tu solicitud de adopción para ${mascotaNombre} fue aprobada`,
+    text: `Hola ${nombre}. Tu solicitud de adopción para ${mascotaNombre} fue aprobada por ${fundacionNombre}. Revisa tu panel en ${panelUrl} para ver los próximos pasos.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombre)},</p><p>Tu solicitud de adopción para <strong>${escapeHtml(mascotaNombre)}</strong> fue aprobada por <strong>${escapeHtml(fundacionNombre)}</strong>.</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Revisar mi panel</a></p></div>`,
+  });
+}
+
+export async function sendEntregaReagendadaEmail(
+  correo: string,
+  nombre: string,
+  mascotaNombre: string,
+  fecha: string,
+  hora: string,
+  lugar: string,
+  panelUrl: string
+) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: `Nueva fecha de entrega para ${mascotaNombre}`,
+    text: `Hola ${nombre}. La fecha de entrega de ${mascotaNombre} fue reagendada para el ${fecha} a las ${hora}, en ${lugar}. Revisa tu panel en ${panelUrl}.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombre)},</p><p>La fecha de entrega de <strong>${escapeHtml(mascotaNombre)}</strong> fue reagendada:</p><p style="margin:12px 0;padding:12px 16px;background:#faf5f7;border-radius:8px"><strong>${escapeHtml(fecha)}</strong> a las <strong>${escapeHtml(hora)}</strong><br/>${escapeHtml(lugar)}</p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver mi solicitud</a></p></div>`,
+  });
+}
+
 export async function sendNuevoMensajeNotificationEmail(
   correoOrganizacion: string,
   nombreOrganizacion: string,

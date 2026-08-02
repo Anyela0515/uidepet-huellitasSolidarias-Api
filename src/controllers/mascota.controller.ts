@@ -3,6 +3,7 @@ import {
   actualizarMascotaSchema,
   agregarTagSchema,
   crearMascotaSchema,
+  verificarImagenMascotaSchema,
 } from "../schemas/mascota.schema.js";
 import * as authService from "../services/auth.service.js";
 import * as mascotaService from "../services/mascota.service.js";
@@ -23,6 +24,19 @@ export const listar = asyncHandler(async (req: Request, res: Response) => {
         : await mascotaService.listarVisibles(query);
 
   res.status(200).json({ success: true, data, pagination: meta });
+});
+
+export const verificarImagen = asyncHandler(async (req: Request, res: Response) => {
+  const { imagen, excludeId } = verificarImagenMascotaSchema.parse(req.body);
+  const fundacionEmail = fundacionEmailDe(req);
+
+  if (!fundacionEmail) {
+    res.status(200).json({ duplicada: false });
+    return;
+  }
+
+  const result = await mascotaService.verificarImagenDuplicada(imagen, fundacionEmail, excludeId);
+  res.status(200).json(result);
 });
 
 export const listarPublicas = asyncHandler(async (req: Request, res: Response) => {

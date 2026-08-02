@@ -60,6 +60,21 @@ export async function obtenerMascota(id: number) {
   return mascotaRepo.findById(id);
 }
 
+/** Compara contra las fotos que la misma fundacion ya usa en otras mascotas.
+ * La candidata se comprime igual que al guardar, porque las ya guardadas
+ * estan comprimidas: comparar el archivo crudo contra el comprimido nunca
+ * coincidiria aunque sea exactamente la misma foto. */
+export async function verificarImagenDuplicada(
+  imagen: string,
+  fundacionEmail: string,
+  excludeId?: number
+) {
+  const comprimida = await compressImageDataUrl(imagen);
+  const propias = await mascotaRepo.findImagenesByFundacion(fundacionEmail, excludeId);
+  const duplicada = propias.find((p) => p.imagen === comprimida);
+  return duplicada ? { duplicada: true, nombre: duplicada.nombre } : { duplicada: false };
+}
+
 export async function crearMascota(
   data: CrearMascotaDTO,
   fundacionEmail: string,

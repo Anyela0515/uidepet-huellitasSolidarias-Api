@@ -9,7 +9,12 @@ import { isAvailableForAdoption } from "./mascota.service.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { SOLICITUD_SORT_FIELDS } from "../repositories/solicitud.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
-import { sendNuevoMensajeNotificationEmail, sendSolicitudRechazadaEmail } from "./email.service.js";
+import {
+  sendEntregaReagendadaEmail,
+  sendNuevoMensajeNotificationEmail,
+  sendSolicitudAprobadaEmail,
+  sendSolicitudRechazadaEmail,
+} from "./email.service.js";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   revision: ["aprobada", "rechazada"],
@@ -129,6 +134,21 @@ export async function actualizarEstado(
       }
     }
 
+    if (data.estado === "aprobada") {
+      try {
+        const panelUrl = `${process.env.FRONTEND_URL || "https://huellitassolidarias.com"}/mis-solicitudes/${id}`;
+        await sendSolicitudAprobadaEmail(
+          actual.adoptanteEmail,
+          actual.adoptante,
+          actual.mascota,
+          actual.fundacion,
+          panelUrl
+        );
+      } catch (error) {
+        console.error("No se pudo enviar el correo de solicitud aprobada:", error);
+      }
+    }
+
     return { solicitud };
   } catch (error) {
     if (error instanceof Error && error.message === "TRANSICION_NO_PERMITIDA") {
@@ -158,6 +178,22 @@ export async function actualizarEntrega(
   }
 
   const solicitud = await solicitudRepo.updateEntrega(id, data);
+
+  try {
+    const panelUrl = `${process.env.FRONTEND_URL || "https://huellitassolidarias.com"}/mis-solicitudes/${id}`;
+    await sendEntregaReagendadaEmail(
+      actual.adoptanteEmail,
+      actual.adoptante,
+      actual.mascota,
+      data.fecha,
+      data.hora,
+      data.lugar,
+      panelUrl
+    );
+  } catch (error) {
+    console.error("No se pudo enviar el correo de reagendamiento de entrega:", error);
+  }
+
   return { solicitud };
 }
 
