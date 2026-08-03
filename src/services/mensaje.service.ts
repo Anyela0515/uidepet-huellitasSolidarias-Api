@@ -40,8 +40,9 @@ export async function crearMensaje(data: {
 
   const mensaje = await mensajeRepo.create(data);
 
+  const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+
   if (organizacion) {
-    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
     try {
       await sendNuevoMensajeNotificationEmail(
         organizacion.correo,
@@ -52,6 +53,21 @@ export async function crearMensaje(data: {
       );
     } catch (error) {
       console.error("No se pudo enviar el aviso de nuevo mensaje a la organización:", error);
+    }
+  } else {
+    // Mensaje de soporte general (sin organización asociada, ej. el formulario
+    // de Contacto): se avisa al mismo correo desde el que la app envía todo,
+    // que es el que revisa el equipo de soporte.
+    try {
+      await sendNuevoMensajeNotificationEmail(
+        "leontauro2005@gmail.com",
+        "Equipo de soporte Huellitas Solidarias",
+        `${frontendUrl}/fundacion/mensajes`,
+        data.de,
+        data.asunto
+      );
+    } catch (error) {
+      console.error("No se pudo enviar el aviso de mensaje de soporte:", error);
     }
   }
 
