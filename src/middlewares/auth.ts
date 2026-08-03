@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import * as usuarioRepo from "../repositories/usuario.repository.js";
+
+export const JWT_ISSUER = "huellitas-solidarias-api";
+export const JWT_AUDIENCE = "huellitas-solidarias-app";
 
 export type RolUsuario = "usuario" | "fundacion" | "admin";
 
@@ -17,7 +21,7 @@ declare global {
   }
 }
 
-export function requireJwt(req: Request, res: Response, next: NextFunction) {
+export async function requireJwt(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
 
   if (!header) {
@@ -30,17 +34,32 @@ export function requireJwt(req: Request, res: Response, next: NextFunction) {
     return;
   }
 
+  let payload: AppJwtPayload;
   try {
     const token = header.split(" ")[1];
-    const payload = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as unknown as AppJwtPayload;
-
-    req.user = payload;
-    next();
+    payload = jwt.verify(token, process.env.JWT_SECRET as string, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as unknown as AppJwtPayload;
   } catch {
     res.status(401).json({ error: "Token inválido o expirado" });
+    return;
+  }
+
+  // El JWT por sí solo no refleja cambios posteriores a su emisión (cuenta
+  // suspendida/eliminada, rol cambiado): se revalida contra la base en cada
+  // request, y se usa el rol ACTUAL de la base, no el que traía el token.
+  try {
+    const actual = await usuarioRepo.findEstadoActual(payload.sub);
+    if (!actual || actual.estado_codigo !== "Activo") {
+      res.status(401).json({ error: "Token inválido o expirado" });
+      return;
+    }
+    req.user = { sub: payload.sub, correo: actual.correo, rol: actual.rol_codigo as RolUsuario };
+    next();
+  } catch (error) {
+    next(error);
   }
 }
 
@@ -50,7 +69,11 @@ export function optionalJwt(req: Request, _res: Response, next: NextFunction) {
   if (header?.startsWith("Bearer ")) {
     try {
       const token = header.split(" ")[1];
-      req.user = jwt.verify(token, process.env.JWT_SECRET as string) as unknown as AppJwtPayload;
+      req.user = jwt.verify(token, process.env.JWT_SECRET as string, {
+        algorithms: ["HS256"],
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE,
+      }) as unknown as AppJwtPayload;
     } catch {
       // Token ausente/inválido: se continúa sin req.user, como visitante anónimo.
     }

@@ -56,6 +56,24 @@ export async function findById(id: number) {
   return rows[0] ?? null;
 }
 
+/**
+ * Versión liviana de findById para revalidar en cada request autenticado
+ * que la cuenta sigue existiendo y activa (requireJwt la usa). Solo trae
+ * lo mínimo necesario para esa comprobación, sin el hash de password.
+ */
+export async function findEstadoActual(id: number) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT u.correo, r.codigo AS rol_codigo, ec.codigo AS estado_codigo
+     FROM usuarios u
+     INNER JOIN catalogos r ON r.id = u.rol_id AND r.tipo = 'rol'
+     INNER JOIN catalogos ec ON ec.id = u.estado_cuenta_id AND ec.tipo = 'estado_cuenta'
+     WHERE u.id = ?
+     LIMIT 1`,
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
 export async function findAll(
   pagination: PaginationParams,
   sortClause: string,

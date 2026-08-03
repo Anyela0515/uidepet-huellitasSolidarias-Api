@@ -55,9 +55,12 @@ export function createApp() {
       credentials: true,
     })
   );
-  app.use(express.json({ limit: "30mb" }));
+  // El rate limiter va ANTES de parsear el body: así una petición que ya
+  // superó su cuota se rechaza sin que Express gaste tiempo/memoria
+  // decodificando un body de hasta 30mb.
   app.use(requestLogger);
   app.use(rateLimiter);
+  app.use(express.json({ limit: "30mb" }));
 
   app.get("/health", async (_req: Request, res: Response) => {
     try {

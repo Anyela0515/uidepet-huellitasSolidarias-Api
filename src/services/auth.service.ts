@@ -18,7 +18,7 @@ import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuari
 import * as passwordResetRepo from "../repositories/passwordReset.repository.js";
 import * as emailVerificationRepo from "../repositories/emailVerification.repository.js";
 import { sendPasswordResetEmail, sendEmailVerificationEmail } from "./email.service.js";
-import { NotFoundError } from "../utils/errors.js";
+import { JWT_ISSUER, JWT_AUDIENCE } from "../middlewares/auth.js";
 
 function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
   const secret = process.env.JWT_SECRET;
@@ -34,6 +34,9 @@ function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
   // vencer, el cliente (api/client.js) limpia la sesión con el 401 y el
   // guard de rutas redirige a /ingreso.
   return jwt.sign(payload, secret, {
+    algorithm: "HS256",
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
     expiresIn: (process.env.JWT_EXPIRES_IN || "1h") as jwt.SignOptions["expiresIn"],
   });
 }
@@ -164,10 +167,14 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
 // (en vez de tragarlo con try/catch): el frontend llama esto justo después
 // de crear la cuenta y necesita poder avisar "se creó la cuenta pero no
 // pudimos enviar la verificación" si Gmail rechaza el correo.
+//
+// Si la cuenta no existe se responde igual que si todo hubiera ido bien
+// (sin enviar nada): este endpoint es público y no debe servir para que
+// alguien confirme si un correo está registrado probando uno por uno.
 export async function sendEmailVerification(correoInput: string, nombreInput?: string) {
   const correo = correoInput.trim().toLowerCase();
   const row = await usuarioRepo.findByCorreo(correo);
-  if (!row) throw new NotFoundError("No existe una cuenta con ese correo.");
+  if (!row) return { ok: true };
 
   const usuario = mapUsuario(row);
   if (usuario.emailVerificado) return { ok: true, alreadyVerified: true };
@@ -192,10 +199,13 @@ export async function verifyEmail(token: string) {
     : { error: "El enlace es inválido, ya fue utilizado o venció." };
 }
 
+// Si la cuenta no existe se responde "pending" (no "none"): distinguir
+// "no existe" de "existe pero no verificado" permitiría enumerar correos
+// registrados probando uno por uno contra este endpoint público.
 export async function getEmailVerificationStatus(correoInput: string) {
   const correo = correoInput.trim().toLowerCase();
   const row = await usuarioRepo.findByCorreo(correo);
-  if (!row) return { ok: true, status: "none", pending: false, verified: false };
+  if (!row) return { ok: true, status: "pending", pending: true, verified: false };
 
   const verified = mapUsuario(row).emailVerificado;
   return { ok: true, status: verified ? "verified" : "pending", pending: !verified, verified };

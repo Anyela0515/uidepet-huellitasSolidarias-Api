@@ -1,10 +1,11 @@
 import { Router } from "express";
 import * as controller from "../controllers/mensaje.controller.js";
 import { requireJwt, requireRole } from "../middlewares/auth.js";
+import { publicFormRateLimiter } from "../middlewares/rateLimiter.js";
 
 const router = Router();
 
-router.post("/", controller.crear);
+router.post("/", publicFormRateLimiter, controller.crear);
 
 router.use(requireJwt);
 
