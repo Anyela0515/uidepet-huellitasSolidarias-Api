@@ -182,15 +182,21 @@ que existe.
 | `listar_catalogo` | `GET /catalogos/*` | Especies, razas, ciudades o tags. Consolida 4 endpoints en 1 tool. |
 | `estado_api` | `GET /health` | Diagnóstico de la API y su base de datos. |
 
-### Nivel 2 — Lectura autenticada (solo con `HUELLITAS_API_TOKEN`, 5 tools)
+### Nivel 2 — Lectura autenticada (solo con `HUELLITAS_API_TOKEN`, 6 tools)
 
 | Tool | Endpoint |
 |---|---|
+| `listar_usuarios` | `GET /auth/usuarios` |
 | `listar_solicitudes_adopcion` | `GET /solicitudes` |
 | `obtener_solicitud_adopcion` | `GET /solicitudes/{id}` |
 | `listar_donaciones` | `GET /donaciones` |
 | `listar_reportes_rescate` | `GET /reportes` |
 | `listar_mensajes` | `GET /mensajes` |
+
+`listar_usuarios` requiere específicamente un token de cuenta **admin** (el
+backend responde 403 con un token de fundación o usuario). Devuelve correo y
+cédula de cada persona registrada: es información personal identificable,
+tratarla como tal fuera del servidor MCP.
 
 El **alcance de los datos lo decide el backend** según el rol del token: una
 fundación ve lo suyo, el admin ve todo. El servidor MCP nunca eleva privilegios

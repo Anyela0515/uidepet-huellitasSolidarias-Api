@@ -31,6 +31,30 @@ const paginaSchema = z.number().int().min(1).max(500).optional().describe("Núme
  */
 export function registrarToolsLecturaAutenticada(server: McpServer): void {
   server.registerTool(
+    "listar_usuarios",
+    {
+      title: "Listar usuarios registrados",
+      description:
+        "Lista las cuentas registradas en la plataforma (adoptantes, fundaciones y administradores). " +
+        "Requiere que el token configurado sea de una cuenta admin (el backend responde 403 si no). " +
+        "ATENCIÓN: incluye correo y cédula de cada persona (información personal identificable); " +
+        "no compartas esta salida fuera del equipo autorizado a verla.",
+      inputSchema: {
+        rol: z.enum(["usuario", "fundacion", "admin"]).optional().describe("Filtra por rol de la cuenta."),
+        estado: z.string().max(30).optional().describe('Filtra por estado, p. ej. "Activo" o "Suspendido".'),
+        search: z.string().max(100).optional().describe("Busca por nombre o correo."),
+        page: paginaSchema,
+        limit: limiteSchema,
+      },
+      annotations: SOLO_LECTURA,
+    },
+    async (args) => {
+      const datos = await apiRequest("GET", "/auth/usuarios", { query: args, auth: true });
+      return { content: [{ type: "text", text: formatForModel(datos) }] };
+    }
+  );
+
+  server.registerTool(
     "listar_solicitudes_adopcion",
     {
       title: "Listar solicitudes de adopción",
