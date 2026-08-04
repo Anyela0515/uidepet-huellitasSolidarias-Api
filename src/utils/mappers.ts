@@ -24,6 +24,7 @@ export function mapUsuario(row: Record<string, unknown>): Usuario {
     cedula: String(row.cedula ?? ""),
     telefono: String(row.telefono ?? ""),
     direccion: String(row.direccion ?? ""),
+    imagen: row.imagen ? String(row.imagen) : null,
     rol: String(row.rol_codigo ?? row.rol) as Usuario["rol"],
     estado: String(row.estado_codigo ?? row.estado ?? "Activo"),
     organizacion: row.organizacion_nombre

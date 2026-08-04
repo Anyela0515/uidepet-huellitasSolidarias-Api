@@ -33,6 +33,7 @@ const USER_SELECT = `
     u.cedula,
     u.telefono,
     u.direccion,
+    u.imagen,
     o.nombre AS organizacion_nombre
   FROM usuarios u
   INNER JOIN catalogos r ON r.id = u.rol_id AND r.tipo = 'rol'
@@ -214,6 +215,7 @@ export async function updateProfile(
     telefono?: string;
     direccion?: string;
     cedula?: string;
+    imagen?: string | null;
   }
 ) {
   const sets: string[] = [];

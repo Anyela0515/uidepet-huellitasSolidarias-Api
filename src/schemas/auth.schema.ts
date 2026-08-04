@@ -85,6 +85,8 @@ export const updateProfileSchema = z.object({
   telefono: z.string().min(10).optional(),
   direccion: z.string().min(5).optional(),
   cedula: z.string().length(10).optional(),
+  // Foto de perfil del usuario. Data URL en base64; null la elimina.
+  imagen: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
 });
 
 export type LoginDTO = z.infer<typeof loginSchema>;

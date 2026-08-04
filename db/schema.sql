@@ -84,6 +84,7 @@ CREATE TABLE usuarios (
   cedula VARCHAR(10) NULL,
   telefono VARCHAR(20),
   direccion VARCHAR(255),
+  imagen LONGTEXT NULL,
   rol_id SMALLINT UNSIGNED NOT NULL,
   estado_cuenta_id SMALLINT UNSIGNED NOT NULL,
   debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 0,

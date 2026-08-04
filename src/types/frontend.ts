@@ -5,6 +5,7 @@ export interface Usuario {
   cedula: string;
   telefono: string;
   direccion: string;
+  imagen?: string | null;
   rol: "usuario" | "fundacion" | "admin";
   estado: string;
   organizacion?: string;

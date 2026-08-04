@@ -13,6 +13,7 @@ import {
   RegisterDTO,
 } from "../schemas/auth.schema.js";
 import { mapUsuario } from "../utils/mappers.js";
+import { compressImageDataUrl } from "../utils/image.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuario.repository.js";
 import * as passwordResetRepo from "../repositories/passwordReset.repository.js";
@@ -223,13 +224,15 @@ export async function updateProfile(
     telefono?: string;
     direccion?: string;
     cedula?: string;
+    imagen?: string | null;
   }
 ) {
   if (data.cedula && (await usuarioRepo.existsByCedula(data.cedula, correo))) {
     return { error: "La cédula ya está registrada." };
   }
 
-  const usuario = await usuarioRepo.updateProfile(correo, data);
+  const imagen = data.imagen ? await compressImageDataUrl(data.imagen) : data.imagen;
+  const usuario = await usuarioRepo.updateProfile(correo, { ...data, imagen });
   return usuario ? { usuario } : { error: "Usuario no encontrado." };
 }
 
