@@ -21,6 +21,17 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.disable("x-powered-by");
+
+// Log minimo de diagnostico: solo metodo, ruta, IP y si trae Authorization
+// (nunca el valor). Util para saber si un cliente externo (Codex, Claude)
+// esta llegando siquiera al servidor, sin exponer tokens en el log.
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  console.log(
+    `[req] ${req.method} ${req.path} ip=${req.ip} auth=${req.headers.authorization ? "si" : "no"} ua="${req.headers["user-agent"] ?? ""}"`
+  );
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
