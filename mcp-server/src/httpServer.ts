@@ -14,6 +14,12 @@ import { registrarToolsEscrituraControlada } from "./tools/escrituraControlada.j
 const provider = new PasscodeOAuthProvider();
 const app = express();
 
+// Detrás de nginx (un solo salto: internet -> nginx -> este contenedor).
+// Sin esto, express-rate-limit rechaza cada request con
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR porque nginx sí manda X-Forwarded-For
+// pero Express, por defecto, no confía en ningún proxy.
+app.set("trust proxy", 1);
+
 app.disable("x-powered-by");
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
