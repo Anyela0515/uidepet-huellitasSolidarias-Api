@@ -19,12 +19,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 /**
- * Origin: solo importa para clientes de navegador (claude.ai web). Claude
- * Desktop, al ser una app nativa, no manda Origin — así que no lo bloquea
- * esta comprobación, coherente con la guía de seguridad de transporte HTTP
- * del propio SDK (validar Origin, no exigirlo si no viene).
+ * Origin: solo se valida en el endpoint /mcp (el que realmente expone datos
+ * vía JSON-RPC a un cliente de navegador). El resto de rutas — la página de
+ * login, /token, /register — se navegan/envían directamente desde el propio
+ * dominio o desde un cliente no-navegador, y ahí Origin no aplica: exigirlo
+ * ahí bloqueaba el propio formulario de passcode (bug corregido).
+ *
+ * Claude Desktop, al ser una app nativa, no manda Origin — así que no lo
+ * bloquea esta comprobación, coherente con la guía de seguridad de
+ * transporte HTTP del propio SDK (validar Origin, no exigirlo si no viene).
  */
-app.use((req: Request, res: Response, next: NextFunction) => {
+function checkMcpOrigin(req: Request, res: Response, next: NextFunction): void {
   const origin = req.headers.origin;
   if (origin && !httpConfig.allowedOrigins.includes(origin)) {
     res.status(403).json({ error: "Origin no permitido." });
@@ -41,7 +46,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     return;
   }
   next();
-});
+}
 
 // Límite generoso pero real: evita fuerza bruta contra el passcode y abuso
 // del endpoint /mcp. Mismo enfoque que ya usa el backend principal.
@@ -92,8 +97,11 @@ function buildServer(): McpServer {
 
 const mcpPath = new URL(httpConfig.publicUrl).pathname || "/mcp";
 
+app.options(mcpPath, checkMcpOrigin);
+
 app.post(
   mcpPath,
+  checkMcpOrigin,
   requireBearerAuth({ verifier: provider }),
   async (req: Request, res: Response) => {
     try {
@@ -118,7 +126,7 @@ app.post(
   }
 );
 
-app.get(mcpPath, (_req, res) => {
+app.get(mcpPath, checkMcpOrigin, (_req, res) => {
   res.status(405).json({
     jsonrpc: "2.0",
     error: { code: -32000, message: "Method not allowed." },
