@@ -48,10 +48,86 @@ function sanitizeErrorMessage(raw: string): string {
   return limpio.length > 400 ? `${limpio.slice(0, 400)}…` : limpio;
 }
 
+interface CachedToken {
+  token: string;
+  expiresAtMs: number;
+}
+
+let cachedLoginToken: CachedToken | null = null;
+
+function decodeJwtExpiryMs(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { exp?: number };
+    return typeof json.exp === "number" ? json.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Token para autenticar contra el backend. Prioriza config.apiToken (fijo,
+ * pegado a mano) si está presente; si no, usa la cuenta de servicio
+ * (HUELLITAS_ADMIN_EMAIL/PASSWORD), logueándose sola y cacheando el
+ * resultado hasta ~1 minuto antes de que expire — así ningún humano tiene
+ * que renovar nada cuando el JWT vence.
+ */
+async function getBearerToken(): Promise<string> {
+  if (config.apiToken) return config.apiToken;
+
+  if (!config.adminEmail || !config.adminPassword) {
+    throw new ApiCallError(
+      "Esta operación requiere autenticación, pero no hay HUELLITAS_API_TOKEN ni " +
+        "HUELLITAS_ADMIN_EMAIL/HUELLITAS_ADMIN_PASSWORD configurados en el entorno del servidor MCP."
+    );
+  }
+
+  const margenMs = 60_000;
+  if (cachedLoginToken && cachedLoginToken.expiresAtMs - margenMs > Date.now()) {
+    return cachedLoginToken.token;
+  }
+
+  const url = new URL(`${config.baseUrl}/auth/login`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ correo: config.adminEmail, password: config.adminPassword }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    const detalle = error instanceof Error ? error.message : String(error);
+    throw new ApiCallError(`No se pudo autenticar la cuenta de servicio: ${sanitizeErrorMessage(detalle)}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const datos: unknown = await response.json().catch(() => null);
+  const tieneToken =
+    datos !== null && typeof datos === "object" && "token" in datos && typeof (datos as { token: unknown }).token === "string";
+
+  if (!response.ok || !tieneToken) {
+    const mensaje =
+      datos && typeof datos === "object" && "error" in datos
+        ? String((datos as { error: unknown }).error)
+        : `HTTP ${response.status}`;
+    throw new ApiCallError(`No se pudo autenticar la cuenta de servicio: ${sanitizeErrorMessage(mensaje)}`);
+  }
+
+  const token = (datos as { token: string }).token;
+  const expiresAtMs = decodeJwtExpiryMs(token) ?? Date.now() + 55 * 60 * 1000;
+  cachedLoginToken = { token, expiresAtMs };
+  return token;
+}
+
 interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
-  /** Adjunta el token del entorno. Falla si no hay token configurado. */
+  /** Adjunta un token valido (fijo o via login automatico). Falla si no hay
+   * ninguna forma de autenticacion configurada. */
   auth?: boolean;
 }
 
@@ -71,12 +147,7 @@ export async function apiRequest(
   const headers: Record<string, string> = { Accept: "application/json" };
 
   if (options.auth) {
-    if (!config.apiToken) {
-      throw new ApiCallError(
-        "Esta operación requiere autenticación, pero HUELLITAS_API_TOKEN no está configurado en el entorno del servidor MCP."
-      );
-    }
-    headers.Authorization = `Bearer ${config.apiToken}`;
+    headers.Authorization = `Bearer ${await getBearerToken()}`;
   }
 
   if (options.body !== undefined) {

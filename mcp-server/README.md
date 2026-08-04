@@ -77,7 +77,8 @@ claude mcp add huellitas-solidarias -- node "C:\Users\Usuario iTC\Downloads\uide
 | Variable | Por defecto | Efecto |
 |---|---|---|
 | `HUELLITAS_API_URL` | `https://api.huellitassolidarias.com` | URL base de la API. Solo `http`/`https`. |
-| `HUELLITAS_API_TOKEN` | *(vacío)* | Token JWT. Si está presente, habilita las tools autenticadas. |
+| `HUELLITAS_API_TOKEN` | *(vacío)* | Token JWT fijo. Si está presente, habilita las tools autenticadas (expira en 1h, hay que reemplazarlo a mano). |
+| `HUELLITAS_ADMIN_EMAIL` / `HUELLITAS_ADMIN_PASSWORD` | *(vacío)* | Alternativa a lo anterior: credenciales de una cuenta de servicio con la que el servidor se loguea y renueva el token solo. Si `HUELLITAS_API_TOKEN` está definido, ese tiene prioridad. |
 | `MCP_ALLOW_WRITES` | `false` | Si es `true`, habilita las tools de escritura. |
 
 ---

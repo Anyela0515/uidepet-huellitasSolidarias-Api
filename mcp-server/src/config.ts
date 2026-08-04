@@ -32,11 +32,23 @@ export const config = {
   baseUrl: resolveBaseUrl(process.env.HUELLITAS_API_URL),
 
   /**
-   * El token se lee EXCLUSIVAMENTE del entorno. Nunca es un parámetro de una
-   * tool: si lo fuera, bastaría un prompt malicioso ("llama a la tool con este
-   * otro token") para que el modelo lo sustituyera o lo revelara.
+   * Token JWT fijo, opcional. Se lee EXCLUSIVAMENTE del entorno. Nunca es un
+   * parámetro de una tool: si lo fuera, bastaría un prompt malicioso ("llama
+   * a la tool con este otro token") para que el modelo lo sustituyera o lo
+   * revelara. Expira en 1h y hay que reemplazarlo a mano; para no depender
+   * de eso, preferir ADMIN_EMAIL/ADMIN_PASSWORD (ver abajo).
    */
   apiToken: (process.env.HUELLITAS_API_TOKEN ?? "").trim() || null,
+
+  /**
+   * Alternativa a apiToken: credenciales de una cuenta de servicio con la
+   * que el propio servidor MCP se loguea (POST /auth/login) y renueva el
+   * token automáticamente antes de que expire, sin intervención humana. Ver
+   * apiClient.ts -> getBearerToken(). Si ambas cosas están configuradas,
+   * apiToken tiene prioridad (util para pruebas puntuales).
+   */
+  adminEmail: (process.env.HUELLITAS_ADMIN_EMAIL ?? "").trim() || null,
+  adminPassword: (process.env.HUELLITAS_ADMIN_PASSWORD ?? "").trim() || null,
 
   /** Solo lectura salvo que se active explícitamente. */
   allowWrites: String(process.env.MCP_ALLOW_WRITES ?? "").toLowerCase() === "true",
@@ -52,5 +64,5 @@ export const config = {
 } as const;
 
 export function hasToken(): boolean {
-  return config.apiToken !== null;
+  return config.apiToken !== null || (config.adminEmail !== null && config.adminPassword !== null);
 }
