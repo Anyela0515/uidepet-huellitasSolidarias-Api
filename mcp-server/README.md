@@ -110,6 +110,53 @@ entre cliente y servidor. Las opciones disponibles y por qué se eligió una:
 > en `src/index.ts` y añadir la capa de autenticación del servidor MCP. La
 > lógica de capacidades (`src/tools/`) queda intacta.
 
+### Actualización: también existe un modo remoto (Streamable HTTP), opt-in
+
+Después de la entrega original surgió una necesidad real: varias personas del
+equipo querían usar el mismo servidor sin instalar nada localmente. Se agregó
+un segundo punto de entrada (`src/httpServer.ts`, `npm run start:http`) que
+expone el **mismo** `src/tools/` por Streamable HTTP en vez de `stdio`. No
+reemplaza el modo local — ambos coexisten, y el remoto está **apagado por
+defecto** (hay que arrancarlo explícitamente con `start:http`/`dev:http`).
+
+Este modo sí abre un puerto, así que reintroduce a propósito parte de lo que
+la sección 2 decidió evitar. Para no dejarlo abierto sin control:
+
+- **OAuth 2.1 real**, usando el router del propio SDK
+  (`@modelcontextprotocol/sdk/server/auth/router.js`) en vez de reimplementar
+  la criptografía a mano. El proveedor (`src/auth/passcodeOAuthProvider.ts`)
+  parte del `DemoInMemoryAuthProvider` de ejemplo del SDK, pero con una
+  diferencia deliberada: ese demo **aprueba a cualquiera** que llegue a
+  `/authorize` sin pedir ninguna credencial ("simulate a user login"); el
+  nuestro exige el passcode del equipo (`MCP_ACCESS_PASSCODE`) antes de emitir
+  el código de autorización.
+- **Origin y CORS acotados** a `MCP_ALLOWED_ORIGINS` (por defecto solo
+  `claude.ai`). Clientes sin navegador (Claude Desktop) no mandan `Origin`, así
+  que no los bloquea esta comprobación.
+- **Rate limiting** en `/mcp` y, más estricto, en `/authorize` (contra fuerza
+  bruta del passcode).
+- **HTTPS obligatorio** en `MCP_PUBLIC_URL`, salvo `localhost` para pruebas.
+
+**Limitaciones conocidas, documentadas a propósito (no descubiertas después):**
+
+- Códigos y tokens **en memoria**: un reinicio del proceso cierra todas las
+  sesiones activas. Aceptable para un equipo chico, no para un servicio
+  público real.
+- **Un passcode compartido por todo el equipo**, no cuentas individuales —
+  mismo patrón que ya usa `/docs` en el backend principal
+  (`DOCS_USER`/`DOCS_PASSWORD`), no una novedad de seguridad más débil.
+- **Sin refresh tokens**: al expirar el access token (1h), el cliente MCP
+  vuelve a pedir el passcode. Deliberado, para no sumar más superficie.
+- Sigue habiendo **una sola identidad de backend** (`HUELLITAS_API_TOKEN`)
+  compartida por todas las personas que se autentiquen contra el MCP remoto:
+  el passcode controla *quién puede usar el servidor*, no *como qué cuenta de
+  Huellitas actúa cada quien*.
+
+**Despliegue:** corre como contenedor Docker aparte (`mcp-server/Dockerfile`),
+en la misma instancia EC2 del frontend, sin tocar el servicio ECS del backend
+principal. Nginx expone `/mcp`, `/authorize`, `/token`, `/register`,
+`/revoke` y `/.well-known/*` hacia ese contenedor.
+
 ---
 
 ## 3. Análisis de capacidades
