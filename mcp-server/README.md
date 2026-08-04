@@ -152,6 +152,15 @@ la sección 2 decidió evitar. Para no dejarlo abierto sin control:
   el passcode controla *quién puede usar el servidor*, no *como qué cuenta de
   Huellitas actúa cada quien*.
 
+**Clientes sin login interactivo (Codex y similares):** algunos clientes MCP
+no soportan el flujo OAuth con redirección a un navegador — solo pueden mandar
+un bearer token fijo, leído de una variable de entorno propia del cliente.
+Para esos casos existe `MCP_STATIC_API_KEYS` (una o más claves, separadas por
+coma, que no expiran): `src/auth/passcodeOAuthProvider.ts` las revisa en
+`verifyAccessToken` antes de mirar la tabla de tokens emitidos por `/token`.
+Es un mecanismo aparte del OAuth normal, no un atajo dentro de él — quien
+tiene una de estas claves nunca pasa por la pantalla del passcode.
+
 **Despliegue:** corre como contenedor Docker aparte (`mcp-server/Dockerfile`),
 en la misma instancia EC2 del frontend, sin tocar el servicio ECS del backend
 principal. Nginx expone `/mcp`, `/authorize`, `/token`, `/register`,

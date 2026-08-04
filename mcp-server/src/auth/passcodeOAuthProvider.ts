@@ -10,7 +10,7 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { InvalidRequestError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { InvalidRequestError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { httpConfig } from "../httpConfig.js";
 
 /**
@@ -198,9 +198,28 @@ export class PasscodeOAuthProvider implements OAuthServerProvider {
   }
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {
+    // Clientes que no hacen el login OAuth (mandan un bearer fijo desde su
+    // propio entorno, p. ej. Codex): se valida contra MCP_STATIC_API_KEYS
+    // antes de mirar la tabla de tokens emitidos por /token.
+    for (const key of httpConfig.staticApiKeys) {
+      if (safeEqual(token, key)) {
+        return {
+          token,
+          clientId: "static-api-key",
+          scopes: ["mcp:tools"],
+          // Sin expiración real; se usa "ahora + 1 año" porque el tipo
+          // AuthInfo exige un expiresAt numérico.
+          expiresAt: Math.floor(Date.now() / 1000) + 365 * 24 * 3600,
+        };
+      }
+    }
+
     const data = this.tokens.get(token);
     if (!data || data.expiresAt < Date.now()) {
-      throw new Error("Invalid or expired token");
+      // Debe ser InvalidTokenError (no un Error generico): requireBearerAuth
+      // del SDK solo mapea a 401 los errores de este tipo especifico, y cae
+      // a 500 para cualquier otro (asi estaba antes de este fix).
+      throw new InvalidTokenError("Invalid or expired token");
     }
     return {
       token,

@@ -61,4 +61,18 @@ export const httpConfig = {
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean),
+
+  /**
+   * Claves de API fijas (no expiran), para clientes que no hacen el login
+   * OAuth interactivo y solo pueden mandar un bearer token constante desde
+   * una variable de entorno propia (p. ej. Codex). Opcional: si no se
+   * define, este modo simplemente no existe y /mcp solo acepta tokens
+   * emitidos por el flujo OAuth normal (con passcode, expiran en 1h).
+   * Formato: una o mas claves separadas por coma, para poder revocar una
+   * sola sin afectar a las demas.
+   */
+  staticApiKeys: (process.env.MCP_STATIC_API_KEYS ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean),
 } as const;
