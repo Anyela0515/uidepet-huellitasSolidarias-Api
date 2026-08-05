@@ -34,6 +34,22 @@ const paginaSchema = z.number().int().min(1).max(500).optional().describe("Núme
  */
 export function registrarToolsLecturaAutenticada(server: McpServer, token?: string): void {
   server.registerTool(
+    "obtener_mi_perfil",
+    {
+      title: "Obtener mi propio perfil",
+      description:
+        "Devuelve los datos de la cuenta que llama a esta tool (nombre, correo, rol, teléfono, " +
+        "dirección, cédula, foto). Requiere estar autenticado, con cualquier rol.",
+      inputSchema: {},
+      annotations: SOLO_LECTURA,
+    },
+    async () => {
+      const datos = await apiRequest("GET", "/auth/me", { auth: token ?? true });
+      return { content: [{ type: "text", text: formatForModel(datos) }] };
+    }
+  );
+
+  server.registerTool(
     "listar_usuarios",
     {
       title: "Listar usuarios registrados",

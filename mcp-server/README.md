@@ -204,6 +204,7 @@ cada llamada procede o devuelve 403.
 
 | Tool | Endpoint |
 |---|---|
+| `obtener_mi_perfil` | `GET /auth/me` |
 | `listar_usuarios` | `GET /auth/usuarios` |
 | `listar_solicitudes_adopcion` | `GET /solicitudes` |
 | `obtener_solicitud_adopcion` | `GET /solicitudes/{id}` |
