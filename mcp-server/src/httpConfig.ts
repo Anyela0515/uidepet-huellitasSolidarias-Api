@@ -4,17 +4,13 @@ import "dotenv/config";
  * Config exclusiva del modo remoto (Streamable HTTP). El modo stdio (config.ts)
  * no la necesita: no tiene sentido "loguearse" en un proceso que solo tu propia
  * máquina puede lanzar.
+ *
+ * En esta rama (main) NO hay passcode de equipo ni claves de API fijas: cada
+ * persona se autentica con su propia cuenta de Huellitas Solidarias al
+ * conectarse (ver src/auth/userLoginOAuthProvider.ts). Esas variantes siguen
+ * existiendo en la rama mcp-admin-full-access, para el caso de acceso
+ * administrativo compartido.
  */
-function required(name: string): string {
-  const value = (process.env[name] ?? "").trim();
-  if (!value) {
-    throw new Error(
-      `${name} es obligatoria para el modo remoto (MCP_TRANSPORT=http). Define un valor largo y aleatorio en el entorno del servidor.`
-    );
-  }
-  return value;
-}
-
 function resolvePublicUrl(raw: string | undefined): URL {
   const candidate = (raw ?? "").trim();
   if (!candidate) {
@@ -31,7 +27,7 @@ function resolvePublicUrl(raw: string | undefined): URL {
   const esLocal = ["localhost", "127.0.0.1"].includes(parsed.hostname);
   if (parsed.protocol !== "https:" && !(esLocal && parsed.protocol === "http:")) {
     throw new Error(
-      `MCP_PUBLIC_URL debe ser https (el token viaja en la respuesta del login), salvo en localhost para pruebas: "${candidate}".`
+      `MCP_PUBLIC_URL debe ser https (el token del backend viaja en la respuesta del login), salvo en localhost para pruebas: "${candidate}".`
     );
   }
   return parsed;
@@ -47,32 +43,10 @@ export const httpConfig = {
    */
   publicUrl: resolvePublicUrl(process.env.MCP_PUBLIC_URL),
 
-  /**
-   * Clave compartida que el equipo usa para "iniciar sesión" en la pantalla de
-   * autorización OAuth. No es una cuenta de usuario real: es un portón único
-   * para todo el equipo, del mismo tipo que ya usa /docs en el backend
-   * (DOCS_USER/DOCS_PASSWORD) para Swagger UI.
-   */
-  accessPasscode: required("MCP_ACCESS_PASSCODE"),
-
   /** Origenes de navegador permitidos a llamar /mcp. Clientes no-navegador
    * (Claude Desktop) no mandan Origin, así que no los bloquea esta lista. */
   allowedOrigins: (process.env.MCP_ALLOWED_ORIGINS ?? "https://claude.ai")
     .split(",")
     .map((o) => o.trim())
-    .filter(Boolean),
-
-  /**
-   * Claves de API fijas (no expiran), para clientes que no hacen el login
-   * OAuth interactivo y solo pueden mandar un bearer token constante desde
-   * una variable de entorno propia (p. ej. Codex). Opcional: si no se
-   * define, este modo simplemente no existe y /mcp solo acepta tokens
-   * emitidos por el flujo OAuth normal (con passcode, expiran en 1h).
-   * Formato: una o mas claves separadas por coma, para poder revocar una
-   * sola sin afectar a las demas.
-   */
-  staticApiKeys: (process.env.MCP_STATIC_API_KEYS ?? "")
-    .split(",")
-    .map((k) => k.trim())
     .filter(Boolean),
 } as const;

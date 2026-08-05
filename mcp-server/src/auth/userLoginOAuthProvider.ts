@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Response } from "express";
 import type {
   OAuthServerProvider,
@@ -11,27 +11,34 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { InvalidRequestError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
-import { httpConfig } from "../httpConfig.js";
+import { config } from "../config.js";
 
 /**
- * Basado en el DemoInMemoryAuthProvider que trae el SDK, con una diferencia
- * deliberada: ese demo aprueba a CUALQUIERA que llegue a /authorize, sin
- * pedir ninguna credencial ("simulate a user login"). Eso es aceptable para
- * un ejemplo local, pero inaceptable para un servidor expuesto a internet.
- * Aquí /authorize exige el passcode compartido del equipo antes de emitir el
- * código de autorización.
+ * Variante de PasscodeOAuthProvider (ver ese archivo / rama
+ * mcp-admin-full-access) pensada para `main`: en vez de un passcode
+ * compartido por el equipo, cada persona mete su PROPIO correo y
+ * contraseña de Huellitas Solidarias. El servidor los valida contra el
+ * backend real (POST /auth/login) — nunca los guarda — y el token que
+ * emite el backend queda ligado al token MCP de esa sesión (en
+ * `extra.backendToken` del AuthInfo). Cada llamada a una tool autenticada
+ * usa el token DE ESA PERSONA, así que el rol real de su cuenta
+ * (usuario/fundación/admin) es quien decide qué puede ver o hacer — el
+ * mismo control de acceso que ya tiene la API, no uno nuevo.
  *
- * Limitaciones conocidas (documentadas, no accidentales):
+ * Sin cuenta de servicio, sin passcode de equipo, sin MCP_STATIC_API_KEYS:
+ * quien no tenga una cuenta real de Huellitas Solidarias no puede conectar.
+ *
+ * Limitaciones conocidas (mismas que la variante de passcode):
  * - Tokens y códigos en memoria: un reinicio del proceso cierra todas las
- *   sesiones activas. Aceptable para un equipo chico, no para un SaaS.
- * - Un solo passcode compartido por todo el equipo, no cuentas individuales.
- * - Sin rotación de refresh tokens (no se implementa exchangeRefreshToken:
- *   al expirar el access token, el cliente MCP repite el login).
+ *   sesiones activas.
+ * - Sin refresh tokens: al expirar (1h, la misma política del backend
+ *   para cualquier sesión), el cliente MCP vuelve a pedir las credenciales.
  */
 
 interface StoredCode {
   client: OAuthClientInformationFull;
   params: AuthorizationParams;
+  backendToken: string;
 }
 
 interface StoredToken {
@@ -39,6 +46,7 @@ interface StoredToken {
   scopes: string[];
   expiresAt: number;
   resource?: URL;
+  backendToken: string;
 }
 
 class InMemoryClientsStore implements OAuthRegisteredClientsStore {
@@ -54,17 +62,11 @@ class InMemoryClientsStore implements OAuthRegisteredClientsStore {
   }
 }
 
-function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
-
-function renderLoginForm(opts: { action: string; error?: string }): string {
+function renderLoginForm(opts: { action: string; error?: string; correo?: string }): string {
   const errorHtml = opts.error
     ? `<p style="color:#b00020;font-weight:600;margin:0 0 16px">${opts.error}</p>`
     : "";
+  const correoValue = opts.correo ? ` value="${opts.correo.replace(/"/g, "&quot;")}"` : "";
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -76,6 +78,7 @@ function renderLoginForm(opts: { action: string; error?: string }): string {
   form { background: #fff; border: 1px solid #ececec; border-radius: 14px; padding: 32px; width: 100%; max-width: 380px; }
   h1 { font-size: 1.1rem; color: #800040; margin: 0 0 8px; }
   p.sub { color: #666; font-size: 0.85rem; margin: 0 0 20px; }
+  label { display: block; font-size: 0.8rem; font-weight: 700; margin: 0 0 6px; }
   input { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; margin-bottom: 16px; }
   button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #800040; color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer; }
   button:hover { background: #6B003C; }
@@ -84,19 +87,23 @@ function renderLoginForm(opts: { action: string; error?: string }): string {
 <body>
   <form method="POST" action="${opts.action}">
     <h1>Huellitas Solidarias</h1>
-    <p class="sub">Ingresa el código de acceso del equipo para autorizar esta aplicación a consultar la API.</p>
+    <p class="sub">Ingresa tu correo y contraseña de Huellitas Solidarias. Verás exactamente lo que tu cuenta puede ver.</p>
     ${errorHtml}
-    <input type="password" name="passcode" placeholder="Código de acceso" autofocus required />
+    <label>Correo</label>
+    <input type="email" name="correo" placeholder="tu@correo.com"${correoValue} autofocus required />
+    <label>Contraseña</label>
+    <input type="password" name="password" placeholder="Contraseña" required />
     <button type="submit">Autorizar</button>
   </form>
 </body>
 </html>`;
 }
 
-export class PasscodeOAuthProvider implements OAuthServerProvider {
+export class UserLoginOAuthProvider implements OAuthServerProvider {
   readonly clientsStore = new InMemoryClientsStore();
   private codes = new Map<string, StoredCode>();
   private tokens = new Map<string, StoredToken>();
+  private pending = new Map<string, { client: OAuthClientInformationFull; params: AuthorizationParams }>();
 
   async authorize(
     client: OAuthClientInformationFull,
@@ -116,34 +123,55 @@ export class PasscodeOAuthProvider implements OAuthServerProvider {
       .send(renderLoginForm({ action: `/authorize/submit?pending=${pendingId}` }));
   }
 
-  /** Login pendiente de que el usuario mande el passcode (paso intermedio,
-   * separado de `codes` porque todavía no hay código de autorización). */
-  private pending = new Map<string, StoredCode>();
-
   /** Invocado por el handler HTTP propio en POST /authorize/submit. */
-  handleLoginSubmit(pendingId: string, passcode: string, res: Response): void {
+  async handleLoginSubmit(
+    pendingId: string,
+    correo: string,
+    password: string,
+    res: Response
+  ): Promise<void> {
     const entry = this.pending.get(pendingId);
     if (!entry) {
       res.status(400).type("html").send(renderLoginForm({
         action: "/authorize",
-        error: "La sesión de autorización expiró. Vuelve a intentarlo desde Claude.",
+        error: "La sesión de autorización expiró. Vuelve a intentarlo desde tu cliente MCP.",
       }));
       return;
     }
     this.pending.delete(pendingId);
 
-    if (!safeEqual(passcode, httpConfig.accessPasscode)) {
-      res.status(401).type("html").send(renderLoginForm({
-        action: `/authorize/submit?pending=${pendingId}`,
-        error: "Código de acceso incorrecto.",
-      }));
-      // Se vuelve a guardar para permitir un reintento con el mismo pending id.
+    let backendToken: string;
+    try {
+      const loginResp = await fetch(new URL("/auth/login", config.baseUrl), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ correo, password }),
+      });
+      const datos: unknown = await loginResp.json().catch(() => null);
+      const tieneToken =
+        datos !== null && typeof datos === "object" && "token" in datos && typeof (datos as { token: unknown }).token === "string";
+      if (!loginResp.ok || !tieneToken) {
+        this.pending.set(pendingId, entry);
+        res.status(401).type("html").send(renderLoginForm({
+          action: `/authorize/submit?pending=${pendingId}`,
+          error: "Correo o contraseña incorrectos.",
+          correo,
+        }));
+        return;
+      }
+      backendToken = (datos as { token: string }).token;
+    } catch {
       this.pending.set(pendingId, entry);
+      res.status(502).type("html").send(renderLoginForm({
+        action: `/authorize/submit?pending=${pendingId}`,
+        error: "No se pudo contactar la API de Huellitas Solidarias. Intenta de nuevo.",
+        correo,
+      }));
       return;
     }
 
     const code = randomUUID();
-    this.codes.set(code, entry);
+    this.codes.set(code, { ...entry, backendToken });
 
     const target = new URL(entry.params.redirectUri);
     target.searchParams.set("code", code);
@@ -180,6 +208,7 @@ export class PasscodeOAuthProvider implements OAuthServerProvider {
       scopes: codeData.params.scopes ?? [],
       expiresAt: Date.now() + expiresIn * 1000,
       resource: codeData.params.resource,
+      backendToken: codeData.backendToken,
     });
 
     return {
@@ -192,33 +221,13 @@ export class PasscodeOAuthProvider implements OAuthServerProvider {
 
   async exchangeRefreshToken(): Promise<OAuthTokens> {
     // Deliberadamente no soportado: al expirar el access token (1h), el
-    // cliente MCP vuelve a pedir el passcode. Ver limitaciones en el comentario
-    // de la clase.
+    // cliente MCP vuelve a pedir correo/contraseña.
     throw new Error("Refresh tokens no soportados: vuelve a autorizar la conexión.");
   }
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {
-    // Clientes que no hacen el login OAuth (mandan un bearer fijo desde su
-    // propio entorno, p. ej. Codex): se valida contra MCP_STATIC_API_KEYS
-    // antes de mirar la tabla de tokens emitidos por /token.
-    for (const key of httpConfig.staticApiKeys) {
-      if (safeEqual(token, key)) {
-        return {
-          token,
-          clientId: "static-api-key",
-          scopes: ["mcp:tools"],
-          // Sin expiración real; se usa "ahora + 1 año" porque el tipo
-          // AuthInfo exige un expiresAt numérico.
-          expiresAt: Math.floor(Date.now() / 1000) + 365 * 24 * 3600,
-        };
-      }
-    }
-
     const data = this.tokens.get(token);
     if (!data || data.expiresAt < Date.now()) {
-      // Debe ser InvalidTokenError (no un Error generico): requireBearerAuth
-      // del SDK solo mapea a 401 los errores de este tipo especifico, y cae
-      // a 500 para cualquier otro (asi estaba antes de este fix).
       throw new InvalidTokenError("Invalid or expired token");
     }
     return {
@@ -227,6 +236,7 @@ export class PasscodeOAuthProvider implements OAuthServerProvider {
       scopes: data.scopes,
       expiresAt: Math.floor(data.expiresAt / 1000),
       resource: data.resource,
+      extra: { backendToken: data.backendToken },
     };
   }
 }

@@ -18,7 +18,7 @@ import { apiRequest, formatForModel } from "../apiClient.js";
  * exige confirmación humana explícita antes de cada llamada, mucho más
  * enfáticamente que el resto de tools de esta categoría.
  */
-export function registrarToolsEscrituraControlada(server: McpServer): void {
+export function registrarToolsEscrituraControlada(server: McpServer, token?: string): void {
   server.registerTool(
     "enviar_mensaje_contacto",
     {
@@ -79,7 +79,7 @@ export function registrarToolsEscrituraControlada(server: McpServer): void {
       },
     },
     async ({ id }) => {
-      const datos = await apiRequest("PATCH", `/mensajes/${id}/leido`, { auth: true });
+      const datos = await apiRequest("PATCH", `/mensajes/${id}/leido`, { auth: token ?? true });
       return {
         content: [{ type: "text", text: `Mensaje marcado como leído.\n\n${formatForModel(datos)}` }],
       };
@@ -110,7 +110,7 @@ export function registrarToolsEscrituraControlada(server: McpServer): void {
     },
     async ({ id, estado }) => {
       const datos = await apiRequest("PATCH", `/reportes/${id}/estado`, {
-        auth: true,
+        auth: token ?? true,
         body: { estado },
       });
       return {
@@ -148,7 +148,7 @@ export function registrarToolsEscrituraControlada(server: McpServer): void {
     },
     async ({ id, estado, observaciones, proximoPaso }) => {
       const datos = await apiRequest("PATCH", `/solicitudes/${encodeURIComponent(id)}/estado`, {
-        auth: true,
+        auth: token ?? true,
         body: { estado, observaciones, proximoPaso },
       });
       return {

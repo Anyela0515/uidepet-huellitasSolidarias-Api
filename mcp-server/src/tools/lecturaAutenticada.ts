@@ -21,15 +21,18 @@ const limiteSchema = z
 const paginaSchema = z.number().int().min(1).max(500).optional().describe("Número de página.");
 
 /**
- * Estas tools se registran solo si hay token en el entorno. Si no lo hay, ni
- * siquiera aparecen en la lista de capacidades: el modelo no puede intentar
- * llamarlas ni deducir qué datos existen detrás.
+ * En modo stdio y en la rama con acceso administrativo compartido, estas
+ * tools se registran solo si hay token en el entorno del servidor. En
+ * `main` (modo remoto), se registran siempre que la persona conectada haya
+ * iniciado sesión con su propia cuenta — `token` es el bearer DE ESA
+ * PERSONA, no uno del servidor.
  *
- * El alcance de lo que devuelven lo decide el backend según el rol del token
- * (una fundación ve lo suyo, el admin ve todo): el servidor MCP no eleva
- * privilegios por su cuenta.
+ * El alcance de lo que devuelven lo decide el backend según el rol de ese
+ * token (una fundación ve lo suyo, el admin ve todo, un usuario normal
+ * probablemente reciba 403 en varias de estas): el servidor MCP no eleva
+ * privilegios por su cuenta, solo reenvía la identidad de quien pregunta.
  */
-export function registrarToolsLecturaAutenticada(server: McpServer): void {
+export function registrarToolsLecturaAutenticada(server: McpServer, token?: string): void {
   server.registerTool(
     "listar_usuarios",
     {
@@ -49,7 +52,7 @@ export function registrarToolsLecturaAutenticada(server: McpServer): void {
       annotations: SOLO_LECTURA,
     },
     async (args) => {
-      const datos = await apiRequest("GET", "/auth/usuarios", { query: args, auth: true });
+      const datos = await apiRequest("GET", "/auth/usuarios", { query: args, auth: token ?? true });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }
   );
@@ -73,7 +76,7 @@ export function registrarToolsLecturaAutenticada(server: McpServer): void {
       annotations: SOLO_LECTURA,
     },
     async (args) => {
-      const datos = await apiRequest("GET", "/solicitudes", { query: args, auth: true });
+      const datos = await apiRequest("GET", "/solicitudes", { query: args, auth: token ?? true });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }
   );
@@ -92,7 +95,7 @@ export function registrarToolsLecturaAutenticada(server: McpServer): void {
     },
     async ({ id }) => {
       const datos = await apiRequest("GET", `/solicitudes/${encodeURIComponent(id)}`, {
-        auth: true,
+        auth: token ?? true,
       });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }
@@ -117,7 +120,7 @@ export function registrarToolsLecturaAutenticada(server: McpServer): void {
       annotations: SOLO_LECTURA,
     },
     async (args) => {
-      const datos = await apiRequest("GET", "/donaciones", { query: args, auth: true });
+      const datos = await apiRequest("GET", "/donaciones", { query: args, auth: token ?? true });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }
   );
@@ -140,7 +143,7 @@ export function registrarToolsLecturaAutenticada(server: McpServer): void {
       annotations: SOLO_LECTURA,
     },
     async (args) => {
-      const datos = await apiRequest("GET", "/reportes", { query: args, auth: true });
+      const datos = await apiRequest("GET", "/reportes", { query: args, auth: token ?? true });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }
   );
@@ -160,7 +163,7 @@ export function registrarToolsLecturaAutenticada(server: McpServer): void {
       annotations: SOLO_LECTURA,
     },
     async (args) => {
-      const datos = await apiRequest("GET", "/mensajes", { query: args, auth: true });
+      const datos = await apiRequest("GET", "/mensajes", { query: args, auth: token ?? true });
       return { content: [{ type: "text", text: formatForModel(datos) }] };
     }
   );

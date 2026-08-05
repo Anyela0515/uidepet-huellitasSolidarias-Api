@@ -126,9 +126,15 @@ async function getBearerToken(): Promise<string> {
 interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
-  /** Adjunta un token valido (fijo o via login automatico). Falla si no hay
-   * ninguna forma de autenticacion configurada. */
-  auth?: boolean;
+  /**
+   * Adjunta un bearer token. `true` usa el token del servidor (fijo o via
+   * login automatico de una cuenta de servicio, ver getBearerToken()) — lo
+   * usa el modo stdio y la rama con acceso administrativo compartido. Un
+   * string explicito usa ESE token tal cual (el de la persona conectada en
+   * su propia sesion MCP) — lo usa el modo remoto en `main`, donde cada
+   * quien se autentica con su propia cuenta.
+   */
+  auth?: boolean | string;
 }
 
 export async function apiRequest(
@@ -147,7 +153,8 @@ export async function apiRequest(
   const headers: Record<string, string> = { Accept: "application/json" };
 
   if (options.auth) {
-    headers.Authorization = `Bearer ${await getBearerToken()}`;
+    const token = typeof options.auth === "string" ? options.auth : await getBearerToken();
+    headers.Authorization = `Bearer ${token}`;
   }
 
   if (options.body !== undefined) {

@@ -5,13 +5,13 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import { httpConfig } from "./httpConfig.js";
-import { hasToken, config } from "./config.js";
-import { PasscodeOAuthProvider } from "./auth/passcodeOAuthProvider.js";
+import { config } from "./config.js";
+import { UserLoginOAuthProvider } from "./auth/userLoginOAuthProvider.js";
 import { registrarToolsLecturaPublica } from "./tools/lecturaPublica.js";
 import { registrarToolsLecturaAutenticada } from "./tools/lecturaAutenticada.js";
 import { registrarToolsEscrituraControlada } from "./tools/escrituraControlada.js";
 
-const provider = new PasscodeOAuthProvider();
+const provider = new UserLoginOAuthProvider();
 const app = express();
 
 // Detrás de nginx (un solo salto: internet -> nginx -> este contenedor).
@@ -24,7 +24,7 @@ app.disable("x-powered-by");
 
 // Log minimo de diagnostico: solo metodo, ruta, IP y si trae Authorization
 // (nunca el valor). Util para saber si un cliente externo (Codex, Claude)
-// esta llegando siquiera al servidor, sin exponer tokens en el log.
+// esta llegando siquiera al servidor, sin exponer tokens ni credenciales.
 app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(
     `[req] ${req.method} ${req.path} ip=${req.ip} auth=${req.headers.authorization ? "si" : "no"} ua="${req.headers["user-agent"] ?? ""}"`
@@ -39,8 +39,7 @@ app.use(express.urlencoded({ extended: false }));
  * Origin: solo se valida en el endpoint /mcp (el que realmente expone datos
  * vía JSON-RPC a un cliente de navegador). El resto de rutas — la página de
  * login, /token, /register — se navegan/envían directamente desde el propio
- * dominio o desde un cliente no-navegador, y ahí Origin no aplica: exigirlo
- * ahí bloqueaba el propio formulario de passcode (bug corregido).
+ * dominio o desde un cliente no-navegador, y ahí Origin no aplica.
  *
  * Claude Desktop, al ser una app nativa, no manda Origin — así que no lo
  * bloquea esta comprobación, coherente con la guía de seguridad de
@@ -65,8 +64,8 @@ function checkMcpOrigin(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-// Límite generoso pero real: evita fuerza bruta contra el passcode y abuso
-// del endpoint /mcp. Mismo enfoque que ya usa el backend principal.
+// Límite generoso pero real: evita fuerza bruta contra /authorize (ahora con
+// correo+contraseña reales) y abuso del endpoint /mcp.
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -97,18 +96,27 @@ app.use(
 );
 
 // Paso de login propio: no lo cubre mcpAuthRouter porque no es parte del
-// protocolo OAuth estándar, es el formulario de passcode intermedio.
-app.post("/authorize/submit", (req, res) => {
+// protocolo OAuth estándar, es el formulario intermedio que pide correo y
+// contraseña reales de Huellitas Solidarias.
+app.post("/authorize/submit", async (req, res) => {
   const pendingId = String(req.query.pending ?? "");
-  const passcode = String(req.body.passcode ?? "");
-  provider.handleLoginSubmit(pendingId, passcode, res);
+  const correo = String(req.body.correo ?? "");
+  const password = String(req.body.password ?? "");
+  await provider.handleLoginSubmit(pendingId, correo, password, res);
 });
 
-function buildServer(): McpServer {
+/**
+ * A diferencia de la rama con acceso administrativo compartido, aquí no hay
+ * un `hasToken()` de servidor: cada request /mcp trae el token de ESA
+ * persona (extraído de su propia sesión, ver requireBearerAuth abajo), así
+ * que las tools autenticadas y de escritura se registran siempre — el
+ * backend, con el rol real de esa cuenta, decide qué puede o no puede hacer.
+ */
+function buildServer(backendToken: string): McpServer {
   const server = new McpServer({ name: "huellitas-solidarias", version: "1.0.0" });
   registrarToolsLecturaPublica(server);
-  if (hasToken()) registrarToolsLecturaAutenticada(server);
-  if (config.allowWrites) registrarToolsEscrituraControlada(server);
+  registrarToolsLecturaAutenticada(server, backendToken);
+  if (config.allowWrites) registrarToolsEscrituraControlada(server, backendToken);
   return server;
 }
 
@@ -122,7 +130,16 @@ app.post(
   requireBearerAuth({ verifier: provider }),
   async (req: Request, res: Response) => {
     try {
-      const server = buildServer();
+      const backendToken = req.auth?.extra?.backendToken;
+      if (typeof backendToken !== "string") {
+        res.status(401).json({
+          jsonrpc: "2.0",
+          error: { code: -32001, message: "Sesión sin credenciales de Huellitas Solidarias válidas." },
+          id: null,
+        });
+        return;
+      }
+      const server = buildServer(backendToken);
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
@@ -159,11 +176,11 @@ app.listen(httpConfig.port, () => {
   console.log(
     [
       "Servidor MCP Huellitas Solidarias iniciado (Streamable HTTP).",
-      `  Puerto      : ${httpConfig.port}`,
-      `  URL publica : ${httpConfig.publicUrl.href}`,
-      `  API backend : ${config.baseUrl}`,
-      `  Token API   : ${hasToken() ? "configurado" : "ausente (solo tools públicas)"}`,
-      `  Escrituras  : ${config.allowWrites ? "HABILITADAS" : "bloqueadas"}`,
+      `  Puerto        : ${httpConfig.port}`,
+      `  URL publica   : ${httpConfig.publicUrl.href}`,
+      `  API backend   : ${config.baseUrl}`,
+      `  Autenticacion : cada persona con su propia cuenta de Huellitas Solidarias`,
+      `  Escrituras    : ${config.allowWrites ? "HABILITADAS (segun el rol real de cada cuenta)" : "bloqueadas"}`,
     ].join("\n")
   );
 });

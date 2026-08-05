@@ -125,42 +125,44 @@ la sección 2 decidió evitar. Para no dejarlo abierto sin control:
 
 - **OAuth 2.1 real**, usando el router del propio SDK
   (`@modelcontextprotocol/sdk/server/auth/router.js`) en vez de reimplementar
-  la criptografía a mano. El proveedor (`src/auth/passcodeOAuthProvider.ts`)
-  parte del `DemoInMemoryAuthProvider` de ejemplo del SDK, pero con una
-  diferencia deliberada: ese demo **aprueba a cualquiera** que llegue a
-  `/authorize` sin pedir ninguna credencial ("simulate a user login"); el
-  nuestro exige el passcode del equipo (`MCP_ACCESS_PASSCODE`) antes de emitir
-  el código de autorización.
+  la criptografía a mano.
 - **Origin y CORS acotados** a `MCP_ALLOWED_ORIGINS` (por defecto solo
   `claude.ai`). Clientes sin navegador (Claude Desktop) no mandan `Origin`, así
   que no los bloquea esta comprobación.
-- **Rate limiting** en `/mcp` y, más estricto, en `/authorize` (contra fuerza
-  bruta del passcode).
+- **Rate limiting** en `/mcp` y, más estricto, en `/authorize`.
 - **HTTPS obligatorio** en `MCP_PUBLIC_URL`, salvo `localhost` para pruebas.
 
-**Limitaciones conocidas, documentadas a propósito (no descubiertas después):**
+> **Dos ramas, dos modelos de identidad distintos** — importante leer antes de
+> configurar nada:
+>
+> - **`main`** (esta rama): cada persona ingresa **su propio correo y
+>   contraseña** de Huellitas Solidarias en la pantalla de login
+>   (`src/auth/userLoginOAuthProvider.ts`). El servidor los valida contra
+>   `POST /auth/login` del backend real — nunca los guarda — y usa el token
+>   que el backend le devuelve para *esa persona específicamente* en cada
+>   llamada a una tool. El rol real de esa cuenta (usuario/fundación/admin)
+>   es quien decide qué puede ver o hacer, exactamente como si entrara al
+>   sitio web. No hay passcode de equipo ni claves compartidas: quien no
+>   tenga cuenta en la plataforma, no puede conectar.
+> - **`mcp-admin-full-access`**: modelo anterior, con un passcode de equipo
+>   (`MCP_ACCESS_PASSCODE`) y una cuenta de servicio con rol admin
+>   (`HUELLITAS_ADMIN_EMAIL`/`PASSWORD`) que el servidor usa para *todas* las
+>   personas que se conecten, sin importar su cuenta real. Pensado para
+>   depuración/administración del equipo, no para uso general.
+
+**Limitaciones conocidas de `main`, documentadas a propósito:**
 
 - Códigos y tokens **en memoria**: un reinicio del proceso cierra todas las
-  sesiones activas. Aceptable para un equipo chico, no para un servicio
-  público real.
-- **Un passcode compartido por todo el equipo**, no cuentas individuales —
-  mismo patrón que ya usa `/docs` en el backend principal
-  (`DOCS_USER`/`DOCS_PASSWORD`), no una novedad de seguridad más débil.
-- **Sin refresh tokens**: al expirar el access token (1h), el cliente MCP
-  vuelve a pedir el passcode. Deliberado, para no sumar más superficie.
-- Sigue habiendo **una sola identidad de backend** (`HUELLITAS_API_TOKEN`)
-  compartida por todas las personas que se autentiquen contra el MCP remoto:
-  el passcode controla *quién puede usar el servidor*, no *como qué cuenta de
-  Huellitas actúa cada quien*.
-
-**Clientes sin login interactivo (Codex y similares):** algunos clientes MCP
-no soportan el flujo OAuth con redirección a un navegador — solo pueden mandar
-un bearer token fijo, leído de una variable de entorno propia del cliente.
-Para esos casos existe `MCP_STATIC_API_KEYS` (una o más claves, separadas por
-coma, que no expiran): `src/auth/passcodeOAuthProvider.ts` las revisa en
-`verifyAccessToken` antes de mirar la tabla de tokens emitidos por `/token`.
-Es un mecanismo aparte del OAuth normal, no un atajo dentro de él — quien
-tiene una de estas claves nunca pasa por la pantalla del passcode.
+  sesiones activas.
+- **Sin refresh tokens**: al expirar el token del backend (1h, la misma
+  política que cualquier sesión web), el cliente MCP vuelve a pedir
+  correo/contraseña. Deliberado, para no sumar más superficie.
+- **Clientes que no hacen login interactivo (Codex y similares) no funcionan
+  en `main`.** Algunos clientes MCP no soportan el flujo OAuth con
+  redirección a un navegador — solo pueden mandar un bearer token fijo desde
+  su propio entorno, y aquí no hay ningún token fijo que darles (a propósito:
+  eso sería volver a una identidad compartida). Para esos clientes, usar la
+  rama `mcp-admin-full-access`, que sí expone `MCP_STATIC_API_KEYS`.
 
 **Despliegue:** corre como contenedor Docker aparte (`mcp-server/Dockerfile`),
 en la misma instancia EC2 del frontend, sin tocar el servicio ECS del backend
@@ -192,7 +194,13 @@ que existe.
 | `listar_catalogo` | `GET /catalogos/*` | Especies, razas, ciudades o tags. Consolida 4 endpoints en 1 tool. |
 | `estado_api` | `GET /health` | Diagnóstico de la API y su base de datos. |
 
-### Nivel 2 — Lectura autenticada (solo con `HUELLITAS_API_TOKEN`, 6 tools)
+### Nivel 2 — Lectura autenticada (6 tools)
+
+En modo `stdio`: solo aparecen si hay `HUELLITAS_API_TOKEN` (o
+`HUELLITAS_ADMIN_EMAIL`/`PASSWORD`) configurado. En modo remoto sobre `main`:
+siempre aparecen, porque cada persona ya se autenticó con su propia cuenta al
+conectarse — es el backend, con el rol real de esa cuenta, quien decide si
+cada llamada procede o devuelve 403.
 
 | Tool | Endpoint |
 |---|---|
