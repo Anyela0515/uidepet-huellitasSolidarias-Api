@@ -149,6 +149,22 @@ export function registrarToolsLecturaAutenticada(server: McpServer, token?: stri
   );
 
   server.registerTool(
+    "listar_favoritos",
+    {
+      title: "Listar mis mascotas favoritas",
+      description:
+        "Lista las mascotas marcadas como favoritas por la cuenta que llama a esta tool. " +
+        "Requiere autenticación con rol usuario. Usa alternar_favorito para agregar o quitar una.",
+      inputSchema: {},
+      annotations: SOLO_LECTURA,
+    },
+    async () => {
+      const datos = await apiRequest("GET", "/favoritos", { auth: token ?? true });
+      return { content: [{ type: "text", text: formatForModel(datos) }] };
+    }
+  );
+
+  server.registerTool(
     "listar_mensajes",
     {
       title: "Listar mensajes de contacto",

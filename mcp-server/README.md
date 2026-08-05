@@ -210,6 +210,7 @@ cada llamada procede o devuelve 403.
 | `listar_donaciones` | `GET /donaciones` |
 | `listar_reportes_rescate` | `GET /reportes` |
 | `listar_mensajes` | `GET /mensajes` |
+| `listar_favoritos` | `GET /favoritos` |
 
 `listar_usuarios` requiere específicamente un token de cuenta **admin** (el
 backend responde 403 con un token de fundación o usuario). Devuelve correo y
@@ -220,11 +221,29 @@ El **alcance de los datos lo decide el backend** según el rol del token: una
 fundación ve lo suyo, el admin ve todo. El servidor MCP nunca eleva privilegios
 por su cuenta.
 
-### Nivel 3 — Escritura controlada (solo con `MCP_ALLOW_WRITES=true`, 1 tool)
+### Nivel 3 — Escritura controlada (solo con `MCP_ALLOW_WRITES=true`, 9 tools)
 
-| Tool | Endpoint |
-|---|---|
-| `enviar_mensaje_contacto` | `POST /mensajes` |
+| Tool | Endpoint | Rol requerido |
+|---|---|---|
+| `enviar_mensaje_contacto` | `POST /mensajes` | público |
+| `marcar_mensaje_leido` | `PATCH /mensajes/{id}/leido` | fundación, admin |
+| `actualizar_estado_reporte` | `PATCH /reportes/{id}/estado` | fundación, admin |
+| `actualizar_estado_solicitud` | `PATCH /solicitudes/{id}/estado` | fundación, admin |
+| `crear_solicitud_adopcion` | `POST /solicitudes` | usuario |
+| `alternar_favorito` | `POST /favoritos/{id}/toggle` | usuario |
+| `crear_donacion` | `POST /donaciones` | público |
+| `crear_reporte_rescate` | `POST /reportes` | público |
+| `actualizar_mi_perfil` | `PATCH /auth/perfil` | cualquier cuenta autenticada (solo su propio perfil) |
+
+Las últimas cinco existen para que una cuenta con rol **usuario** (adoptante)
+no dependa solo de lectura: puede solicitar la adopción de una mascota,
+gestionar sus favoritos, donar, reportar un animal en riesgo y editar su
+propio perfil, todo en remoto con su propia cuenta — igual que en el sitio
+web. `actualizar_estado_solicitud` es la única excepción deliberada a la
+regla de "nada con consecuencia real sobre personas y animales" (ver su
+descripción en `src/tools/escrituraControlada.ts`, que exige confirmación
+humana explícita antes de cada llamada); las demás son acciones que la
+propia persona ya podía hacer sobre sus propios datos.
 
 ### Capacidades deliberadamente NO expuestas
 
@@ -233,13 +252,14 @@ inalcanzables para el modelo:
 
 - **Autenticación:** login, registro, cambio/recuperación de contraseña.
 - **Gestión de cuentas:** cambio de rol, suspensión, eliminación de usuarios.
-- **Decisiones de adopción:** aprobar o rechazar solicitudes.
 - **Gestión de mascotas:** crear, editar o eliminar.
-- **Estados de negocio:** cambiar estado de donaciones, reportes o fundaciones.
+- **Estados de negocio ajenos:** cambiar estado de donaciones o fundaciones.
+- **Seguimiento post-adopción con archivos:** requiere subir fotos/video en
+  base64, poco práctico desde un chat; se deja fuera por ahora.
 
-El criterio: son acciones con **consecuencias reales e irreversibles sobre
-personas y animales** (aprobar una adopción, suspender una cuenta). Una
-alucinación o una inyección de prompt no debe poder desencadenarlas.
+El criterio: son acciones administrativas de cuenta o que requieren datos
+binarios pesados, no algo que una persona pida hacer conversacionalmente
+sobre sus propios datos.
 
 ---
 
@@ -254,8 +274,8 @@ Ocho medidas implementadas, con el riesgo concreto que mitiga cada una:
 → `src/index.ts`, `src/tools/escrituraControlada.ts`
 
 ### 4.2 Mínimo privilegio en la superficie expuesta
-Se exponen 11 tools sobre una API de 60+ endpoints. Las operaciones destructivas
-y de autenticación no existen como tool.
+Se exponen 21 tools sobre una API de 60+ endpoints. Las operaciones administrativas
+de cuenta y de autenticación no existen como tool.
 → *Mitiga:* abuso de operaciones críticas.
 → `src/tools/`
 
