@@ -35,7 +35,7 @@ async function notificarFundaciones(reporte: {
   descripcion: string;
 }) {
   const panelUrl = `${process.env.FRONTEND_URL || "https://huellitassolidarias.com"}/fundacion/reportes`;
-  let fundaciones: Array<{ correo: string; nombre: string }> = [];
+  let fundaciones: Array<{ correo: string; nombre: string }>;
   try {
     fundaciones = await organizacionRepo.findAllActivasConCorreo();
   } catch (error) {
