@@ -41,6 +41,12 @@ export function createApp() {
     ].filter(Boolean)
   );
 
+  // Detrás del load balancer (internet -> ALB -> este contenedor): sin esto,
+  // express-rate-limit no confía en X-Forwarded-For y no puede identificar
+  // IPs reales, ademas de lanzar ERR_ERL_UNEXPECTED_X_FORWARDED_FOR en cada
+  // request. 1 = confía en un solo salto de proxy (el ALB).
+  app.set("trust proxy", 1);
+
   app.disable("x-powered-by");
   app.use(helmet());
   app.use(
