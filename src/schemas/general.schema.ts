@@ -48,6 +48,7 @@ export const crearReporteRescateSchema = z.object({
   descripcion: z.string().trim().min(20),
   nombreContacto: z.string().trim().optional().nullable(),
   contacto: z.string().trim().optional().nullable(),
+  correoNotificacion: z.string().trim().email("Correo inválido.").optional().nullable(),
   coordenadas: z
     .object({
       latitud: z.number().min(-90).max(90),

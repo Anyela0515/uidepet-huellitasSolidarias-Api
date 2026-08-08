@@ -6,6 +6,7 @@ import { publicFormRateLimiter } from "../middlewares/rateLimiter.js";
 const router = Router();
 
 router.post("/", publicFormRateLimiter, controller.crear);
+router.get("/:codigo", publicFormRateLimiter, controller.consultar);
 
 router.use(requireJwt);
 

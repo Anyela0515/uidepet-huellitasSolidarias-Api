@@ -20,6 +20,7 @@ const SELECT = `
     dr.descripcion,
     dr.nombre_contacto,
     dr.contacto,
+    dr.correo_notificacion,
     dr.creado_en,
     ed.codigo AS estado_codigo,
     (
@@ -101,6 +102,7 @@ export async function create(data: {
   descripcion: string;
   nombreContacto?: string | null;
   contacto?: string | null;
+  correoNotificacion?: string | null;
   evidencias: Array<{ name: string; type?: string | null; size?: number | null; url?: string | null }>;
 }) {
   const id = `RESC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -113,8 +115,8 @@ export async function create(data: {
     await conn.query(
       `INSERT INTO denuncias_rescate
         (id, tipo_animal, urgencia, ubicacion, referencia, latitud, longitud,
-         descripcion, nombre_contacto, contacto, estado_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         descripcion, nombre_contacto, contacto, correo_notificacion, estado_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.tipoAnimal,
@@ -126,6 +128,7 @@ export async function create(data: {
         data.descripcion,
         data.nombreContacto ?? null,
         data.contacto ?? null,
+        data.correoNotificacion ?? null,
         estadoId,
       ]
     );

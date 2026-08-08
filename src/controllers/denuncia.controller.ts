@@ -24,3 +24,8 @@ export const actualizarEstado = asyncHandler(async (req: Request, res: Response)
   const result = await denunciaService.actualizarEstado(String(req.params.id), estado);
   res.status(200).json({ success: true, ...result });
 });
+
+export const consultar = asyncHandler(async (req: Request, res: Response) => {
+  const data = await denunciaService.consultarPorCodigo(String(req.params.codigo).trim());
+  res.status(200).json({ success: true, data });
+});
