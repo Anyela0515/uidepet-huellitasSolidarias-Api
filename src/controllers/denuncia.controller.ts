@@ -27,3 +27,8 @@ export const actualizarEstado = asyncHandler(async (req: Request, res: Response)
   });
   res.status(200).json({ success: true, ...result });
 });
+
+export const consultar = asyncHandler(async (req: Request, res: Response) => {
+  const data = await denunciaService.consultarPorCodigo(String(req.params.codigo).trim());
+  res.status(200).json({ success: true, data });
+});

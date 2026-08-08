@@ -1,6 +1,10 @@
 import * as denunciaRepo from "../repositories/denuncia.repository.js";
 import * as organizacionRepo from "../repositories/organizacion.repository.js";
-import { sendNuevoReporteRescateEmail } from "./email.service.js";
+import {
+  sendNuevoReporteRescateEmail,
+  sendReporteConfirmacionEmail,
+  sendReporteEstadoActualizadoEmail,
+} from "./email.service.js";
 import { NotFoundError } from "../utils/errors.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { DENUNCIA_SORT_FIELDS } from "../repositories/denuncia.repository.js";
@@ -9,6 +13,10 @@ import { publish } from "../events/domainEvents.js";
 interface Actor {
   id: number | null;
   correo: string | null;
+}
+
+function seguimientoUrl() {
+  return `${process.env.FRONTEND_URL || "https://huellitassolidarias.com"}/seguimiento-reporte`;
 }
 
 export async function listarDenuncias(query: Record<string, unknown> = {}) {
@@ -27,11 +35,38 @@ export async function crearDenuncia(data: {
   descripcion: string;
   nombreContacto?: string | null;
   contacto?: string | null;
+  correoNotificacion?: string | null;
   evidencias: Array<{ name: string; type?: string | null; size?: number | null; url?: string | null }>;
 }) {
   const reporte = await denunciaRepo.create(data);
-  if (reporte) await notificarFundaciones(reporte);
+  if (reporte) {
+    await notificarFundaciones(reporte);
+    if (data.correoNotificacion) {
+      await sendReporteConfirmacionEmail(data.correoNotificacion, reporte.codigo, seguimientoUrl(), reporte).catch(
+        (error) => {
+          console.error(`No se pudo enviar la confirmación del reporte ${reporte.codigo}:`, error);
+        }
+      );
+    }
+  }
   return { reporte };
+}
+
+export async function consultarPorCodigo(codigo: string) {
+  const denuncia = await denunciaRepo.findById(codigo);
+  if (!denuncia) throw new NotFoundError("No encontramos un reporte con ese código.");
+
+  // Consulta pública (sin autenticación): solo se expone lo necesario para
+  // que la persona que reportó sepa qué pasó, sin filtrar sus datos de
+  // contacto ni los de otras personas involucradas.
+  return {
+    codigo: denuncia.codigo,
+    estado: denuncia.estado,
+    tipoAnimal: denuncia.tipoAnimal,
+    urgencia: denuncia.urgencia,
+    ubicacion: denuncia.ubicacion,
+    fecha: denuncia.fecha,
+  };
 }
 
 async function notificarFundaciones(reporte: {
@@ -70,6 +105,18 @@ export async function actualizarEstado(id: string, estado: string, actor?: Actor
     entidadId: id,
     detalle: { estadoAnterior: denuncia.estado, estadoNuevo: estado },
   });
+
+  if (reporte?.correoNotificacion) {
+    await sendReporteEstadoActualizadoEmail(
+      reporte.correoNotificacion,
+      reporte.codigo,
+      reporte.estado,
+      seguimientoUrl(),
+      reporte
+    ).catch((error) => {
+      console.error(`No se pudo enviar la actualización del reporte ${reporte.codigo}:`, error);
+    });
+  }
 
   return { reporte };
 }

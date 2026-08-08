@@ -275,6 +275,7 @@ export function mapDenuncia(row: Record<string, unknown>) {
     descripcion: String(row.descripcion ?? ""),
     nombreContacto: row.nombre_contacto ? String(row.nombre_contacto) : null,
     contacto: row.contacto ? String(row.contacto) : null,
+    correoNotificacion: row.correo_notificacion ? String(row.correo_notificacion) : null,
     estado: String(row.estado_codigo ?? row.estado ?? "recibida"),
     fecha: formatFechaCorta(toDate(row.creado_en)),
     evidencias,

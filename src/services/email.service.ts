@@ -60,6 +60,18 @@ export async function sendFundacionCredentialsEmail(
   });
 }
 
+export async function sendFundacionRechazadaEmail(correo: string, nombre: string) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: "Tu solicitud de registro de fundación no fue aprobada",
+    text: `Hola ${nombre}. Revisamos tu solicitud de registro como fundación aliada en Huellitas Solidarias y, por ahora, no fue aprobada. Si crees que fue un error o quieres más información, puedes escribirnos respondiendo este correo.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombre)},</p><p>Revisamos tu solicitud de registro como fundación aliada y, por ahora, no fue aprobada.</p><p style="font-size:13px;color:#666">Si crees que fue un error o quieres más información, puedes escribirnos respondiendo este correo.</p></div>`,
+  });
+}
+
 export async function sendComprobanteDonacionEmail(
   correoOrganizacion: string,
   nombreOrganizacion: string,
@@ -196,6 +208,49 @@ export async function sendNuevoReporteRescateEmail(
     subject: `Nuevo reporte de rescate (${reporte.urgencia}): ${reporte.tipoAnimal} en ${reporte.ubicacion}`,
     text: `Hola ${nombreOrganizacion}. Un ciudadano reportó un rescate.\n\nAnimal: ${reporte.tipoAnimal}\nUrgencia: ${reporte.urgencia}\nLugar: ${reporte.ubicacion}\n\n${reporte.descripcion}\n\nIngresa a ${panelUrl} para ver los detalles y evidencias.`,
     html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Hola ${escapeHtml(nombreOrganizacion)},</p><p>Un ciudadano reportó un animal en situación de rescate:</p><p style="margin:12px 0;padding:12px 16px;background:#faf5f7;border-radius:8px"><strong>${escapeHtml(reporte.tipoAnimal)}</strong> — urgencia <strong>${escapeHtml(reporte.urgencia)}</strong><br/>${escapeHtml(reporte.ubicacion)}<br/><span style="color:#666">${escapeHtml(reporte.descripcion)}</span></p><p style="margin:28px 0"><a href="${panelUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver reporte</a></p></div>`,
+  });
+}
+
+const ESTADO_DENUNCIA_LABEL: Record<string, string> = {
+  recibida: "Recibido",
+  revision: "En revisión",
+  atendida: "Atendido",
+  cerrada: "Cerrado",
+};
+
+export async function sendReporteConfirmacionEmail(
+  correo: string,
+  codigo: string,
+  seguimientoUrl: string,
+  reporte: { tipoAnimal: string; ubicacion: string }
+) {
+  const { user, transporter } = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: `Recibimos tu reporte de rescate — código ${codigo}`,
+    text: `Gracias por reportar a un ${reporte.tipoAnimal} en ${reporte.ubicacion}.\n\nTu código de seguimiento es: ${codigo}\n\nPuedes consultar el estado de tu reporte cuando quieras en: ${seguimientoUrl}\n\nTe avisaremos por este correo cuando haya una actualización.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Gracias por reportar a un <strong>${escapeHtml(reporte.tipoAnimal)}</strong> en <strong>${escapeHtml(reporte.ubicacion)}</strong>.</p><p style="margin:20px 0;padding:14px 18px;background:#faf5f7;border-radius:8px;text-align:center"><span style="font-size:13px;color:#666">Tu código de seguimiento</span><br/><strong style="font-size:20px;letter-spacing:1px;color:#800040">${escapeHtml(codigo)}</strong></p><p style="margin:28px 0"><a href="${seguimientoUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Consultar estado</a></p><p style="font-size:13px;color:#666">También te avisaremos por este correo cuando haya una actualización.</p></div>`,
+  });
+}
+
+export async function sendReporteEstadoActualizadoEmail(
+  correo: string,
+  codigo: string,
+  estado: string,
+  seguimientoUrl: string,
+  reporte: { tipoAnimal: string; ubicacion: string }
+) {
+  const { user, transporter } = createTransporter();
+  const estadoLabel = ESTADO_DENUNCIA_LABEL[estado] || estado;
+
+  await transporter.sendMail({
+    from: `"Huellitas Solidarias" <${user}>`,
+    to: correo,
+    subject: `Actualización de tu reporte ${codigo}: ${estadoLabel}`,
+    text: `Tu reporte del ${reporte.tipoAnimal} en ${reporte.ubicacion} (código ${codigo}) ahora está: ${estadoLabel}.\n\nConsulta los detalles en: ${seguimientoUrl}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#292329"><h2 style="color:#800040">Huellitas Solidarias</h2><p>Tu reporte del <strong>${escapeHtml(reporte.tipoAnimal)}</strong> en <strong>${escapeHtml(reporte.ubicacion)}</strong> (código <strong>${escapeHtml(codigo)}</strong>) ahora está:</p><p style="margin:20px 0;padding:14px 18px;background:#faf5f7;border-radius:8px;text-align:center"><strong style="font-size:18px;color:#800040">${escapeHtml(estadoLabel)}</strong></p><p style="margin:28px 0"><a href="${seguimientoUrl}" style="background:#800040;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ver detalles</a></p></div>`,
   });
 }
 

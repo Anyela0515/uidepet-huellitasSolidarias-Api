@@ -7,7 +7,7 @@ import * as authService from "./auth.service.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { FUNDACION_SORT_FIELDS } from "../repositories/fundacion.repository.js";
 import { ConflictError, NotFoundError } from "../utils/errors.js";
-import { sendFundacionCredentialsEmail } from "./email.service.js";
+import { sendFundacionCredentialsEmail, sendFundacionRechazadaEmail } from "./email.service.js";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   pendiente: ["aprobada", "rechazada"],
@@ -124,6 +124,14 @@ export async function actualizarEstado(
     }
 
     await conn.commit();
+
+    if (estado === "rechazada" && updated) {
+      try {
+        await sendFundacionRechazadaEmail(updated.correo, updated.representante || updated.nombre);
+      } catch (error) {
+        console.error("No se pudo enviar el correo de rechazo de fundación:", error);
+      }
+    }
 
     let credencialesEnviadas = false;
     if (esCuentaNueva && updated && temporaryPassword) {
