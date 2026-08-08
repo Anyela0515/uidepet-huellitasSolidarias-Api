@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { pool } from "./config/database.js";
+import { registrarAuditListener } from "./events/auditListener.js";
 
 function assertEnv() {
   const secret = process.env.JWT_SECRET;
@@ -13,6 +14,7 @@ function assertEnv() {
 }
 
 assertEnv();
+registrarAuditListener();
 
 const PORT = Number(process.env.PORT ?? 3000);
 const app = createApp();

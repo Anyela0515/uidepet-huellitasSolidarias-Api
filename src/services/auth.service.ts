@@ -18,6 +18,12 @@ import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { USUARIO_SORT_FIELDS, type UsuarioFiltros } from "../repositories/usuario.repository.js";
 import * as passwordResetRepo from "../repositories/passwordReset.repository.js";
 import * as emailVerificationRepo from "../repositories/emailVerification.repository.js";
+import { publish } from "../events/domainEvents.js";
+
+interface Actor {
+  id: number | null;
+  correo: string | null;
+}
 import { sendPasswordResetEmail, sendEmailVerificationEmail } from "./email.service.js";
 import { JWT_ISSUER, JWT_AUDIENCE } from "../middlewares/auth.js";
 
@@ -246,17 +252,33 @@ export async function listUsers(query: Record<string, unknown> = {}) {
   return usuarioRepo.findAll(pagination, sortClause, filtros);
 }
 
-export async function setRole(correo: string, rol: string) {
+export async function setRole(correo: string, rol: string, actor?: Actor) {
   const row = await usuarioRepo.findByCorreo(correo);
   if (!row) return { error: "Usuario no encontrado." };
+  const rolAnterior = row.rol_codigo;
   await usuarioRepo.updateRol(correo, rol);
+  publish("usuario.rol_cambiado", {
+    usuarioId: actor?.id ?? null,
+    usuarioCorreo: actor?.correo ?? null,
+    entidad: "usuario",
+    entidadId: correo,
+    detalle: { rolAnterior, rolNuevo: rol },
+  });
   return { ok: true };
 }
 
-export async function setEstado(correo: string, estado: string) {
+export async function setEstado(correo: string, estado: string, actor?: Actor) {
   const row = await usuarioRepo.findByCorreo(correo);
   if (!row) return { error: "Usuario no encontrado." };
+  const estadoAnterior = row.estado_codigo;
   await usuarioRepo.updateEstado(correo, estado);
+  publish("usuario.estado_cambiado", {
+    usuarioId: actor?.id ?? null,
+    usuarioCorreo: actor?.correo ?? null,
+    entidad: "usuario",
+    entidadId: correo,
+    detalle: { estadoAnterior, estadoNuevo: estado },
+  });
   return { ok: true };
 }
 

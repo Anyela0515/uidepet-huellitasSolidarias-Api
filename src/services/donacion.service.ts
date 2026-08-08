@@ -4,6 +4,12 @@ import { buildPaginationMeta, buildSortClause, parsePagination } from "../utils/
 import { DONACION_SORT_FIELDS, type DonacionFiltros } from "../repositories/donacion.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { sendComprobanteDonacionEmail, sendNuevoMensajeNotificationEmail } from "./email.service.js";
+import { publish } from "../events/domainEvents.js";
+
+interface Actor {
+  id: number | null;
+  correo: string | null;
+}
 
 export async function listarDonaciones(
   rol: string,
@@ -92,13 +98,23 @@ export async function obtenerDonacion(id: string, rol: string, correo: string) {
   throw new ForbiddenError("No tienes permiso para consultar esta donación.");
 }
 
-export async function actualizarEstado(id: string, estado: string, rol: string) {
+export async function actualizarEstado(id: string, estado: string, rol: string, actor?: Actor) {
   if (rol !== "admin") {
     throw new ForbiddenError("Solo un administrador puede cambiar el estado de una donación.");
   }
   const donacion = await donacionRepo.findById(id);
   if (!donacion) throw new NotFoundError("Donación no encontrada.");
-  return donacionRepo.updateEstado(id, estado);
+  const resultado = await donacionRepo.updateEstado(id, estado);
+
+  publish("donacion.estado_cambiado", {
+    usuarioId: actor?.id ?? null,
+    usuarioCorreo: actor?.correo ?? null,
+    entidad: "donacion",
+    entidadId: id,
+    detalle: { estadoAnterior: donacion.estado, estadoNuevo: estado },
+  });
+
+  return resultado;
 }
 
 export async function cancelarDonacion(id: string, rol: string) {

@@ -16,6 +16,12 @@ import {
   sendSolicitudAprobadaEmail,
   sendSolicitudRechazadaEmail,
 } from "./email.service.js";
+import { publish } from "../events/domainEvents.js";
+
+interface Actor {
+  id: number | null;
+  correo: string | null;
+}
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   revision: ["aprobada", "rechazada"],
@@ -97,7 +103,8 @@ export async function crearSolicitud(
 export async function actualizarEstado(
   id: string,
   data: ActualizarEstadoSolicitudDTO,
-  fundacionEmail?: string
+  fundacionEmail?: string,
+  actor?: Actor
 ) {
   const actual = await solicitudRepo.findById(id);
   if (!actual) return { error: "Solicitud no encontrada." };
@@ -148,6 +155,16 @@ export async function actualizarEstado(
       } catch (error) {
         console.error("No se pudo enviar el correo de solicitud aprobada:", error);
       }
+    }
+
+    if (data.estado === "aprobada" || data.estado === "rechazada" || data.estado === "seguimiento") {
+      publish(`solicitud.${data.estado}`, {
+        usuarioId: actor?.id ?? null,
+        usuarioCorreo: actor?.correo ?? null,
+        entidad: "solicitud_adopcion",
+        entidadId: id,
+        detalle: { estadoAnterior: actual.estado, estadoNuevo: data.estado, observaciones: data.observaciones },
+      });
     }
 
     return { solicitud };

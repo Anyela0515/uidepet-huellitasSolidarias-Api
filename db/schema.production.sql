@@ -417,6 +417,35 @@ ALTER TABLE archivos
   ADD CONSTRAINT fk_archivo_denuncia
     FOREIGN KEY (denuncia_id) REFERENCES denuncias_rescate(id) ON DELETE CASCADE;
 
+-- Auditoría inmutable de acciones sensibles (aprobar/rechazar adopción,
+-- cambiar rol/estado de cuenta, cambiar estado de reporte o donación).
+-- Solo INSERT: los triggers bloquean UPDATE y DELETE, ver
+-- db/migrations/2026_08_05_auditoria_inmutable.sql.
+CREATE TABLE auditoria (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT UNSIGNED NULL,
+  usuario_correo VARCHAR(150) NULL,
+  accion VARCHAR(80) NOT NULL,
+  entidad VARCHAR(60) NOT NULL,
+  entidad_id VARCHAR(60) NOT NULL,
+  detalle JSON NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_auditoria_entidad (entidad, entidad_id),
+  KEY idx_auditoria_usuario (usuario_id),
+  CONSTRAINT fk_auditoria_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+);
+
+CREATE TRIGGER trg_auditoria_no_update
+BEFORE UPDATE ON auditoria
+FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La tabla auditoria es de solo lectura: no se permite UPDATE.';
+
+CREATE TRIGGER trg_auditoria_no_delete
+BEFORE DELETE ON auditoria
+FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La tabla auditoria es de solo lectura: no se permite DELETE.';
+
 -- =============================================================================
 -- DATOS INICIALES DE CATÁLOGO
 -- =============================================================================

@@ -1,4 +1,5 @@
 node_modules/
 dist/
 .env
-npm-debug.log*PROMPT_CLAUDE_IMPLEMENTACION_HUELLITAS.md
+npm-debug.log*
+PROMPT_CLAUDE_IMPLEMENTACION_HUELLITAS.md

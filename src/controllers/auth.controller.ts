@@ -145,7 +145,10 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
 export const setRole = asyncHandler(async (req: Request, res: Response) => {
   const { rol } = actualizarRolSchema.parse(req.body);
   const correo = String(req.params.correo);
-  const result = await authService.setRole(correo, rol);
+  const result = await authService.setRole(correo, rol, {
+    id: req.user!.sub,
+    correo: req.user!.correo,
+  });
 
   if ("error" in result) {
     res.status(404).json({ error: result.error });
@@ -158,7 +161,10 @@ export const setRole = asyncHandler(async (req: Request, res: Response) => {
 export const setEstado = asyncHandler(async (req: Request, res: Response) => {
   const { estado } = actualizarEstadoUsuarioSchema.parse(req.body);
   const correo = String(req.params.correo);
-  const result = await authService.setEstado(correo, estado);
+  const result = await authService.setEstado(correo, estado, {
+    id: req.user!.sub,
+    correo: req.user!.correo,
+  });
 
   if ("error" in result) {
     res.status(404).json({ error: result.error });

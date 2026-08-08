@@ -36,7 +36,8 @@ export const actualizarEstado = asyncHandler(async (req: Request, res: Response)
   const donacion = await donacionService.actualizarEstado(
     String(req.params.id),
     estado,
-    req.user!.rol
+    req.user!.rol,
+    { id: req.user!.sub, correo: req.user!.correo }
   );
   res.status(200).json({ success: true, data: donacion });
 });

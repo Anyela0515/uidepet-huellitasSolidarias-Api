@@ -68,7 +68,8 @@ export const actualizarEstado = asyncHandler(async (req: Request, res: Response)
   const result = await solicitudService.actualizarEstado(
     String(req.params.id),
     data,
-    fundacionEmail
+    fundacionEmail,
+    { id: req.user!.sub, correo: req.user!.correo }
   );
 
   if ("error" in result) {

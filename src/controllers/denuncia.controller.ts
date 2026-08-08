@@ -21,6 +21,9 @@ export const crear = asyncHandler(async (req: Request, res: Response) => {
 
 export const actualizarEstado = asyncHandler(async (req: Request, res: Response) => {
   const { estado } = actualizarEstadoDenunciaSchema.parse(req.body);
-  const result = await denunciaService.actualizarEstado(String(req.params.id), estado);
+  const result = await denunciaService.actualizarEstado(String(req.params.id), estado, {
+    id: req.user!.sub,
+    correo: req.user!.correo,
+  });
   res.status(200).json({ success: true, ...result });
 });

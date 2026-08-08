@@ -4,6 +4,12 @@ import { sendNuevoReporteRescateEmail } from "./email.service.js";
 import { NotFoundError } from "../utils/errors.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { DENUNCIA_SORT_FIELDS } from "../repositories/denuncia.repository.js";
+import { publish } from "../events/domainEvents.js";
+
+interface Actor {
+  id: number | null;
+  correo: string | null;
+}
 
 export async function listarDenuncias(query: Record<string, unknown> = {}) {
   const pagination = parsePagination(query);
@@ -51,10 +57,19 @@ async function notificarFundaciones(reporte: {
   await Promise.allSettled(envios);
 }
 
-export async function actualizarEstado(id: string, estado: string) {
+export async function actualizarEstado(id: string, estado: string, actor?: Actor) {
   const denuncia = await denunciaRepo.findById(id);
   if (!denuncia) throw new NotFoundError("Reporte no encontrado.");
 
   const reporte = await denunciaRepo.updateEstado(id, estado);
+
+  publish("reporte.estado_cambiado", {
+    usuarioId: actor?.id ?? null,
+    usuarioCorreo: actor?.correo ?? null,
+    entidad: "reporte_rescate",
+    entidadId: id,
+    detalle: { estadoAnterior: denuncia.estado, estadoNuevo: estado },
+  });
+
   return { reporte };
 }
