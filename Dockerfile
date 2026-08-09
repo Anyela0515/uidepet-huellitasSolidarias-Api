@@ -32,6 +32,7 @@ RUN npm ci --omit=dev \
     && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/assets/email ./assets/email
 COPY db ./db
 COPY scripts ./scripts
 COPY openapi.yaml ./openapi.yaml
