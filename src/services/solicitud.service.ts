@@ -135,7 +135,8 @@ export async function actualizarEstado(
           actual.adoptanteEmail,
           actual.adoptante,
           actual.mascota,
-          data.observaciones
+          data.observaciones,
+          id
         );
       } catch (error) {
         console.error("No se pudo enviar el correo de solicitud rechazada:", error);
@@ -150,7 +151,8 @@ export async function actualizarEstado(
           actual.adoptante,
           actual.mascota,
           actual.fundacion,
-          panelUrl
+          panelUrl,
+          id
         );
       } catch (error) {
         console.error("No se pudo enviar el correo de solicitud aprobada:", error);

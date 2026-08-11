@@ -1,7 +1,17 @@
 import nodemailer from "nodemailer";
+import type { Attachment } from "nodemailer/lib/mailer/index.js";
 import path from "node:path";
+import {
+  escapeHtml,
+  renderHuellitasEmail,
+  type EmailBadgeVariant,
+  type EmailInfoRow,
+  type HuellitasEmailContent,
+} from "./emailTemplate.js";
 
-function henryEmailAsset(filename: string): string {
+type HenryVariant = "aprobada" | "rechazada";
+
+function emailAsset(filename: string): string {
   const baseDirectory = process.env.NODE_ENV === "production" ? "assets" : "src/assets";
   return path.join(process.cwd(), baseDirectory, "email", filename);
 }
@@ -25,88 +35,109 @@ function createTransporter() {
   };
 }
 
-// =============================================================================
-// Marca visual compartida de los correos: patitas, silueta de perro y de
-// gato, en SVG inline (sin archivos externos que alojar). Se degradan con
-// gracia en clientes que no soportan SVG en el cuerpo del correo (queda el
-// texto sin la ilustración, nunca un ícono roto).
-// =============================================================================
-
-function pawIcon(color: string, opacity: number, size = 18) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" style="display:inline-block;vertical-align:middle" role="img" aria-hidden="true"><ellipse cx="20" cy="26" rx="9" ry="7" fill="${color}" fill-opacity="${opacity}"/><circle cx="9" cy="15" r="3.2" fill="${color}" fill-opacity="${opacity}"/><circle cx="16" cy="8" r="3.2" fill="${color}" fill-opacity="${opacity}"/><circle cx="24" cy="8" r="3.2" fill="${color}" fill-opacity="${opacity}"/><circle cx="31" cy="15" r="3.2" fill="${color}" fill-opacity="${opacity}"/></svg>`;
+function defaultFrontendUrl() {
+  return (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 }
 
-/**
- * Envuelve el contenido propio de cada correo en una cabecera institucional
- * limpia y un pie compartido. Henry aparece dentro del mensaje cuando aporta
- * contexto emocional, sin repetirse como imagen circular en la cabecera.
- */
-function renderEmailShell(bodyHtml: string): string {
-  const pawRowHeader = [0, 1, 2].map(() => pawIcon("#ffffff", 0.5, 16)).join("");
-  const pawRowFooter = [0, 1, 2, 3].map(() => pawIcon("#800040", 0.28, 14)).join("");
-
-  return `<div style="background:#f4eef1;padding:28px 12px;font-family:Arial,Helvetica,sans-serif">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #f0dbe3">
-      <tr>
-        <td style="background:#ffffff;padding:20px 20px 6px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#800040;border-radius:14px">
-            <tr>
-              <td style="padding:20px;text-align:center">
-                <div style="margin-bottom:8px">${pawRowHeader}</div>
-                <div style="color:#ffffff;font-size:19px;font-weight:bold;letter-spacing:0.3px">Huellitas Solidarias</div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:24px 28px 6px;color:#292329;font-size:15px;line-height:1.6">
-          ${bodyHtml}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:20px 28px 26px;text-align:center;color:#9c8a92;font-size:12px;line-height:1.6">
-          <div style="margin-bottom:10px">${pawRowFooter}</div>
-          Huellitas Solidarias — adopción responsable<br/>Universidad Internacional del Ecuador
-        </td>
-      </tr>
-    </table>
-  </div>`;
+function baseAttachments(henryVariant: HenryVariant = "aprobada"): Attachment[] {
+  return [
+    {
+      filename: "logo-huellitas.png",
+      path: emailAsset("logo-huellitas.png"),
+      cid: "email-logo",
+    },
+    {
+      filename: `henry-${henryVariant}.png`,
+      path: emailAsset(`henry-${henryVariant}.png`),
+      cid: "henry-mascot",
+    },
+  ];
 }
 
-function button(url: string, label: string) {
-  return `<p style="margin:26px 0;text-align:left"><a href="${url}" style="background:#800040;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">${escapeHtml(label)}</a></p>`;
-}
-
-function infoBox(innerHtml: string) {
-  return `<div style="margin:16px 0;padding:14px 18px;background:#faf5f7;border-radius:10px;border:1px solid #f3e3ea">${innerHtml}</div>`;
-}
-
-export async function sendPasswordResetEmail(correo: string, nombre: string, resetUrl: string) {
+async function deliverMail(options: {
+  to: string;
+  subject: string;
+  text: string;
+  content: HuellitasEmailContent;
+  henryVariant?: HenryVariant;
+  extraAttachments?: Attachment[];
+}) {
   const { user, transporter } = createTransporter();
+  const html = renderHuellitasEmail({
+    webViewUrl: options.content.webViewUrl || defaultFrontendUrl(),
+    ...options.content,
+  });
 
   await transporter.sendMail({
     from: `"Huellitas Solidarias" <${user}>`,
+    to: options.to,
+    subject: options.subject,
+    text: options.text,
+    html,
+    attachments: [...baseAttachments(options.henryVariant), ...(options.extraAttachments ?? [])],
+  });
+}
+
+function estadoRow(label: string, variant: EmailBadgeVariant = "success"): EmailInfoRow {
+  const colors: Record<EmailBadgeVariant, string> = {
+    success: "#2e7d32",
+    danger: "#c62828",
+    warning: "#e65100",
+    info: "#1565c0",
+    neutral: "#616161",
+  };
+  return {
+    icon: "🏁",
+    label: "Estado",
+    value: label,
+    valueHtml: `<span style="color:${colors[variant]};font-weight:700">✓ ${escapeHtml(label)}</span>`,
+  };
+}
+
+export async function sendPasswordResetEmail(correo: string, nombre: string, resetUrl: string) {
+  await deliverMail({
     to: correo,
     subject: "Recupera tu contraseña de Huellitas Solidarias",
     text: `Hola ${nombre}. Restablece tu contraseña aquí: ${resetUrl}. El enlace vence en 15 minutos.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombre)},</p><p>Recibimos una solicitud para restablecer tu contraseña.</p>${button(resetUrl, "Crear nueva contraseña")}<p style="font-size:13px;color:#666">Este enlace vence en 15 minutos y solo puede utilizarse una vez. Si no solicitaste el cambio, ignora este mensaje.</p>`
-    ),
+    content: {
+      preheader: "Restablece tu contraseña de Huellitas Solidarias",
+      webViewUrl: resetUrl,
+      badge: { text: "Recuperación de acceso", variant: "info" },
+      title: "Restablece tu contraseña 🔐",
+      nombre,
+      introHtml: `<p style="margin:0 0 12px">Recibimos una solicitud para restablecer la contraseña de tu cuenta en Huellitas Solidarias.</p><p style="margin:0;font-size:13px;color:#666">Este enlace vence en <strong>15 minutos</strong> y solo puede utilizarse una vez. Si no solicitaste el cambio, ignora este mensaje.</p>`,
+      infoCardTitle: "Información de la solicitud",
+      infoRows: [
+        { icon: "👤", label: "Cuenta", value: correo },
+        { icon: "⏱", label: "Validez", value: "15 minutos" },
+        estadoRow("Enlace de recuperación", "info"),
+      ],
+      noteHtml: "Por seguridad, nadie del equipo te pedirá esta contraseña por correo o teléfono.",
+      cta: { url: resetUrl, label: "Crear nueva contraseña" },
+    },
   });
 }
 
 export async function sendEmailVerificationEmail(correo: string, nombre: string, verificationUrl: string) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: "Verifica tu cuenta en Huellitas Solidarias",
     text: `Hola ${nombre}. Verifica tu cuenta aquí: ${verificationUrl}. El enlace vence en 15 minutos.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombre)},</p><p>Confirma que este correo te pertenece para activar tu cuenta.</p>${button(verificationUrl, "Verificar mi correo")}<p style="font-size:13px;color:#666">Este enlace vence en 15 minutos. Si no creaste esta cuenta, ignora el mensaje.</p>`
-    ),
+    content: {
+      preheader: "Confirma tu correo para activar tu cuenta",
+      webViewUrl: verificationUrl,
+      badge: { text: "Verificación de cuenta", variant: "info" },
+      title: "Verifica tu correo electrónico ✉️",
+      nombre,
+      introHtml: `<p style="margin:0 0 12px">Confirma que este correo te pertenece para activar tu cuenta en Huellitas Solidarias.</p><p style="margin:0;font-size:13px;color:#666">El enlace vence en <strong>15 minutos</strong>. Si no creaste esta cuenta, ignora el mensaje.</p>`,
+      infoCardTitle: "Información de la solicitud",
+      infoRows: [
+        { icon: "📧", label: "Correo", value: correo },
+        { icon: "⏱", label: "Validez", value: "15 minutos" },
+        estadoRow("Pendiente de verificación", "info"),
+      ],
+      cta: { url: verificationUrl, label: "Verificar mi correo" },
+    },
   });
 }
 
@@ -116,30 +147,51 @@ export async function sendFundacionCredentialsEmail(
   temporaryPassword: string,
   loginUrl: string
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: "Tu fundación fue aprobada en Huellitas Solidarias",
     text: `Hola ${nombre}. Tu fundación fue aprobada. Ingresa en ${loginUrl} con el correo ${correo} y la contraseña temporal ${temporaryPassword}. Deberás cambiarla al iniciar sesión.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombre)},</p><p>Tu fundación fue aprobada. Ya puedes ingresar al panel con estas credenciales:</p>${infoBox(`<strong>Correo:</strong> ${escapeHtml(correo)}<br/><strong>Contraseña temporal:</strong> ${escapeHtml(temporaryPassword)}`)}${button(loginUrl, "Ingresar")}<p style="font-size:13px;color:#666">Por seguridad, deberás elegir una contraseña nueva la primera vez que inicies sesión.</p>`
-    ),
+    content: {
+      preheader: "Tu fundación fue aprobada en Huellitas Solidarias",
+      webViewUrl: loginUrl,
+      badge: { text: "Fundación aprobada", variant: "success" },
+      title: "¡Tu fundación fue aprobada! 🎉",
+      nombre,
+      introHtml: `<p style="margin:0">Tu organización ya forma parte de la red de aliados de Huellitas Solidarias. Usa las credenciales temporales para ingresar al panel.</p>`,
+      infoCardTitle: "Información de acceso",
+      infoRows: [
+        { icon: "🏢", label: "Organización", value: nombre },
+        { icon: "📧", label: "Correo", value: correo },
+        { icon: "🔑", label: "Contraseña temporal", value: temporaryPassword },
+        estadoRow("Fundación aprobada", "success"),
+      ],
+      noteHtml: "Por seguridad, deberás elegir una contraseña nueva la primera vez que inicies sesión.",
+      cta: { url: loginUrl, label: "Ingresar al panel" },
+    },
   });
 }
 
 export async function sendFundacionRechazadaEmail(correo: string, nombre: string) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: "Tu solicitud de registro de fundación no fue aprobada",
     text: `Hola ${nombre}. Revisamos tu solicitud de registro como fundación aliada en Huellitas Solidarias y, por ahora, no fue aprobada. Si crees que fue un error o quieres más información, puedes escribirnos respondiendo este correo.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombre)},</p><p>Revisamos tu solicitud de registro como fundación aliada y, por ahora, no fue aprobada.</p><p style="font-size:13px;color:#666">Si crees que fue un error o quieres más información, puedes escribirnos respondiendo este correo.</p>`
-    ),
+    henryVariant: "rechazada",
+    content: {
+      preheader: "Actualización sobre tu solicitud de fundación",
+      badge: { text: "Solicitud no aprobada", variant: "danger" },
+      title: "Tu solicitud no fue aprobada",
+      nombre,
+      introHtml: `<p style="margin:0">Revisamos tu solicitud de registro como fundación aliada y, por ahora, <strong>no fue aprobada</strong>.</p>`,
+      infoCardTitle: "Información de la solicitud",
+      infoRows: [
+        { icon: "🏢", label: "Organización", value: nombre },
+        { icon: "📧", label: "Correo", value: correo },
+        estadoRow("No aprobada", "danger"),
+      ],
+      noteHtml: "Si crees que fue un error o quieres más información, puedes escribirnos respondiendo este correo.",
+      closingHtml: `<p style="margin:0;font-size:14px;line-height:1.65;color:#555;text-align:center">Gracias por tu interés en colaborar con Huellitas Solidarias. 🐾</p>`,
+    },
   });
 }
 
@@ -151,22 +203,31 @@ export async function sendComprobanteDonacionEmail(
   cantidadDescripcion: string,
   comprobantePago: string
 ) {
-  const { user, transporter } = createTransporter();
-
   const match = comprobantePago.match(/^data:([^;]+);base64,(.+)$/);
   const mime = match?.[1] || "application/octet-stream";
   const base64Data = match?.[2] || "";
   const extension = mime === "application/pdf" ? "pdf" : mime.split("/")[1] || "jpg";
 
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correoOrganizacion,
     subject: `Comprobante de aporte económico de ${donanteNombre}`,
     text: `Hola ${nombreOrganizacion}. ${donanteNombre} (${donanteCorreo}) realizó un aporte económico y adjuntó su comprobante de pago.\n\nDescripción: ${cantidadDescripcion}\n\nRevisa el archivo adjunto a este correo.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombreOrganizacion)},</p><p><strong>${escapeHtml(donanteNombre)}</strong> (${escapeHtml(donanteCorreo)}) realizó un aporte económico para tu organización y adjuntó su comprobante de pago.</p>${infoBox(`<strong>Descripción:</strong> ${escapeHtml(cantidadDescripcion)}`)}<p style="font-size:13px;color:#666">El comprobante va adjunto a este correo.</p>`
-    ),
-    attachments: [
+    content: {
+      preheader: `Nuevo comprobante de donación de ${donanteNombre}`,
+      badge: { text: "Nueva donación", variant: "info" },
+      title: "Comprobante de aporte recibido 💝",
+      nombre: nombreOrganizacion,
+      introHtml: `<p style="margin:0"><strong>${escapeHtml(donanteNombre)}</strong> (${escapeHtml(donanteCorreo)}) realizó un aporte económico para tu organización y adjuntó su comprobante de pago.</p>`,
+      infoCardTitle: "Información de la donación",
+      infoRows: [
+        { icon: "👤", label: "Donante", value: donanteNombre },
+        { icon: "📧", label: "Correo", value: donanteCorreo },
+        { icon: "📦", label: "Descripción", value: cantidadDescripcion },
+        estadoRow("Comprobante adjunto", "info"),
+      ],
+      noteHtml: "El comprobante de pago va adjunto a este correo para tu revisión.",
+    },
+    extraAttachments: [
       {
         filename: `comprobante-pago.${extension}`,
         content: base64Data,
@@ -180,25 +241,30 @@ export async function sendSolicitudRechazadaEmail(
   correo: string,
   nombre: string,
   mascotaNombre: string,
-  motivo: string
+  motivo: string,
+  solicitudId?: string
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: `Tu solicitud de adopción para ${mascotaNombre} fue rechazada`,
     text: `Hola ${nombre}. Tu solicitud para adoptar a ${mascotaNombre} fue rechazada.\n\nMotivo: ${motivo}\n\nPuedes postular por otra mascota disponible.`,
-    html: renderEmailShell(
-      `<div style="text-align:center;margin:-4px 0 10px"><img src="cid:henry-rechazada" alt="Henry, un poco triste, sosteniendo un sobre" width="130" style="display:block;margin:0 auto"/></div><p>Hola ${escapeHtml(nombre)},</p><p>Tu solicitud para adoptar a <strong>${escapeHtml(mascotaNombre)}</strong> fue rechazada.</p>${infoBox(`<strong>Motivo:</strong><br/>${escapeHtml(motivo)}`)}<p style="font-size:13px;color:#666">Puedes postular por otra mascota disponible cuando quieras.</p>`
-    ),
-    attachments: [
-      {
-        filename: "henry-rechazada.png",
-        path: henryEmailAsset("henry-rechazada.png"),
-        cid: "henry-rechazada",
-      },
-    ]
+    henryVariant: "rechazada",
+    content: {
+      preheader: `Tu solicitud de adopción para ${mascotaNombre} fue rechazada`,
+      badge: { text: "Solicitud rechazada", variant: "danger" },
+      title: "Tu solicitud fue rechazada",
+      nombre,
+      introHtml: `<p style="margin:0">Lamentamos informarte que tu solicitud para adoptar a <strong>${escapeHtml(mascotaNombre)}</strong> <strong>no fue aprobada</strong> en esta ocasión.</p>`,
+      infoCardTitle: "Información de la solicitud",
+      infoRows: [
+        { icon: "🐾", label: "Mascota", value: mascotaNombre },
+        ...(solicitudId ? [{ icon: "📋", label: "Solicitud", value: `#${solicitudId}` }] : []),
+        { icon: "💬", label: "Motivo", value: motivo },
+        estadoRow("Solicitud rechazada", "danger"),
+      ],
+      noteHtml: "Puedes postular por otra mascota disponible cuando quieras. Cada organización evalúa las solicitudes con responsabilidad.",
+      cta: { url: `${defaultFrontendUrl()}/mascotas`, label: "Explorar mascotas" },
+    },
   });
 }
 
@@ -207,25 +273,30 @@ export async function sendSolicitudAprobadaEmail(
   nombre: string,
   mascotaNombre: string,
   fundacionNombre: string,
-  panelUrl: string
+  panelUrl: string,
+  solicitudId?: string
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: `Tu solicitud de adopción para ${mascotaNombre} fue aprobada`,
     text: `Hola ${nombre}. Tu solicitud de adopción para ${mascotaNombre} fue aprobada por ${fundacionNombre}. Revisa tu panel en ${panelUrl} para ver los próximos pasos.`,
-    html: renderEmailShell(
-      `<div style="text-align:center;margin:-4px 0 10px"><img src="cid:henry-aprobada" alt="Henry feliz sosteniendo un sobre aprobado" width="150" style="display:block;margin:0 auto"/></div><p>Hola ${escapeHtml(nombre)},</p><p>🐾 ¡Tu solicitud de adopción para <strong>${escapeHtml(mascotaNombre)}</strong> fue aprobada por <strong>${escapeHtml(fundacionNombre)}</strong>!</p>${button(panelUrl, "Revisar mi panel")}`
-    ),
-    attachments: [
-      {
-        filename: "henry-aprobada.png",
-        path: henryEmailAsset("henry-aprobada.png"),
-        cid: "henry-aprobada",
-      },
-    ]
+    content: {
+      preheader: `¡Tu solicitud de adopción para ${mascotaNombre} fue aprobada!`,
+      webViewUrl: panelUrl,
+      badge: { text: "Solicitud aprobada", variant: "success" },
+      title: "¡Tu solicitud fue aprobada! 💖",
+      nombre,
+      introHtml: `<p style="margin:0 0 12px">Nos complace informarte que tu solicitud de adopción para <strong>${escapeHtml(mascotaNombre)}</strong> ha sido <strong>aprobada</strong> por <strong>${escapeHtml(fundacionNombre)}</strong>.</p><p style="margin:0">Estamos muy felices de que des un paso más hacia darle un hogar lleno de amor.</p>`,
+      infoCardTitle: "Información de la solicitud",
+      infoRows: [
+        { icon: "🐾", label: "Mascota", value: mascotaNombre },
+        ...(solicitudId ? [{ icon: "📋", label: "Solicitud", value: `#${solicitudId}` }] : []),
+        { icon: "🏢", label: "Organización", value: fundacionNombre },
+        estadoRow("Solicitud aprobada", "success"),
+      ],
+      noteHtml: "El siguiente paso será coordinar con la organización responsable la entrega de la mascota y completar el proceso de adopción.",
+      cta: { url: panelUrl, label: "Continuar con mi adopción" },
+    },
   });
 }
 
@@ -238,16 +309,28 @@ export async function sendEntregaReagendadaEmail(
   lugar: string,
   panelUrl: string
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: `Nueva fecha de entrega para ${mascotaNombre}`,
     text: `Hola ${nombre}. La fecha de entrega de ${mascotaNombre} fue reagendada para el ${fecha} a las ${hora}, en ${lugar}. Revisa tu panel en ${panelUrl}.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombre)},</p><p>La fecha de entrega de <strong>${escapeHtml(mascotaNombre)}</strong> fue reagendada:</p>${infoBox(`<strong>${escapeHtml(fecha)}</strong> a las <strong>${escapeHtml(hora)}</strong><br/>${escapeHtml(lugar)}`)}${button(panelUrl, "Ver mi solicitud")}`
-    ),
+    content: {
+      preheader: `Nueva fecha de entrega para ${mascotaNombre}`,
+      webViewUrl: panelUrl,
+      badge: { text: "Entrega reagendada", variant: "warning" },
+      title: "Nueva fecha de entrega 📅",
+      nombre,
+      introHtml: `<p style="margin:0">La fecha de entrega de <strong>${escapeHtml(mascotaNombre)}</strong> fue <strong>reagendada</strong>. Revisa los detalles a continuación.</p>`,
+      infoCardTitle: "Información de la entrega",
+      infoRows: [
+        { icon: "🐾", label: "Mascota", value: mascotaNombre },
+        { icon: "📅", label: "Fecha", value: fecha },
+        { icon: "🕐", label: "Hora", value: hora },
+        { icon: "📍", label: "Lugar", value: lugar },
+        estadoRow("Entrega reagendada", "warning"),
+      ],
+      noteHtml: "Si tienes alguna inquietud sobre la nueva fecha, contacta a la organización responsable desde tu panel.",
+      cta: { url: panelUrl, label: "Ver mi solicitud" },
+    },
   });
 }
 
@@ -258,16 +341,26 @@ export async function sendNuevoMensajeNotificationEmail(
   deNombre: string,
   asunto: string
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correoOrganizacion,
     subject: `Nuevo mensaje de ${deNombre}: ${asunto}`,
     text: `Hola ${nombreOrganizacion}. ${deNombre} te escribió: "${asunto}". Ingresa a ${panelUrl} para revisarlo.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombreOrganizacion)},</p><p><strong>${escapeHtml(deNombre)}</strong> te escribió:</p>${infoBox(`<span style="font-weight:700">${escapeHtml(asunto)}</span>`)}${button(panelUrl, "Ver mensaje")}`
-    ),
+    content: {
+      preheader: `Nuevo mensaje de ${deNombre}`,
+      webViewUrl: panelUrl,
+      badge: { text: "Nuevo mensaje", variant: "info" },
+      title: "Tienes un nuevo mensaje 💌",
+      nombre: nombreOrganizacion,
+      introHtml: `<p style="margin:0"><strong>${escapeHtml(deNombre)}</strong> te escribió a través de Huellitas Solidarias.</p>`,
+      infoCardTitle: "Información del mensaje",
+      infoRows: [
+        { icon: "👤", label: "De", value: deNombre },
+        { icon: "📝", label: "Asunto", value: asunto },
+        estadoRow("Mensaje recibido", "info"),
+      ],
+      noteHtml: "Ingresa al panel para leer el mensaje completo y responder si corresponde.",
+      cta: { url: panelUrl, label: "Ver mensaje" },
+    },
   });
 }
 
@@ -278,16 +371,26 @@ export async function sendSeguimientoActualizadoEmail(
   adoptanteNombre: string,
   panelUrl: string
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correoFundacion,
     subject: `Seguimiento actualizado: ${mascotaNombre}`,
     text: `Hola ${nombreFundacion}. Se acaba de actualizar el seguimiento de ${mascotaNombre} (adoptante: ${adoptanteNombre}). Ingresa a ${panelUrl} para revisarlo.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombreFundacion)},</p><p>Se acaba de actualizar el seguimiento de <strong>${escapeHtml(mascotaNombre)}</strong>, enviado por <strong>${escapeHtml(adoptanteNombre)}</strong>.</p>${button(panelUrl, "Ver seguimiento")}`
-    ),
+    content: {
+      preheader: `Seguimiento actualizado de ${mascotaNombre}`,
+      webViewUrl: panelUrl,
+      badge: { text: "Seguimiento actualizado", variant: "info" },
+      title: "Nuevo seguimiento post-adopción 📸",
+      nombre: nombreFundacion,
+      introHtml: `<p style="margin:0">Se acaba de actualizar el seguimiento de <strong>${escapeHtml(mascotaNombre)}</strong>, enviado por <strong>${escapeHtml(adoptanteNombre)}</strong>.</p>`,
+      infoCardTitle: "Información del seguimiento",
+      infoRows: [
+        { icon: "🐾", label: "Mascota", value: mascotaNombre },
+        { icon: "👤", label: "Adoptante", value: adoptanteNombre },
+        estadoRow("Seguimiento recibido", "info"),
+      ],
+      noteHtml: "Revisa las evidencias y comentarios en el panel para confirmar el bienestar del animal.",
+      cta: { url: panelUrl, label: "Ver seguimiento" },
+    },
   });
 }
 
@@ -297,16 +400,31 @@ export async function sendNuevoReporteRescateEmail(
   panelUrl: string,
   reporte: { tipoAnimal: string; urgencia: string; ubicacion: string; descripcion: string }
 ) {
-  const { user, transporter } = createTransporter();
+  const urgenciaVariant: EmailBadgeVariant =
+    reporte.urgencia.toLowerCase().includes("alta") ? "danger" : "warning";
 
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correoOrganizacion,
     subject: `Nuevo reporte de rescate (${reporte.urgencia}): ${reporte.tipoAnimal} en ${reporte.ubicacion}`,
     text: `Hola ${nombreOrganizacion}. Un ciudadano reportó un rescate.\n\nAnimal: ${reporte.tipoAnimal}\nUrgencia: ${reporte.urgencia}\nLugar: ${reporte.ubicacion}\n\n${reporte.descripcion}\n\nIngresa a ${panelUrl} para ver los detalles y evidencias.`,
-    html: renderEmailShell(
-      `<p>Hola ${escapeHtml(nombreOrganizacion)},</p><p>Un ciudadano reportó un animal en situación de rescate:</p>${infoBox(`<strong>${escapeHtml(reporte.tipoAnimal)}</strong> — urgencia <strong>${escapeHtml(reporte.urgencia)}</strong><br/>${escapeHtml(reporte.ubicacion)}<br/><span style="color:#666">${escapeHtml(reporte.descripcion)}</span>`)}${button(panelUrl, "Ver reporte")}`
-    ),
+    content: {
+      preheader: `Nuevo reporte de rescate: ${reporte.tipoAnimal}`,
+      webViewUrl: panelUrl,
+      badge: { text: "Reporte de rescate", variant: urgenciaVariant },
+      title: "Nuevo reporte de rescate 🆘",
+      nombre: nombreOrganizacion,
+      introHtml: `<p style="margin:0">Un ciudadano reportó un animal en situación de rescate que requiere atención.</p>`,
+      infoCardTitle: "Información del reporte",
+      infoRows: [
+        { icon: "🐾", label: "Animal", value: reporte.tipoAnimal },
+        { icon: "⚠️", label: "Urgencia", value: reporte.urgencia },
+        { icon: "📍", label: "Ubicación", value: reporte.ubicacion },
+        { icon: "📝", label: "Descripción", value: reporte.descripcion },
+        estadoRow("Reporte recibido", urgenciaVariant),
+      ],
+      noteHtml: "Ingresa al panel para revisar las evidencias y coordinar la atención del caso.",
+      cta: { url: panelUrl, label: "Ver reporte" },
+    },
   });
 }
 
@@ -323,16 +441,31 @@ export async function sendReporteConfirmacionEmail(
   seguimientoUrl: string,
   reporte: { tipoAnimal: string; ubicacion: string }
 ) {
-  const { user, transporter } = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: `Recibimos tu reporte de rescate — código ${codigo}`,
     text: `Gracias por reportar a un ${reporte.tipoAnimal} en ${reporte.ubicacion}.\n\nTu código de seguimiento es: ${codigo}\n\nPuedes consultar el estado de tu reporte cuando quieras en: ${seguimientoUrl}\n\nTe avisaremos por este correo cuando haya una actualización.`,
-    html: renderEmailShell(
-      `<p>Gracias por reportar a un <strong>${escapeHtml(reporte.tipoAnimal)}</strong> en <strong>${escapeHtml(reporte.ubicacion)}</strong>.</p>${infoBox(`<div style="text-align:center"><span style="font-size:13px;color:#666">Tu código de seguimiento</span><br/><strong style="font-size:20px;letter-spacing:1px;color:#800040">${escapeHtml(codigo)}</strong></div>`)}${button(seguimientoUrl, "Consultar estado")}<p style="font-size:13px;color:#666">También te avisaremos por este correo cuando haya una actualización.</p>`
-    ),
+    content: {
+      preheader: `Tu reporte fue recibido — código ${codigo}`,
+      webViewUrl: seguimientoUrl,
+      badge: { text: "Reporte recibido", variant: "success" },
+      title: "¡Recibimos tu reporte! 🐾",
+      introHtml: `<p style="margin:0">Gracias por reportar a un <strong>${escapeHtml(reporte.tipoAnimal)}</strong> en <strong>${escapeHtml(reporte.ubicacion)}</strong>. Las organizaciones aliadas revisarán el caso.</p>`,
+      infoCardTitle: "Información del reporte",
+      infoRows: [
+        { icon: "🐾", label: "Animal", value: reporte.tipoAnimal },
+        { icon: "📍", label: "Ubicación", value: reporte.ubicacion },
+        {
+          icon: "🔖",
+          label: "Código",
+          value: codigo,
+          valueHtml: `<strong style="color:#800040;letter-spacing:1px">${escapeHtml(codigo)}</strong>`,
+        },
+        estadoRow("Reporte recibido", "success"),
+      ],
+      noteHtml: "Guarda tu código de seguimiento. También te avisaremos por este correo cuando haya una actualización.",
+      cta: { url: seguimientoUrl, label: "Consultar estado" },
+    },
   });
 }
 
@@ -343,26 +476,28 @@ export async function sendReporteEstadoActualizadoEmail(
   seguimientoUrl: string,
   reporte: { tipoAnimal: string; ubicacion: string }
 ) {
-  const { user, transporter } = createTransporter();
   const estadoLabel = ESTADO_DENUNCIA_LABEL[estado] || estado;
+  const variant: EmailBadgeVariant =
+    estado === "atendida" || estado === "cerrada" ? "success" : estado === "revision" ? "warning" : "info";
 
-  await transporter.sendMail({
-    from: `"Huellitas Solidarias" <${user}>`,
+  await deliverMail({
     to: correo,
     subject: `Actualización de tu reporte ${codigo}: ${estadoLabel}`,
     text: `Tu reporte del ${reporte.tipoAnimal} en ${reporte.ubicacion} (código ${codigo}) ahora está: ${estadoLabel}.\n\nConsulta los detalles en: ${seguimientoUrl}`,
-    html: renderEmailShell(
-      `<p>Tu reporte del <strong>${escapeHtml(reporte.tipoAnimal)}</strong> en <strong>${escapeHtml(reporte.ubicacion)}</strong> (código <strong>${escapeHtml(codigo)}</strong>) ahora está:</p>${infoBox(`<div style="text-align:center"><strong style="font-size:18px;color:#800040">${escapeHtml(estadoLabel)}</strong></div>`)}${button(seguimientoUrl, "Ver detalles")}`
-    ),
+    content: {
+      preheader: `Tu reporte ${codigo} ahora está: ${estadoLabel}`,
+      webViewUrl: seguimientoUrl,
+      badge: { text: "Actualización de reporte", variant },
+      title: "Actualización de tu reporte 📋",
+      introHtml: `<p style="margin:0">Tu reporte del <strong>${escapeHtml(reporte.tipoAnimal)}</strong> en <strong>${escapeHtml(reporte.ubicacion)}</strong> tiene una nueva actualización.</p>`,
+      infoCardTitle: "Información del reporte",
+      infoRows: [
+        { icon: "🔖", label: "Código", value: codigo },
+        { icon: "🐾", label: "Animal", value: reporte.tipoAnimal },
+        { icon: "📍", label: "Ubicación", value: reporte.ubicacion },
+        estadoRow(estadoLabel, variant),
+      ],
+      cta: { url: seguimientoUrl, label: "Ver detalles" },
+    },
   });
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  })[character]!);
 }
