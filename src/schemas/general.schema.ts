@@ -5,6 +5,43 @@ const MAX_FOTO_EVIDENCIA_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_EVIDENCIA_BYTES = 10 * 1024 * 1024;
 const MAX_EVIDENCIAS_TOTAL_BYTES = 20 * 1024 * 1024;
 
+// Espejo de src/utils/validateForm.js (frontend): mismo criterio de "nombre
+// y apellido reales" y "correo personal" para no depender solo del filtro
+// del cliente en el contacto opcional del reporte de rescate.
+const PALABRAS_NO_NOMBRE = new Set([
+  "mi", "tu", "su", "yo", "el", "ella", "nosotros", "ellos", "ellas",
+  "mama", "mami", "papa", "papi", "abuelo", "abuela", "abuelos", "abuelas",
+  "hermano", "hermana", "hermanos", "hermanas", "tio", "tia", "tios", "tias",
+  "primo", "prima", "primos", "primas", "esposo", "esposa", "novio", "novia",
+  "amigo", "amiga", "vecino", "vecina", "hijo", "hija", "hijos", "hijas",
+  "familia", "familiar", "nadie", "mismo", "misma", "cuidador", "cuidadora",
+  "dueno", "duena", "responsable", "encargado", "encargada", "senor", "senora",
+]);
+
+const SOLO_LETRAS = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
+
+function quitarAcentos(valor: string): string {
+  return valor.normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function esNombreCompletoValido(valor: string): boolean {
+  const limpio = valor.trim();
+  if (limpio.length < 5 || !SOLO_LETRAS.test(limpio)) return false;
+  const palabras = limpio.split(/\s+/).filter(Boolean);
+  if (palabras.length < 2 || !palabras.every((palabra) => palabra.length >= 2)) return false;
+  return palabras.every((palabra) => !PALABRAS_NO_NOMBRE.has(quitarAcentos(palabra.toLowerCase())));
+}
+
+const PROVEEDORES_CORREO_PERSONAL = new Set([
+  "gmail.com", "hotmail.com", "outlook.com", "live.com",
+  "yahoo.com", "yahoo.es", "icloud.com", "protonmail.com", "aol.com",
+]);
+
+function esCorreoPersonal(valor: string): boolean {
+  const dominio = valor.trim().toLowerCase().split("@")[1];
+  return Boolean(dominio) && PROVEEDORES_CORREO_PERSONAL.has(dominio);
+}
+
 export const crearMensajeSchema = z.object({
   de: z.string().min(2),
   correo: z.string().email(),
@@ -106,6 +143,28 @@ export const crearReporteRescateSchema = z.object({
         });
       }
     }),
+}).superRefine((data, ctx) => {
+  if (data.nombreContacto && !esNombreCompletoValido(data.nombreContacto)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["nombreContacto"],
+      message: "Escribe tu nombre y apellido reales.",
+    });
+  }
+  if (data.contacto && !/^09\d{8}$/.test(data.contacto)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["contacto"],
+      message: "Ingresa un teléfono válido (09xxxxxxxx).",
+    });
+  }
+  if (data.correoNotificacion && !esCorreoPersonal(data.correoNotificacion)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["correoNotificacion"],
+      message: "Usa un correo personal (Gmail, Hotmail, Outlook, etc.), no institucional.",
+    });
+  }
 });
 
 export const actualizarEstadoDenunciaSchema = z.object({
