@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { EVIDENCE_MIME_TYPES } from "../utils/fileSignature.js";
+
+const MAX_FOTO_EVIDENCIA_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_EVIDENCIA_BYTES = 10 * 1024 * 1024;
+const MAX_EVIDENCIAS_TOTAL_BYTES = 20 * 1024 * 1024;
 
 export const crearMensajeSchema = z.object({
   de: z.string().min(2),
@@ -59,13 +64,48 @@ export const crearReporteRescateSchema = z.object({
   evidencias: z
     .array(
       z.object({
-        name: z.string(),
-        type: z.string().optional().nullable(),
-        size: z.number().optional().nullable(),
-        url: z.string().optional().nullable(),
+        name: z.string().min(1).max(255),
+        type: z.enum(EVIDENCE_MIME_TYPES),
+        size: z.number().int().positive().max(MAX_VIDEO_EVIDENCIA_BYTES),
+        url: z
+          .string()
+          .max(14_000_000)
+          .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
       })
     )
-    .min(1, "Adjunta al menos una foto o video como evidencia."),
+    .min(1, "Adjunta al menos una foto o video como evidencia.")
+    .max(5, "Máximo 5 archivos permitidos.")
+    .superRefine((evidencias, ctx) => {
+      evidencias.forEach((evidencia, index) => {
+        const esVideo = evidencia.type === "video/mp4";
+        const limite = esVideo ? MAX_VIDEO_EVIDENCIA_BYTES : MAX_FOTO_EVIDENCIA_BYTES;
+        if (evidencia.size > limite) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "size"],
+            message: `${evidencia.name}: supera el tamaño máximo (${Math.round(limite / (1024 * 1024))} MB).`,
+          });
+        }
+      });
+
+      const total = evidencias.reduce((sum, evidencia) => sum + evidencia.size, 0);
+      if (total > MAX_EVIDENCIAS_TOTAL_BYTES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [],
+          message: "El total de archivos no puede superar 20 MB.",
+        });
+      }
+
+      const videos = evidencias.filter((evidencia) => evidencia.type === "video/mp4");
+      if (videos.length > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [],
+          message: "Solo se permite un video por reporte.",
+        });
+      }
+    }),
 });
 
 export const actualizarEstadoDenunciaSchema = z.object({

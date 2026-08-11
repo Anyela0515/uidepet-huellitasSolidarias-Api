@@ -1,11 +1,20 @@
 import { z } from "zod";
 import { hoyEcuadorISO } from "../utils/dates.js";
+import { EVIDENCE_MIME_TYPES } from "../utils/fileSignature.js";
+
+// Mismos límites que usa el frontend por defecto en filesToPersistedEntries
+// (src/utils/constants.js): MAX_EVIDENCE_FILE_SIZE / MAX_EVIDENCE_VIDEO_SIZE.
+const MAX_FOTO_HOGAR_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_HOGAR_BYTES = 10 * 1024 * 1024;
 
 const evidenciaFormSchema = z.object({
-  name: z.string().min(1),
-  type: z.string().optional(),
-  size: z.number().optional(),
-  url: z.string().optional(),
+  name: z.string().min(1).max(255),
+  type: z.enum(EVIDENCE_MIME_TYPES),
+  size: z.number().int().positive().max(MAX_VIDEO_HOGAR_BYTES),
+  url: z
+    .string()
+    .max(14_000_000)
+    .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
 });
 
 // Los límites de longitud coinciden con las columnas VARCHAR reales
@@ -40,9 +49,38 @@ export const formularioAdopcionSchema = z
     declaracion: z.literal(true, {
       errorMap: () => ({ message: "Debes declarar que la información es verídica." }),
     }),
-    evidencias: z.array(evidenciaFormSchema).optional(),
+    evidencias: z.array(evidenciaFormSchema).max(5, "Máximo 5 archivos permitidos.").optional(),
   })
   .superRefine((data, ctx) => {
+    const evidencias = data.evidencias || [];
+    evidencias.forEach((evidencia, index) => {
+      const esVideo = evidencia.type === "video/mp4";
+      const limite = esVideo ? MAX_VIDEO_HOGAR_BYTES : MAX_FOTO_HOGAR_BYTES;
+      if (evidencia.size > limite) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["evidencias", index, "size"],
+          message: `${evidencia.name}: supera el tamaño máximo (${Math.round(limite / (1024 * 1024))} MB).`,
+        });
+      }
+    });
+    const totalEvidencias = evidencias.reduce((sum, evidencia) => sum + evidencia.size, 0);
+    if (totalEvidencias > 20 * 1024 * 1024) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["evidencias"],
+        message: "El total de archivos no puede superar 20 MB.",
+      });
+    }
+    const videosEvidencia = evidencias.filter((evidencia) => evidencia.type === "video/mp4");
+    if (videosEvidencia.length > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["evidencias"],
+        message: "Solo se permite un video MP4.",
+      });
+    }
+
     if (data.tieneMascotas !== "si") return;
     const requeridos: Array<[keyof typeof data, string]> = [
       ["cantidadMascotas", "Indica cuántas mascotas tienes actualmente."],
@@ -138,10 +176,13 @@ export const archivoSeguimientoSchema = z.object({
 });
 
 export const evidenciaAdopcionSchema = z.object({
-  nombreArchivo: z.string().min(1),
-  mimeType: z.string().optional(),
-  tamanioBytes: z.number().int().positive().optional(),
-  contenido: z.string().optional(),
+  nombreArchivo: z.string().min(1).max(255),
+  mimeType: z.enum(EVIDENCE_MIME_TYPES),
+  tamanioBytes: z.number().int().positive().max(MAX_VIDEO_HOGAR_BYTES),
+  contenido: z
+    .string()
+    .max(14_000_000)
+    .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
 });
 
 export type CrearSolicitudDTO = z.infer<typeof crearSolicitudSchema>;

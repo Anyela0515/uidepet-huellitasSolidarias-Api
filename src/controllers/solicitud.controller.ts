@@ -11,6 +11,7 @@ import {
 import * as authService from "../services/auth.service.js";
 import * as solicitudService from "../services/solicitud.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { verificarEvidenciaOLanzar } from "../utils/fileSignature.js";
 
 export const listar = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user!;
@@ -38,6 +39,9 @@ export const obtener = asyncHandler(async (req: Request, res: Response) => {
 
 export const crear = asyncHandler(async (req: Request, res: Response) => {
   const data = crearSolicitudSchema.parse(req.body);
+  for (const evidencia of data.form.evidencias || []) {
+    await verificarEvidenciaOLanzar(evidencia.url, evidencia.type, evidencia.name);
+  }
   const session = req.user!;
   const usuario = await authService.getMe(session.sub);
 
@@ -103,6 +107,9 @@ export const actualizarEntrega = asyncHandler(async (req: Request, res: Response
 
 export const agregarSeguimiento = asyncHandler(async (req: Request, res: Response) => {
   const data = seguimientoSolicitudSchema.parse(req.body);
+  for (const archivo of data.archivos) {
+    await verificarEvidenciaOLanzar(archivo.contenido, archivo.mimeType, archivo.nombreArchivo);
+  }
   const result = await solicitudService.agregarSeguimiento(
     String(req.params.id),
     data,
@@ -120,6 +127,7 @@ export const agregarSeguimiento = asyncHandler(async (req: Request, res: Respons
 
 export const agregarEvidencia = asyncHandler(async (req: Request, res: Response) => {
   const data = evidenciaAdopcionSchema.parse(req.body);
+  await verificarEvidenciaOLanzar(data.contenido, data.mimeType, data.nombreArchivo);
   const user = req.user!;
   const result = await solicitudService.agregarEvidencia(
     String(req.params.id),
