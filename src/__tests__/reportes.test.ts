@@ -5,8 +5,13 @@ import { createApp } from "../app.js";
 // Pruebas de integración contra la base de datos real de desarrollo.
 const app = createApp();
 
+// JPEG real de 1x1 px. Tiene que ser una imagen de verdad porque la API ya no
+// se fía del MIME declarado: decodifica el base64 e inspecciona la cabecera del
+// archivo (ver utils/fileSignature.ts). Un relleno como "abc123" da 422.
+const JPEG_1PX = "data:image/jpeg;base64,/9j/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/ALoAH//Z";
+
 const evidenciaValida = [
-  { name: "foto.jpg", type: "image/jpeg", size: 1024, url: "data:image/jpeg;base64,abc123" },
+  { name: "foto.jpg", type: "image/jpeg", size: 1024, url: JPEG_1PX },
 ];
 
 describe("Reportes de rescate", () => {
