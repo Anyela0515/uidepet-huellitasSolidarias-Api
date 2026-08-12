@@ -60,18 +60,37 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
   }
 }
 
-export function optionalJwt(req: Request, _res: Response, next: NextFunction) {
+export async function optionalJwt(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
-  if (header?.startsWith("Bearer ")) {
-    try {
-      const token = header.split(" ")[1];
-      req.user = jwt.verify(token, process.env.JWT_SECRET as string, {
-        algorithms: ["HS256"],
-        issuer: JWT_ISSUER,
-        audience: JWT_AUDIENCE,
-      }) as unknown as AppJwtPayload;
-    } catch {} // eslint-disable-line no-empty
+  if (!header?.startsWith("Bearer ")) {
+    next();
+    return;
   }
+
+  let payload: AppJwtPayload;
+  try {
+    const token = header.split(" ")[1];
+    payload = jwt.verify(token, process.env.JWT_SECRET as string, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as unknown as AppJwtPayload;
+  } catch {
+    next();
+    return;
+  }
+
+  try {
+    const actual = await usuarioRepo.findEstadoActual(payload.sub);
+    if (actual && actual.estado_codigo === "Activo") {
+      req.user = {
+        sub: payload.sub,
+        correo: actual.correo,
+        rol: actual.rol_codigo as RolUsuario,
+      };
+    }
+  } catch {} // eslint-disable-line no-empty
+
   next();
 }
 
