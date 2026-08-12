@@ -19,6 +19,10 @@ const IMAGE_FORMAT_BY_MIME: Record<string, string> = {
  * válido trae en sus primeros bytes.
  */
 export async function firmaCoincideConMime(buffer: Buffer, mimeDeclarado: string): Promise<boolean> {
+  if (mimeDeclarado === "application/pdf") {
+    return buffer.length >= 4 && buffer.subarray(0, 4).toString("ascii") === "%PDF";
+  }
+
   if (mimeDeclarado === "video/mp4") {
     return buffer.length > 8 && buffer.subarray(4, 8).toString("ascii") === "ftyp";
   }

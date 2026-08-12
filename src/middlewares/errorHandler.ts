@@ -16,6 +16,41 @@ function isMysqlError(err: unknown): err is MysqlLikeError {
   );
 }
 
+function humanizeZodMessage(issue: {
+  path: (string | number)[];
+  message: string;
+  code?: string;
+}): string {
+  const path = issue.path.join(".");
+  const isEvidence =
+    path.includes("evidencias") ||
+    path.includes("archivos") ||
+    path.endsWith("type") ||
+    path.endsWith("url") ||
+    path.endsWith("size");
+
+  if (isEvidence) {
+    if (/invalid_enum|Invalid enum|Expected .*image\/jpeg/i.test(issue.message)) {
+      if (/application\/pdf/i.test(issue.message)) {
+        return "El contrato firmado (PDF) no pudo enviarse con las fotos del hogar. Vuelve a subir el PDF en Compromiso y deja solo JPG/PNG o MP4 en Evidencias.";
+      }
+      return "Una de las evidencias del hogar no es válida. Solo se aceptan JPG, PNG o MP4.";
+    }
+    if (/^Invalid$/i.test(issue.message) || /Invalid input|invalid_union/i.test(issue.message)) {
+      return "Revisa las evidencias: las fotos del hogar deben ser JPG o PNG (o un video MP4) y el contrato firmado debe ser PDF.";
+    }
+    if (/base64|regex|Invalid/i.test(issue.message) && path.includes("url")) {
+      return "Una de las fotos/videos del hogar está corrupta o no tiene un formato permitido.";
+    }
+  }
+
+  if (path.includes("localidadId")) {
+    return "Debes elegir provincia, cantón y parroquia.";
+  }
+
+  return issue.message;
+}
+
 /**
  * Mantiene el shape histórico {code, error} que el frontend ya consume,
  * y añade {success, message, errorCode} para alinearse con el contrato del prompt.
@@ -51,9 +86,11 @@ export function errorHandler(
   if (err instanceof ZodError) {
     const details = err.errors.map((e) => ({
       path: e.path.join("."),
-      message: e.message,
+      message: humanizeZodMessage(e),
     }));
-    send(res, 422, "Datos de entrada inválidos.", "VALIDATION_ERROR", details);
+    const primary =
+      details.find((d) => d.message)?.message || "Datos de entrada inválidos.";
+    send(res, 422, primary, "VALIDATION_ERROR", details);
     return;
   }
 

@@ -11,15 +11,23 @@ const MAX_VIDEO_HOGAR_BYTES = 10 * 1024 * 1024;
 // las evidencias del hogar. Espejo de ACCEPT_EVIDENCE_HOGAR en el frontend
 // (src/utils/fileValidation.js).
 const HOGAR_MIME_TYPES = ["image/jpeg", "image/png", "video/mp4"] as const;
+const CONTRATO_MIME_TYPES = ["application/pdf"] as const;
+const CONTRATO_FIRMADO_PREFIX = "Contrato firmado - ";
 
 const evidenciaFormSchema = z.object({
   name: z.string().min(1).max(255),
-  type: z.enum(HOGAR_MIME_TYPES),
+  type: z.enum(HOGAR_MIME_TYPES, {
+    errorMap: () => ({
+      message: "Las fotos del hogar solo pueden ser JPG, PNG o MP4.",
+    }),
+  }),
   size: z.number().int().positive().max(MAX_VIDEO_HOGAR_BYTES),
   url: z
     .string()
     .max(14_000_000)
-    .regex(/^data:(image\/jpeg|image\/png|video\/mp4);base64,/),
+    .regex(/^data:(image\/jpeg|image\/png|video\/mp4);base64,/, {
+      message: "Una foto/video del hogar tiene un formato no permitido.",
+    }),
 });
 
 // Los límites de longitud coinciden con las columnas VARCHAR reales
@@ -36,7 +44,13 @@ export const formularioAdopcionSchema = z
     telefono: z.string().min(7, "El teléfono declarado es obligatorio.").max(20),
     correo: z.string().email("Correo declarado inválido.").max(150),
     direccion: z.string().min(5, "La dirección declarada es obligatoria.").max(255),
-    localidadId: z.number().int().positive({ message: "Debes elegir provincia, cantón y parroquia." }),
+    localidadId: z.coerce
+      .number({
+        invalid_type_error: "Debes elegir provincia, cantón y parroquia.",
+        required_error: "Debes elegir provincia, cantón y parroquia.",
+      })
+      .int()
+      .positive({ message: "Debes elegir provincia, cantón y parroquia." }),
     tipoVivienda: z.string().min(2, "El tipo de vivienda es obligatorio.").max(40),
     personasHogar: z.string().min(1, "Indica cuántas personas viven en el hogar.").max(20),
     acuerdoHogar: z.string().min(1, "Indica si todo el hogar está de acuerdo.").max(10),
@@ -54,17 +68,19 @@ export const formularioAdopcionSchema = z
     declaracion: z.literal(true, {
       errorMap: () => ({ message: "Debes declarar que la información es verídica." }),
     }),
-    evidencias: z.array(evidenciaFormSchema).max(5, "Máximo 5 archivos permitidos.").optional(),
+    // Solo fotos/video del hogar. El PDF del contrato firmado se sube después
+    // en POST /solicitudes/:id/evidencias para no mezclar tipos en el alta.
+    evidencias: z.array(evidenciaFormSchema).max(5, "Máximo 5 archivos del hogar permitidos.").optional(),
   })
   .superRefine((data, ctx) => {
     const evidencias = data.evidencias || [];
-    evidencias.forEach((evidencia, index) => {
+    evidencias.forEach((evidencia) => {
       const esVideo = evidencia.type === "video/mp4";
       const limite = esVideo ? MAX_VIDEO_HOGAR_BYTES : MAX_FOTO_HOGAR_BYTES;
       if (evidencia.size > limite) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["evidencias", index, "size"],
+          path: ["evidencias"],
           message: `${evidencia.name}: supera el tamaño máximo (${Math.round(limite / (1024 * 1024))} MB).`,
         });
       }
@@ -74,7 +90,7 @@ export const formularioAdopcionSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["evidencias"],
-        message: "El total de archivos no puede superar 20 MB.",
+        message: "El total de archivos del hogar no puede superar 20 MB.",
       });
     }
     const videosEvidencia = evidencias.filter((evidencia) => evidencia.type === "video/mp4");
@@ -180,15 +196,36 @@ export const archivoSeguimientoSchema = z.object({
   nombreArchivo: z.string().min(1),
 });
 
-export const evidenciaAdopcionSchema = z.object({
-  nombreArchivo: z.string().min(1).max(255),
-  mimeType: z.enum(EVIDENCE_MIME_TYPES),
-  tamanioBytes: z.number().int().positive().max(MAX_VIDEO_HOGAR_BYTES),
-  contenido: z
-    .string()
-    .max(14_000_000)
-    .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
-});
+export const evidenciaAdopcionSchema = z.union([
+  z.object({
+    nombreArchivo: z
+      .string()
+      .min(1)
+      .max(255)
+      .refine((name) => name.startsWith(CONTRATO_FIRMADO_PREFIX), {
+        message: "El contrato firmado debe enviarse con el prefijo esperado.",
+      }),
+    mimeType: z.enum(CONTRATO_MIME_TYPES, {
+      errorMap: () => ({ message: "El contrato firmado debe ser un PDF." }),
+    }),
+    tamanioBytes: z.number().int().positive().max(MAX_FOTO_HOGAR_BYTES),
+    contenido: z
+      .string()
+      .max(14_000_000)
+      .regex(/^data:application\/pdf;base64,/, {
+        message: "El contrato firmado tiene un formato no permitido.",
+      }),
+  }),
+  z.object({
+    nombreArchivo: z.string().min(1).max(255),
+    mimeType: z.enum(EVIDENCE_MIME_TYPES),
+    tamanioBytes: z.number().int().positive().max(MAX_VIDEO_HOGAR_BYTES),
+    contenido: z
+      .string()
+      .max(14_000_000)
+      .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
+  }),
+]);
 
 export type CrearSolicitudDTO = z.infer<typeof crearSolicitudSchema>;
 export type ActualizarEstadoSolicitudDTO = z.infer<typeof actualizarEstadoSolicitudSchema>;
