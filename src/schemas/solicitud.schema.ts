@@ -7,14 +7,19 @@ import { EVIDENCE_MIME_TYPES } from "../utils/fileSignature.js";
 const MAX_FOTO_HOGAR_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_HOGAR_BYTES = 10 * 1024 * 1024;
 
+// Sin WEBP a propósito: algunas fundaciones no podían abrirlo al revisar
+// las evidencias del hogar. Espejo de ACCEPT_EVIDENCE_HOGAR en el frontend
+// (src/utils/fileValidation.js).
+const HOGAR_MIME_TYPES = ["image/jpeg", "image/png", "video/mp4"] as const;
+
 const evidenciaFormSchema = z.object({
   name: z.string().min(1).max(255),
-  type: z.enum(EVIDENCE_MIME_TYPES),
+  type: z.enum(HOGAR_MIME_TYPES),
   size: z.number().int().positive().max(MAX_VIDEO_HOGAR_BYTES),
   url: z
     .string()
     .max(14_000_000)
-    .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
+    .regex(/^data:(image\/jpeg|image\/png|video\/mp4);base64,/),
 });
 
 // Los límites de longitud coinciden con las columnas VARCHAR reales
