@@ -117,7 +117,7 @@ interface RequestOptions {
 }
 
 export async function apiRequest(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   options: RequestOptions = {}
 ): Promise<unknown> {

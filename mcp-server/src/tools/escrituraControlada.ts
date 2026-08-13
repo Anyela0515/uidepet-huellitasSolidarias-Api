@@ -421,4 +421,133 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
       return { content: [{ type: "text", text: `Perfil actualizado.\n\n${formatForModel(datos)}` }] };
     }
   );
+
+  const mascotaShapeBase = {
+    nombre: z.string().min(2).max(80).describe("Nombre de la mascota."),
+    especie: z.enum(["Perro", "Gato"]).describe("Especie exacta."),
+    raza: z
+      .string()
+      .min(2)
+      .optional()
+      .describe('Raza (ver listar_catalogo con tipo "razas" y el padreId de la especie). "Mestizo" si no aplica otra.'),
+    edad: z
+      .string()
+      .min(1)
+      .describe('Edad como número + unidad, p. ej. "2 Años" o "6 Meses". Tal como la dice la persona.'),
+    sexo: z.enum(["Macho", "Hembra"]).describe("Sexo de la mascota."),
+    tamano: z.enum(["Pequeño", "Mediano", "Grande"]).describe("Tamaño de la mascota."),
+    ubicacion: z.string().min(2).describe("Ubicación específica donde está la mascota (no una lista cerrada)."),
+    historia: z.string().min(10).describe("Historia o contexto de la mascota, mínimo 10 caracteres."),
+    requisitos: z.string().min(5).describe("Requisitos que debe cumplir quien la adopte."),
+    tags: z.array(z.string()).optional().describe('Etiquetas, p. ej. ["Vacunado", "Esterilizado"].'),
+  };
+
+  server.registerTool(
+    "crear_mascota",
+    {
+      title: "Publicar una mascota nueva",
+      description:
+        "Publica una mascota nueva en el catálogo de adopción. Requiere autenticación con rol " +
+        "fundación o admin — con fundación, queda asociada a la organización de esa cuenta " +
+        "automáticamente (el backend la resuelve por el correo del token, nunca se elige a mano). " +
+        "REQUIERE una foto real como data URL en base64 (imagen); si la persona no tiene una imagen " +
+        "que darte en este chat, no inventes ninguna ni sigas adelante sin ella — dile que publique " +
+        "la mascota desde el panel web, donde sí puede adjuntar la foto directamente. Confirma todos " +
+        "los datos con la persona antes de llamar a esta tool.",
+      inputSchema: {
+        ...mascotaShapeBase,
+        imagen: z
+          .string()
+          .min(1)
+          .describe(
+            "Foto de la mascota como data URL en base64 (data:image/...;base64,...). Obligatoria: " +
+              "nunca inventes ni omitas este campo con un valor de relleno."
+          ),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const datos = await apiRequest("POST", "/mascotas", { auth: token ?? true, body: args });
+      return { content: [{ type: "text", text: `Mascota publicada.\n\n${formatForModel(datos)}` }] };
+    }
+  );
+
+  server.registerTool(
+    "editar_mascota",
+    {
+      title: "Editar una mascota existente",
+      description:
+        "Edita los datos de una mascota ya publicada (ver buscar_mascotas u obtener_mascota para el " +
+        "id). Todos los campos son opcionales: solo se cambia lo que se indique. Requiere " +
+        "autenticación con rol fundación o admin — una cuenta fundación solo puede editar sus " +
+        "propias mascotas (el backend responde 403 si intenta editar una ajena). Confirma con la " +
+        "persona exactamente qué campos va a cambiar antes de llamar a esta tool.",
+      inputSchema: {
+        id: z.number().int().positive().describe("Id numérico de la mascota (ver buscar_mascotas u obtener_mascota)."),
+        nombre: mascotaShapeBase.nombre.optional(),
+        especie: mascotaShapeBase.especie.optional(),
+        raza: mascotaShapeBase.raza,
+        edad: mascotaShapeBase.edad.optional(),
+        sexo: mascotaShapeBase.sexo.optional(),
+        tamano: mascotaShapeBase.tamano.optional(),
+        ubicacion: mascotaShapeBase.ubicacion.optional(),
+        historia: mascotaShapeBase.historia.optional(),
+        requisitos: mascotaShapeBase.requisitos.optional(),
+        tags: mascotaShapeBase.tags,
+        estado: z
+          .string()
+          .optional()
+          .describe('Estado de la mascota, p. ej. "Disponible", "Adoptado", "Fallecido".'),
+        imagen: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            "Nueva foto como data URL en base64. Solo inclúyela si la persona te dio una imagen real " +
+              "para reemplazar la actual; si no, omite este campo por completo."
+          ),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async ({ id, ...cambios }) => {
+      const datos = await apiRequest("PATCH", `/mascotas/${id}`, { auth: token ?? true, body: cambios });
+      return { content: [{ type: "text", text: `Mascota actualizada.\n\n${formatForModel(datos)}` }] };
+    }
+  );
+
+  server.registerTool(
+    "eliminar_mascota",
+    {
+      title: "Eliminar una mascota",
+      description:
+        "⚠️ Elimina una mascota del catálogo (borrado lógico: deja de verse, pero no se pierde su " +
+        "historial de solicitudes). Requiere autenticación con rol fundación o admin — una cuenta " +
+        "fundación solo puede eliminar sus propias mascotas. Acción con consecuencia real: NUNCA la " +
+        "llames sin que la persona haya confirmado explícitamente, en este mismo intercambio, cuál " +
+        "mascota exactamente quiere eliminar.",
+      inputSchema: {
+        id: z.number().int().positive().describe("Id numérico de la mascota (ver buscar_mascotas u obtener_mascota)."),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async ({ id }) => {
+      await apiRequest("DELETE", `/mascotas/${id}`, { auth: token ?? true });
+      return { content: [{ type: "text", text: `Mascota ${id} eliminada del catálogo.` }] };
+    }
+  );
 }

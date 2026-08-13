@@ -194,7 +194,7 @@ que existe.
 | `listar_catalogo` | `GET /catalogos/*` | Especies, razas, ciudades o tags. Consolida 4 endpoints en 1 tool. |
 | `estado_api` | `GET /health` | Diagnóstico de la API y su base de datos. |
 
-### Nivel 2 — Lectura autenticada (6 tools)
+### Nivel 2 — Lectura autenticada (8 tools)
 
 En modo `stdio`: solo aparecen si hay `HUELLITAS_API_TOKEN` (o
 `HUELLITAS_ADMIN_EMAIL`/`PASSWORD`) configurado. En modo remoto sobre `main`:
@@ -222,7 +222,7 @@ El **alcance de los datos lo decide el backend** según el rol del token: una
 fundación ve lo suyo, el admin ve todo. El servidor MCP nunca eleva privilegios
 por su cuenta.
 
-### Nivel 3 — Escritura controlada (solo con `MCP_ALLOW_WRITES=true`, 9 tools)
+### Nivel 3 — Escritura controlada (solo con `MCP_ALLOW_WRITES=true`, 12 tools)
 
 | Tool | Endpoint | Rol requerido |
 |---|---|---|
@@ -230,6 +230,9 @@ por su cuenta.
 | `marcar_mensaje_leido` | `PATCH /mensajes/{id}/leido` | fundación, admin |
 | `actualizar_estado_reporte` | `PATCH /reportes/{id}/estado` | fundación, admin |
 | `actualizar_estado_solicitud` | `PATCH /solicitudes/{id}/estado` | fundación, admin |
+| `crear_mascota` | `POST /mascotas` | fundación, admin |
+| `editar_mascota` | `PATCH /mascotas/{id}` | fundación (solo la suya), admin |
+| `eliminar_mascota` | `DELETE /mascotas/{id}` | fundación (solo la suya), admin |
 | `crear_solicitud_adopcion` | `POST /solicitudes` | usuario |
 | `alternar_favorito` | `POST /favoritos/{id}/toggle` | usuario |
 | `crear_donacion` | `POST /donaciones` | público |
@@ -240,11 +243,17 @@ Las últimas cinco existen para que una cuenta con rol **usuario** (adoptante)
 no dependa solo de lectura: puede solicitar la adopción de una mascota,
 gestionar sus favoritos, donar, reportar un animal en riesgo y editar su
 propio perfil, todo en remoto con su propia cuenta — igual que en el sitio
-web. `actualizar_estado_solicitud` es la única excepción deliberada a la
-regla de "nada con consecuencia real sobre personas y animales" (ver su
-descripción en `src/tools/escrituraControlada.ts`, que exige confirmación
-humana explícita antes de cada llamada); las demás son acciones que la
-propia persona ya podía hacer sobre sus propios datos.
+web. Las tres de `_mascota` dan la misma independencia a **fundación**: el
+backend resuelve la organización dueña a partir del correo del token (nunca
+se pasa a mano) y rechaza con 403 si una fundación intenta tocar una mascota
+que no es suya — un admin sí puede tocar cualquiera. `crear_mascota` exige
+una imagen real en base64; la descripción de la tool prohíbe explícitamente
+inventar una si la persona no tiene foto que dar en el chat.
+`actualizar_estado_solicitud` y `eliminar_mascota` son las excepciones
+deliberadas a la regla de "nada con consecuencia real sobre personas y
+animales sin confirmación explícita" (ver sus descripciones en
+`src/tools/escrituraControlada.ts`); las demás son acciones que la propia
+cuenta ya podía hacer sobre sus propios datos.
 
 ### Capacidades deliberadamente NO expuestas
 
@@ -253,7 +262,6 @@ inalcanzables para el modelo:
 
 - **Autenticación:** login, registro, cambio/recuperación de contraseña.
 - **Gestión de cuentas:** cambio de rol, suspensión, eliminación de usuarios.
-- **Gestión de mascotas:** crear, editar o eliminar.
 - **Estados de negocio ajenos:** cambiar estado de donaciones o fundaciones.
 - **Seguimiento post-adopción con archivos:** requiere subir fotos/video en
   base64, poco práctico desde un chat; se deja fuera por ahora.
@@ -275,7 +283,7 @@ Ocho medidas implementadas, con el riesgo concreto que mitiga cada una:
 → `src/index.ts`, `src/tools/escrituraControlada.ts`
 
 ### 4.2 Mínimo privilegio en la superficie expuesta
-Se exponen 21 tools sobre una API de 60+ endpoints. Las operaciones administrativas
+Se exponen 25 tools sobre una API de 60+ endpoints. Las operaciones administrativas
 de cuenta y de autenticación no existen como tool.
 → *Mitiga:* abuso de operaciones críticas.
 → `src/tools/`
