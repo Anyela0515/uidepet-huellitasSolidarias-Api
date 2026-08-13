@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { esCedulaEcuatorianaValida, esTelefonoEcuatorianoValido } from "../utils/ecuador.js";
 
 // Entre 8 y 12 caracteres, con mayuscula, minuscula, numero y simbolo
 // especial. Solo se aplica al crear o cambiar una contrasena. NUNCA se le
@@ -36,8 +37,14 @@ export const registerSchema = z.object({
     .min(PASSWORD_MIN, PASSWORD_SEGURA_MSG)
     .max(PASSWORD_MAX, PASSWORD_SEGURA_MSG)
     .regex(PASSWORD_SEGURA_REGEX, PASSWORD_SEGURA_MSG),
-  cedula: z.string().length(10),
-  telefono: z.string().min(10),
+  cedula: z
+    .string()
+    .length(10)
+    .refine(esCedulaEcuatorianaValida, { message: "La cédula ingresada no es válida." }),
+  telefono: z
+    .string()
+    .min(10)
+    .refine(esTelefonoEcuatorianoValido, { message: "Ingresa un teléfono válido (09xxxxxxxx)." }),
   direccion: z.string().min(5),
 });
 
@@ -82,9 +89,17 @@ export const emailVerificationStatusQuerySchema = z.object({
 
 export const updateProfileSchema = z.object({
   nombre: z.string().min(3).optional(),
-  telefono: z.string().min(10).optional(),
+  telefono: z
+    .string()
+    .min(10)
+    .refine(esTelefonoEcuatorianoValido, { message: "Ingresa un teléfono válido (09xxxxxxxx)." })
+    .optional(),
   direccion: z.string().min(5).optional(),
-  cedula: z.string().length(10).optional(),
+  cedula: z
+    .string()
+    .length(10)
+    .refine(esCedulaEcuatorianaValida, { message: "La cédula ingresada no es válida." })
+    .optional(),
   // Foto de perfil del usuario. Data URL en base64; null la elimina.
   imagen: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
 });

@@ -10,8 +10,21 @@ function randomEmail(tag: string) {
   return `vitest.${tag}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@correo.com`;
 }
 
+// Lleva un dígito verificador real porque el schema valida el checksum
+// ecuatoriano, no solo la longitud.
 function randomCedula() {
-  return String(Date.now()).slice(-10);
+  const base = String(Date.now()).slice(-9);
+  const cuerpo = "17" + Math.min(Number(base[2]), 5) + base.slice(3);
+  const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let resultado = Number(cuerpo[i]) * coeficientes[i];
+    if (resultado >= 10) resultado -= 9;
+    suma += resultado;
+  }
+  const residuo = suma % 10;
+  const verificador = residuo === 0 ? 0 : 10 - residuo;
+  return cuerpo + verificador;
 }
 
 async function loginAs(correo: string, password: string) {
@@ -41,16 +54,16 @@ function formularioValido(localidadId: number, overrides: Record<string, unknown
     correo: "adoptante.vitest@correo.com",
     direccion: "Calle de prueba 123",
     localidadId,
-    tipoVivienda: "Casa",
+    tipoVivienda: "Casa propia",
     personasHogar: "3",
-    acuerdoHogar: "Si",
+    acuerdoHogar: "si",
     permanenciaAnimal: "En el patio trasero techado, con acceso a la sala durante las noches.",
     lugarDormir: "En una cama propia dentro de la sala, cerca del resto de la familia.",
-    tieneMascotas: "No",
+    tieneMascotas: "no",
     responsableCuidado: "Adoptante Vitest",
     responsableGastos: "Adoptante Vitest",
-    seguimiento: "Si",
-    contrato: "Si",
+    seguimiento: "si",
+    contrato: "si",
     declaracion: true,
     ...overrides,
   };

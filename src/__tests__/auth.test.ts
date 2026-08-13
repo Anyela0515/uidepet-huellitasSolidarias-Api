@@ -12,9 +12,22 @@ function randomEmail() {
 
 // Cédula única por corrida: es un UNIQUE real en BD (usuarios.cedula)
 // y no hay BD de pruebas descartable, así que un valor fijo colisionaría con
-// corridas anteriores contra la misma base de desarrollo.
+// corridas anteriores contra la misma base de desarrollo. Lleva un dígito
+// verificador real porque el schema valida el checksum ecuatoriano, no solo
+// la longitud.
 function randomCedula() {
-  return String(Date.now()).slice(-10);
+  const base = String(Date.now()).slice(-9);
+  const cuerpo = "17" + Math.min(Number(base[2]), 5) + base.slice(3);
+  const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let resultado = Number(cuerpo[i]) * coeficientes[i];
+    if (resultado >= 10) resultado -= 9;
+    suma += resultado;
+  }
+  const residuo = suma % 10;
+  const verificador = residuo === 0 ? 0 : 10 - residuo;
+  return cuerpo + verificador;
 }
 
 describe("Auth", () => {
@@ -43,7 +56,7 @@ describe("Auth", () => {
       nombre: "Test Usuario Duplicado",
       correo,
       password,
-      cedula: "1000000001",
+      cedula: "1710034065",
       telefono: "0999999999",
       direccion: "Dirección de prueba",
     });

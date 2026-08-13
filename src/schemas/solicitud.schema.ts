@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { hoyEcuadorISO } from "../utils/dates.js";
 import { EVIDENCE_MIME_TYPES } from "../utils/fileSignature.js";
+import { esCedulaEcuatorianaValida, esTelefonoEcuatorianoValido } from "../utils/ecuador.js";
 
 // Mismos límites que usa el frontend por defecto en filesToPersistedEntries
 // (src/utils/constants.js): MAX_EVIDENCE_FILE_SIZE / MAX_EVIDENCE_VIDEO_SIZE.
@@ -13,6 +14,39 @@ const MAX_VIDEO_HOGAR_BYTES = 10 * 1024 * 1024;
 const HOGAR_MIME_TYPES = ["image/jpeg", "image/png", "video/mp4"] as const;
 const CONTRATO_MIME_TYPES = ["application/pdf"] as const;
 const CONTRATO_FIRMADO_PREFIX = "Contrato firmado - ";
+
+// Espejo de tiposVivienda en el frontend
+// (src/components/adopcion/adoptionFormConfig.js): ahí es un <Select>, no
+// texto libre, así que aceptar cualquier string aquí permitía que quien
+// llama a la API directamente (p. ej. las tools MCP) mandara cosas como
+// "Mansión" que jamás podrían salir del formulario web real.
+const TIPOS_VIVIENDA = [
+  "Casa propia",
+  "Casa arrendada",
+  "Departamento propio",
+  "Departamento arrendado",
+  "Finca",
+  "Otro",
+] as const;
+
+// Los mismos campos son <Radio> "sí"/"no" en el formulario web
+// (StepEntornoHogar, StepOtrasMascotas, StepCompromiso) — nunca texto libre.
+const SI_NO = ["si", "no"] as const;
+
+// Palabras que delatan una respuesta de mala fe o una señal real de maltrato
+// en las dos únicas descripciones libres del formulario (dónde permanece y
+// dónde duerme el animal). No reemplaza una revisión humana, pero evita que
+// pasen sin más "jaula", "cárcel", etc.
+const PALABRAS_CONFINAMIENTO = [
+  "jaula", "carcel", "cárcel", "celda", "encerrado", "encerrada",
+  "amarrado", "amarrada", "atado", "atada", "encadenado", "encadenada",
+  "sotano", "sótano",
+];
+
+function sinSenalesDeConfinamiento(valor: string): boolean {
+  const normalizado = valor.toLowerCase();
+  return !PALABRAS_CONFINAMIENTO.some((palabra) => normalizado.includes(palabra));
+}
 
 const evidenciaFormSchema = z.object({
   name: z.string().min(1).max(255),
@@ -40,8 +74,15 @@ const evidenciaFormSchema = z.object({
 export const formularioAdopcionSchema = z
   .object({
     nombre: z.string().min(3, "El nombre declarado es obligatorio.").max(120),
-    cedula: z.string().length(10, "La cédula debe tener 10 dígitos."),
-    telefono: z.string().min(7, "El teléfono declarado es obligatorio.").max(20),
+    cedula: z
+      .string()
+      .length(10, "La cédula debe tener 10 dígitos.")
+      .refine(esCedulaEcuatorianaValida, { message: "La cédula ingresada no es válida." }),
+    telefono: z
+      .string()
+      .min(7, "El teléfono declarado es obligatorio.")
+      .max(20)
+      .refine(esTelefonoEcuatorianoValido, { message: "Ingresa un teléfono válido (09xxxxxxxx)." }),
     correo: z.string().email("Correo declarado inválido.").max(150),
     direccion: z.string().min(5, "La dirección declarada es obligatoria.").max(255),
     localidadId: z.coerce
@@ -51,20 +92,42 @@ export const formularioAdopcionSchema = z
       })
       .int()
       .positive({ message: "Debes elegir provincia, cantón y parroquia." }),
-    tipoVivienda: z.string().min(2, "El tipo de vivienda es obligatorio.").max(40),
+    tipoVivienda: z.enum(TIPOS_VIVIENDA, {
+      errorMap: () => ({ message: "Selecciona un tipo de vivienda válido." }),
+    }),
     personasHogar: z.string().min(1, "Indica cuántas personas viven en el hogar.").max(20),
-    acuerdoHogar: z.string().min(1, "Indica si todo el hogar está de acuerdo.").max(10),
-    permanenciaAnimal: z.string().min(1, "Indica dónde permanecerá el animal.").max(255),
-    lugarDormir: z.string().min(1, "Indica dónde dormirá el animal.").max(255),
-    tieneMascotas: z.string().min(1, "Indica si ya tienes otras mascotas.").max(10),
+    acuerdoHogar: z.enum(SI_NO, {
+      errorMap: () => ({ message: "Indica si todo el hogar está de acuerdo (sí/no)." }),
+    }),
+    permanenciaAnimal: z
+      .string()
+      .min(1, "Indica dónde permanecerá el animal.")
+      .max(255)
+      .refine(sinSenalesDeConfinamiento, {
+        message: "Describe un espacio real y adecuado para el animal.",
+      }),
+    lugarDormir: z
+      .string()
+      .min(1, "Indica dónde dormirá el animal.")
+      .max(255)
+      .refine(sinSenalesDeConfinamiento, {
+        message: "Describe un lugar de descanso real y adecuado para el animal.",
+      }),
+    tieneMascotas: z.enum(SI_NO, {
+      errorMap: () => ({ message: "Indica si ya tienes otras mascotas (sí/no)." }),
+    }),
     cantidadMascotas: z.string().max(20).optional(),
     tiposMascotas: z.string().max(150).optional(),
-    vacunas: z.string().max(20).optional(),
-    esterilizacion: z.string().max(20).optional(),
+    vacunas: z.enum(SI_NO).optional(),
+    esterilizacion: z.enum(SI_NO).optional(),
     responsableCuidado: z.string().min(3, "Indica quién será responsable del cuidado.").max(120),
     responsableGastos: z.string().min(3, "Indica quién será responsable de los gastos.").max(120),
-    seguimiento: z.string().min(1, "Indica si aceptas el seguimiento post-adopción.").max(10),
-    contrato: z.string().min(1, "Indica si aceptas el compromiso de adopción.").max(10),
+    seguimiento: z.enum(SI_NO, {
+      errorMap: () => ({ message: "Indica si aceptas el seguimiento post-adopción (sí/no)." }),
+    }),
+    contrato: z.enum(SI_NO, {
+      errorMap: () => ({ message: "Indica si aceptas el compromiso de adopción (sí/no)." }),
+    }),
     declaracion: z.literal(true, {
       errorMap: () => ({ message: "Debes declarar que la información es verídica." }),
     }),

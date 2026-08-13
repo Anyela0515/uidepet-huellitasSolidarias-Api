@@ -168,27 +168,121 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
     }
   );
 
+  /**
+   * Normaliza para comparar nombres de lugares sin depender de mayúsculas,
+   * acentos o espacios extra (p. ej. "Cuenca" vs "cuenca " vs "Cúenca").
+   */
+  function normalizarNombreLugar(valor: string): string {
+    return valor
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
+  }
+
+  interface CatalogoItem {
+    id: number;
+    nombre: string;
+  }
+
+  function buscarPorNombre(items: CatalogoItem[], nombre: string): CatalogoItem | undefined {
+    const buscado = normalizarNombreLugar(nombre);
+    return items.find((item) => normalizarNombreLugar(item.nombre) === buscado);
+  }
+
+  /**
+   * El formulario web pide provincia, cantón y parroquia con selects en
+   * cascada (nunca un id crudo) — esta tool hace lo mismo desde el lado del
+   * modelo: recibe los tres nombres tal como la persona los dice y resuelve
+   * el localidadId internamente, en vez de pedirle al modelo que adivine o
+   * le muestre un número de catálogo a un humano.
+   */
+  async function resolverLocalidadId(
+    provincia: string,
+    canton: string,
+    parroquia: string
+  ): Promise<{ id: number } | { error: string }> {
+    const provincias = ((await apiRequest("GET", "/catalogos/provincias")) as { data: CatalogoItem[] }).data;
+    const provinciaEncontrada = buscarPorNombre(provincias, provincia);
+    if (!provinciaEncontrada) {
+      return {
+        error:
+          `No encontré la provincia "${provincia}". Provincias disponibles: ` +
+          provincias.map((p) => p.nombre).join(", "),
+      };
+    }
+
+    const cantones = (
+      (await apiRequest("GET", "/catalogos/cantones", { query: { provinciaId: provinciaEncontrada.id } })) as {
+        data: CatalogoItem[];
+      }
+    ).data;
+    const cantonEncontrado = buscarPorNombre(cantones, canton);
+    if (!cantonEncontrado) {
+      return {
+        error:
+          `No encontré el cantón "${canton}" dentro de ${provinciaEncontrada.nombre}. ` +
+          `Cantones disponibles: ${cantones.map((c) => c.nombre).join(", ")}`,
+      };
+    }
+
+    const parroquias = (
+      (await apiRequest("GET", "/catalogos/parroquias", { query: { cantonId: cantonEncontrado.id } })) as {
+        data: CatalogoItem[];
+      }
+    ).data;
+    const parroquiaEncontrada = buscarPorNombre(parroquias, parroquia);
+    if (!parroquiaEncontrada) {
+      return {
+        error:
+          `No encontré la parroquia "${parroquia}" dentro de ${cantonEncontrado.nombre}. ` +
+          `Parroquias disponibles: ${parroquias.map((p) => p.nombre).join(", ")}`,
+      };
+    }
+
+    return { id: parroquiaEncontrada.id };
+  }
+
   const formularioAdopcionShape = z.object({
     nombre: z.string().min(3).max(120).describe("Nombre completo del adoptante."),
     cedula: z.string().length(10).describe("Cédula ecuatoriana, 10 dígitos."),
     telefono: z.string().min(7).max(20).describe("Teléfono de contacto."),
     correo: z.string().email().max(150).describe("Correo de contacto."),
     direccion: z.string().min(5).max(255).describe("Dirección del domicilio."),
-    localidadId: z.number().int().positive().describe("Id de provincia/cantón/parroquia (ver listar_catalogo)."),
-    tipoVivienda: z.string().min(2).max(40).describe('Tipo de vivienda, p. ej. "Casa" o "Departamento".'),
+    provincia: z.string().min(2).max(80).describe('Provincia del domicilio, tal como la dice la persona (p. ej. "Loja").'),
+    canton: z.string().min(2).max(80).describe('Cantón del domicilio (p. ej. "Loja").'),
+    parroquia: z.string().min(2).max(80).describe('Parroquia del domicilio (p. ej. "El Sagrario").'),
+    tipoVivienda: z
+      .enum(["Casa propia", "Casa arrendada", "Departamento propio", "Departamento arrendado", "Finca", "Otro"])
+      .describe(
+        'Tipo de vivienda. Debe ser EXACTAMENTE una de estas opciones (las mismas del select del ' +
+          'formulario web) — no aceptes ni inventes otra: "Casa propia", "Casa arrendada", ' +
+          '"Departamento propio", "Departamento arrendado", "Finca", "Otro".'
+      ),
     personasHogar: z.string().min(1).max(20).describe("Cuántas personas viven en el hogar."),
-    acuerdoHogar: z.string().min(1).max(10).describe('"si" o "no": si todo el hogar está de acuerdo.'),
-    permanenciaAnimal: z.string().min(1).max(255).describe("Dónde permanecerá el animal (dentro/fuera, patio, etc.)."),
-    lugarDormir: z.string().min(1).max(255).describe("Dónde dormirá el animal."),
-    tieneMascotas: z.string().min(1).max(10).describe('"si" o "no": si ya tiene otras mascotas.'),
+    acuerdoHogar: z.enum(["si", "no"]).describe("Si todo el hogar está de acuerdo con la adopción."),
+    permanenciaAnimal: z
+      .string()
+      .min(1)
+      .max(255)
+      .describe(
+        "Dónde permanecerá el animal (dentro/fuera, patio, etc.), tal como lo describe la persona. " +
+          "No inventes ni asumas un lugar que no haya mencionado."
+      ),
+    lugarDormir: z
+      .string()
+      .min(1)
+      .max(255)
+      .describe("Dónde dormirá el animal, tal como lo describe la persona. No inventes ni asumas un lugar."),
+    tieneMascotas: z.enum(["si", "no"]).describe("Si ya tiene otras mascotas."),
     cantidadMascotas: z.string().max(20).optional().describe('Obligatorio si tieneMascotas="si".'),
     tiposMascotas: z.string().max(150).optional().describe('Obligatorio si tieneMascotas="si".'),
-    vacunas: z.string().max(20).optional().describe('"si"/"no": obligatorio si tieneMascotas="si".'),
-    esterilizacion: z.string().max(20).optional().describe('"si"/"no": obligatorio si tieneMascotas="si".'),
+    vacunas: z.enum(["si", "no"]).optional().describe('Obligatorio si tieneMascotas="si".'),
+    esterilizacion: z.enum(["si", "no"]).optional().describe('Obligatorio si tieneMascotas="si".'),
     responsableCuidado: z.string().min(3).max(120).describe("Quién será responsable del cuidado diario."),
     responsableGastos: z.string().min(3).max(120).describe("Quién asumirá los gastos del animal."),
-    seguimiento: z.string().min(1).max(10).describe('"si" o "no": si acepta el seguimiento post-adopción.'),
-    contrato: z.string().min(1).max(10).describe('"si" o "no": si acepta el compromiso de adopción.'),
+    seguimiento: z.enum(["si", "no"]).describe("Si acepta el seguimiento post-adopción."),
+    contrato: z.enum(["si", "no"]).describe("Si acepta el compromiso de adopción."),
     declaracion: z
       .literal(true)
       .describe("Debe ser true: declara que toda la información dada es verídica."),
@@ -201,8 +295,13 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
       description:
         "Envía una solicitud de adopción real para una mascota (petId, ver buscar_mascotas). " +
         "Requiere autenticación con rol usuario. Queda registrada a nombre de la cuenta que llama " +
-        "a esta tool y la fundación dueña de la mascota la revisa después. Confirma con la persona " +
-        "cada dato del formulario antes de enviarlo — es información declarada bajo su nombre.",
+        "a esta tool y la fundación dueña de la mascota la revisa después. " +
+        "OBLIGATORIO: pregunta cada campo del formulario uno por uno y usa literalmente lo que la " +
+        "persona responda — nunca completes, adivines ni infieras un valor que ella no haya dicho " +
+        "explícitamente (por ejemplo, no asumas dónde dormirá el animal o si vive en una jaula si " +
+        "no te lo dijo). Antes de llamar a esta tool, muéstrale un resumen legible de todos los " +
+        "datos (incluida la provincia/cantón/parroquia por nombre, nunca un id) y espera su " +
+        "confirmación explícita — es información declarada bajo su nombre.",
       inputSchema: {
         petId: z.number().int().positive().describe("Id de la mascota (ver buscar_mascotas u obtener_mascota)."),
         form: formularioAdopcionShape,
@@ -215,9 +314,15 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
       },
     },
     async ({ petId, form }) => {
+      const { provincia, canton, parroquia, ...resto } = form;
+      const localidad = await resolverLocalidadId(provincia, canton, parroquia);
+      if ("error" in localidad) {
+        return { content: [{ type: "text", text: localidad.error }], isError: true };
+      }
+
       const datos = await apiRequest("POST", "/solicitudes", {
         auth: token ?? true,
-        body: { petId, form },
+        body: { petId, form: { ...resto, localidadId: localidad.id } },
       });
       return {
         content: [{ type: "text", text: `Solicitud de adopción enviada.\n\n${formatForModel(datos)}` }],
