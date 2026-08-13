@@ -10,12 +10,6 @@ export class ApiCallError extends Error {
   }
 }
 
-/**
- * La API guarda imágenes, videos y comprobantes como data URLs en base64
- * dentro del propio JSON. Un solo comprobante puede pesar cientos de KB, así
- * que devolverlos tal cual llenaría la ventana de contexto del modelo y haría
- * inutilizable la respuesta. Se sustituyen por un resumen legible.
- */
 function stripBinaryPayloads(value: unknown): unknown {
   if (typeof value === "string") {
     if (value.startsWith("data:") && value.length > 256) {
@@ -42,7 +36,6 @@ function stripBinaryPayloads(value: unknown): unknown {
   return value;
 }
 
-/** Evita que un mensaje de error arrastre el token o cabeceras internas. */
 function sanitizeErrorMessage(raw: string): string {
   const limpio = raw.replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [oculto]");
   return limpio.length > 400 ? `${limpio.slice(0, 400)}…` : limpio;
@@ -65,13 +58,6 @@ function decodeJwtExpiryMs(token: string): number | null {
   }
 }
 
-/**
- * Token para autenticar contra el backend. Prioriza config.apiToken (fijo,
- * pegado a mano) si está presente; si no, usa la cuenta de servicio
- * (HUELLITAS_ADMIN_EMAIL/PASSWORD), logueándose sola y cacheando el
- * resultado hasta ~1 minuto antes de que expire — así ningún humano tiene
- * que renovar nada cuando el JWT vence.
- */
 async function getBearerToken(): Promise<string> {
   if (config.apiToken) return config.apiToken;
 
@@ -126,14 +112,7 @@ async function getBearerToken(): Promise<string> {
 interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
-  /**
-   * Adjunta un bearer token. `true` usa el token del servidor (fijo o via
-   * login automatico de una cuenta de servicio, ver getBearerToken()) — lo
-   * usa el modo stdio y la rama con acceso administrativo compartido. Un
-   * string explicito usa ESE token tal cual (el de la persona conectada en
-   * su propia sesion MCP) — lo usa el modo remoto en `main`, donde cada
-   * quien se autentica con su propia cuenta.
-   */
+
   auth?: boolean | string;
 }
 
@@ -161,7 +140,6 @@ export async function apiRequest(
     headers["Content-Type"] = "application/json";
   }
 
-  // Sin timeout, una API caída dejaría la conversación colgada sin respuesta.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
 
@@ -208,7 +186,6 @@ export async function apiRequest(
   return stripBinaryPayloads(datos);
 }
 
-/** Serializa para el modelo, recortando si excede el tope configurado. */
 export function formatForModel(datos: unknown): string {
   const json = JSON.stringify(datos, null, 2);
   if (json.length <= config.maxResponseChars) return json;

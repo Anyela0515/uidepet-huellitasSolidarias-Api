@@ -2,11 +2,6 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 
-// Pruebas de integración: requieren la base de datos real de desarrollo
-// migrada y sembrada (npm run db:schema && npm run db:migrate && npm run seed).
-// No existe una BD de pruebas descartable: el estado de favoritos persiste
-// entre corridas, por lo que cada test normaliza su propio punto de partida
-// (DELETE es idempotente) en vez de asumir "nunca fue favorito antes".
 const app = createApp();
 
 describe("Favoritos", () => {
@@ -23,7 +18,6 @@ describe("Favoritos", () => {
     const listado = await request(app).get("/mascotas/publicas?limit=1");
     mascotaId = listado.body.data[0].id;
 
-    // Normaliza el punto de partida: sin favorito, sin importar corridas previas.
     await request(app)
       .delete(`/favoritos/${mascotaId}`)
       .set("Authorization", `Bearer ${token}`);

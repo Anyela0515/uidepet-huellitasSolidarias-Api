@@ -55,9 +55,6 @@ export const obtener = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  // "Adoptado"/"Eliminado" (y ocultas) solo las puede ver el admin o la
-  // fundación dueña; para cualquier otro visitante (o anónimo) es como si
-  // no existieran.
   const oculta = mascota.estado === "Eliminado" || mascota.estado === "Adoptado" || mascota.hidden;
   const esDuenoOAdmin =
     req.user?.rol === "admin" ||

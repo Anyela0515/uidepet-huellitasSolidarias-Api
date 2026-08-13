@@ -51,10 +51,6 @@ function humanizeZodMessage(issue: {
   return issue.message;
 }
 
-/**
- * Mantiene el shape histórico {code, error} que el frontend ya consume,
- * y añade {success, message, errorCode} para alinearse con el contrato del prompt.
- */
 function send(
   res: Response,
   status: number,

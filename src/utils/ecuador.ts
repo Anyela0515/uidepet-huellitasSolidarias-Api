@@ -1,7 +1,4 @@
-// Espejo de src/utils/validateForm.js (frontend): antes solo el formulario
-// web validaba el dígito verificador de la cédula y el formato del celular;
-// el backend aceptaba cualquier string de 10 dígitos. Eso lo salta cualquier
-// llamada directa a la API (incluidas las tools MCP), así que se repite aquí.
+
 
 export function esCedulaEcuatorianaValida(valor: string): boolean {
   if (!/^\d{10}$/.test(valor)) return false;

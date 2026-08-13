@@ -18,7 +18,6 @@ const DEFAULT_LIMIT = 10;
 const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
 
-/** Normaliza page/limit desde query params sin confiar en el valor del cliente. */
 export function parsePagination(query: Record<string, unknown>): PaginationParams {
   const rawPage = Number(query.page);
   const rawLimit = Number(query.limit);
@@ -47,10 +46,6 @@ export function buildPaginationMeta(page: number, limit: number, total: number):
   };
 }
 
-/**
- * Construye una cláusula ORDER BY segura a partir de una lista blanca de campos.
- * `allowedFields` mapea claves públicas (query param) a expresiones SQL reales.
- */
 export function buildSortClause(
   sortBy: unknown,
   sortOrder: unknown,

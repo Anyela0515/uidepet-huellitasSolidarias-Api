@@ -1,4 +1,4 @@
-/** Formatea fechas al estilo es-EC que espera el frontend. */
+
 
 export function formatFechaLarga(date: Date = new Date()): string {
   return date.toLocaleDateString("es-EC", {
@@ -30,10 +30,6 @@ export function formatMiembroDesde(date: Date = new Date()): string {
   });
 }
 
-/** Para columnas DATE (sin hora): la conexión usa timezone "Z", así que
- * mysql2 devuelve estas fechas como medianoche UTC. Hay que leerlas con
- * los getters UTC*, no los locales, o el día se corre en zonas con offset
- * negativo (America/Guayaquil, UTC-5) al aplicar la zona del proceso. */
 export function fechaToISO(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -50,11 +46,6 @@ export function formatFechaCortaUTC(date: Date): string {
   });
 }
 
-/** "Hoy" en la fecha calendario de Ecuador (UTC-5, sin horario de verano),
- * no la del servidor (los contenedores corren en UTC). Sirve para validar
- * fechas de negocio como "no agendar una entrega en el pasado": si se
- * comparara contra la fecha UTC del servidor, entre las 19:00 y 23:59 hora
- * de Ecuador el servidor ya estaria un dia adelante y rechazaria "hoy". */
 export function hoyEcuadorISO(): string {
   const ahoraEcuador = new Date(Date.now() - 5 * 60 * 60 * 1000);
   const y = ahoraEcuador.getUTCFullYear();

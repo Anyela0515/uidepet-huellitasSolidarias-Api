@@ -27,9 +27,6 @@ export function createApp() {
   const app = express();
   const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
 
-  // La propia API se agrega como origen permitido: Swagger UI se sirve desde
-  // /docs, en el mismo dominio, y "Try it out" llama a la API desde ahí —
-  // el navegador manda ese Origin aunque sea la misma máquina.
   const allowedOrigins = new Set(
     [
       FRONTEND_ORIGIN,
@@ -41,10 +38,6 @@ export function createApp() {
     ].filter(Boolean)
   );
 
-  // Detrás del load balancer (internet -> ALB -> este contenedor): sin esto,
-  // express-rate-limit no confía en X-Forwarded-For y no puede identificar
-  // IPs reales, ademas de lanzar ERR_ERL_UNEXPECTED_X_FORWARDED_FOR en cada
-  // request. 1 = confía en un solo salto de proxy (el ALB).
   app.set("trust proxy", 1);
 
   app.disable("x-powered-by");
@@ -61,9 +54,7 @@ export function createApp() {
       credentials: true,
     })
   );
-  // El rate limiter va ANTES de parsear el body: así una petición que ya
-  // superó su cuota se rechaza sin que Express gaste tiempo/memoria
-  // decodificando un body de hasta 30mb.
+
   app.use(requestLogger);
   app.use(rateLimiter);
   app.use(express.json({ limit: "30mb" }));
@@ -102,9 +93,6 @@ export function createApp() {
     return crypto.timingSafeEqual(bufA, bufB);
   }
 
-  // /docs solo debe ser visible para quien tenga estas credenciales: si no
-  // están configuradas, se niega el acceso por defecto (fail closed) en vez
-  // de dejarlo público por un descuido de despliegue.
   app.use("/docs", (req: Request, res: Response, next) => {
     const docsUser = process.env.DOCS_USER;
     const docsPassword = process.env.DOCS_PASSWORD;
@@ -135,10 +123,6 @@ export function createApp() {
     res.status(401).send("Autenticación requerida.");
   });
 
-  // Swagger UI incluye un <script> inline para inicializarse; el CSP estricto
-  // (script-src 'self', sin 'unsafe-inline') que aplica helmet() globalmente
-  // lo bloquearía. Se relaja solo para esta ruta, ya protegida arriba por
-  // autenticación básica.
   app.use("/docs", (_req: Request, res: Response, next) => {
     res.removeHeader("Content-Security-Policy");
     next();

@@ -3,7 +3,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apiRequest, formatForModel } from "../apiClient.js";
 import { config } from "../config.js";
 
-/** Anotaciones MCP: declaran al cliente que estas tools no mutan nada. */
 const SOLO_LECTURA = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -19,10 +18,6 @@ const paginaSchema = z
   .optional()
   .describe("Número de página (empieza en 1).");
 
-/**
- * El tope lo impone el servidor, no el modelo: aunque pida 10 000 registros,
- * `maxPageSize` recorta la petición antes de salir a la API.
- */
 const limiteSchema = z
   .number()
   .int()

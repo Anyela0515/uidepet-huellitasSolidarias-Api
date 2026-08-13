@@ -5,9 +5,6 @@ const MAX_FOTO_EVIDENCIA_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_EVIDENCIA_BYTES = 10 * 1024 * 1024;
 const MAX_EVIDENCIAS_TOTAL_BYTES = 20 * 1024 * 1024;
 
-// Espejo de src/utils/validateForm.js (frontend): mismo criterio de "nombre
-// y apellido reales" y "correo personal" para no depender solo del filtro
-// del cliente en el contacto opcional del reporte de rescate.
 const PALABRAS_NO_NOMBRE = new Set([
   "mi", "tu", "su", "yo", "el", "ella", "nosotros", "ellos", "ellas",
   "mama", "mami", "papa", "papi", "abuelo", "abuela", "abuelos", "abuelas",
@@ -60,8 +57,7 @@ export const crearDonacionSchema = z.object({
   cantidad: z.string().min(2).max(500),
   direccion: z.string().min(5),
   organizacionId: z.number().int().positive(),
-  // Comprobante de pago del aporte económico (imagen o PDF en base64);
-  // se envía por correo a la organización beneficiaria.
+
   comprobantePago: z
     .string()
     .regex(/^data:(image\/[a-zA-Z0-9.+-]+|application\/pdf);base64,/, "Formato de comprobante inválido.")

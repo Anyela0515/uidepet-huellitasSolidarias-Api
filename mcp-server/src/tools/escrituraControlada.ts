@@ -2,31 +2,6 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apiRequest, formatForModel } from "../apiClient.js";
 
-/**
- * Única categoría de tools que modifica datos. Se registra solo cuando
- * MCP_ALLOW_WRITES=true, de modo que la instalación por defecto es incapaz de
- * escribir aunque el modelo lo intente.
- *
- * Siguen sin exponerse (ni existir como tool): login/registro/cambio de
- * contraseña, cambio de rol o suspensión de cuentas, creación/edición/borrado
- * de mascotas. Esas quedan fuera por diseño.
- *
- * `actualizar_estado_solicitud` SÍ permite aprobar o rechazar una adopción —
- * es una excepción deliberada a la regla original ("nada con consecuencia
- * real sobre personas y animales"), pedida explícitamente por el equipo del
- * proyecto después de que se les explicara el riesgo. Por eso su descripción
- * exige confirmación humana explícita antes de cada llamada, mucho más
- * enfáticamente que el resto de tools de esta categoría.
- *
- * `crear_solicitud_adopcion`, `alternar_favorito`, `crear_donacion`,
- * `crear_reporte_rescate` y `actualizar_mi_perfil` son las acciones propias
- * de una cuenta con rol usuario (adoptante): pedidas explícitamente para que
- * el MCP no sea solo de lectura para ese rol, sino que la persona pueda
- * ejecutar en remoto lo mismo que haría desde el sitio web con su propia
- * cuenta. El backend sigue siendo la única autoridad sobre permisos — si el
- * token no es de rol usuario (o, en actualizar_mi_perfil, cualquier rol
- * autenticado), la API responde 403 igual que en el resto de tools.
- */
 export function registrarToolsEscrituraControlada(server: McpServer, token?: string): void {
   server.registerTool(
     "enviar_mensaje_contacto",
@@ -168,10 +143,6 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
     }
   );
 
-  /**
-   * Normaliza para comparar nombres de lugares sin depender de mayúsculas,
-   * acentos o espacios extra (p. ej. "Cuenca" vs "cuenca " vs "Cúenca").
-   */
   function normalizarNombreLugar(valor: string): string {
     return valor
       .trim()
@@ -190,13 +161,6 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
     return items.find((item) => normalizarNombreLugar(item.nombre) === buscado);
   }
 
-  /**
-   * El formulario web pide provincia, cantón y parroquia con selects en
-   * cascada (nunca un id crudo) — esta tool hace lo mismo desde el lado del
-   * modelo: recibe los tres nombres tal como la persona los dice y resuelve
-   * el localidadId internamente, en vez de pedirle al modelo que adivine o
-   * le muestre un número de catálogo a un humano.
-   */
   async function resolverLocalidadId(
     provincia: string,
     canton: string,

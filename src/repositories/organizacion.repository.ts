@@ -177,7 +177,6 @@ export async function softDelete(id: number) {
   await pool.query("UPDATE organizaciones SET activo = 0 WHERE id = ?", [id]);
 }
 
-/** Borrado físico: solo debe usarse tras confirmar que no tiene mascotas ni solicitudes asociadas. */
 export async function remove(id: number, conn: Executor = pool) {
   await conn.query("DELETE FROM organizaciones WHERE id = ?", [id]);
 }

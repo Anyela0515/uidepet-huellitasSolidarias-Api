@@ -3,15 +3,10 @@ import request from "supertest";
 import { createApp } from "../app.js";
 import * as emailService from "../services/email.service.js";
 
-// La contraseña temporal ya no viaja en la respuesta HTTP de aprobación
-// (el admin no debe verla): se mockea el envío de correo para poder leerla
-// aquí, igual que la recibiría la fundación en su bandeja de entrada.
 vi.mock("../services/email.service.js", () => ({
   sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
-// Pruebas de integración: requieren la base de datos real de desarrollo
-// migrada y sembrada (npm run db:schema && npm run db:migrate && npm run seed).
 const app = createApp();
 
 async function loginAs(correo: string, password: string) {
@@ -60,7 +55,6 @@ describe("Mascotas", () => {
     expect(res.status).toBe(201);
     expect(res.body.mascota.nombre).toBe("Test Mascota Vitest");
 
-    // limpieza: se borra lógicamente (nunca físicamente) la mascota creada.
     await request(app)
       .delete(`/mascotas/${res.body.mascota.id}`)
       .set("Authorization", `Bearer ${token}`);
@@ -78,8 +72,7 @@ describe("Mascotas", () => {
   });
 
   it("una fundación no puede editar una mascota ajena (403)", async () => {
-    // Toda mascota visible en el listado público pertenece a la fundación
-    // semilla; se usa como "recurso ajeno" para una segunda fundación nueva.
+
     const visibles = await request(app).get("/mascotas/publicas?limit=1");
     const mascotaAjenaId = visibles.body.data[0]?.id;
     expect(mascotaAjenaId).toBeDefined();
@@ -87,8 +80,7 @@ describe("Mascotas", () => {
     const adminToken = await loginAs("admin@huellitas.com", "Huellitas123");
     const unique = Date.now();
     const correo = `vitest.fundacion.${unique}@correo.com`;
-    // RUC único por corrida: evita 409 al re-ejecutar los tests contra la
-    // misma base de desarrollo (no hay una BD de pruebas descartable).
+
     const ruc = `11900${String(unique).slice(-8)}`;
 
     const solicitud = await request(app).post("/fundaciones").send({

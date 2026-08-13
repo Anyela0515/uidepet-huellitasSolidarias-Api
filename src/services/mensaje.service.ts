@@ -5,7 +5,6 @@ import { buildSortClause, parsePagination } from "../utils/pagination.js";
 import { MENSAJE_SORT_FIELDS } from "../repositories/mensaje.repository.js";
 import { sendNuevoMensajeNotificationEmail } from "./email.service.js";
 
-/** Solo admin (todos) y fundación (los suyos) pueden listar mensajes de contacto. */
 export async function listarMensajes(
   rol: string,
   correo: string,
@@ -55,9 +54,7 @@ export async function crearMensaje(data: {
       console.error("No se pudo enviar el aviso de nuevo mensaje a la organización:", error);
     }
   } else {
-    // Mensaje de soporte general (sin organización asociada, ej. el formulario
-    // de Contacto): se avisa al mismo correo desde el que la app envía todo,
-    // que es el que revisa el equipo de soporte.
+
     try {
       await sendNuevoMensajeNotificationEmail(
         "leontauro2005@gmail.com",

@@ -16,8 +16,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 };
 
 function generateTemporaryPassword(): string {
-  // 16 chars alfanuméricos, suficiente entropía para una contraseña temporal
-  // de un solo uso que el admin debe comunicar y el usuario debe cambiar.
+
   return crypto.randomBytes(12).toString("base64url");
 }
 
@@ -95,9 +94,7 @@ export async function actualizarEstado(
 
     let updated: Awaited<ReturnType<typeof fundacionRepo.findById>>;
     if (estado === "rechazada") {
-      // Se elimina en vez de marcar como rechazada: correo/RUC son UNIQUE
-      // en esta tabla, y dejar la fila bloquearía un futuro reintento de la
-      // misma organización con los mismos datos.
+
       updated = { ...fundacion, estado: "rechazada" };
       await fundacionRepo.deleteRequest(id, conn);
     } else {
@@ -151,8 +148,7 @@ export async function actualizarEstado(
 
     return {
       fundacion: updated,
-      // La contraseña temporal solo se envía por correo a la fundación; el
-      // admin nunca la recibe en esta respuesta ni en ningún otro lugar.
+
       ...(esCuentaNueva ? { credencialesEnviadas } : {}),
     };
   } catch (error) {
@@ -199,12 +195,6 @@ export async function obtenerOrganizacion(id: number) {
   return organizacion;
 }
 
-/**
- * Elimina por completo una fundación aprobada: su cuenta de usuario, su
- * organización y la solicitud de registro que la originó. Se bloquea si
- * tiene mascotas o solicitudes de adopción asociadas (ahí se debe suspender
- * en su lugar, para no perder ese historial).
- */
 export async function eliminarOrganizacion(solicitudId: string) {
   const solicitud = await fundacionRepo.findById(solicitudId);
   if (!solicitud) throw new NotFoundError("Solicitud no encontrada.");

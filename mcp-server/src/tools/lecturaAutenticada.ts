@@ -20,18 +20,6 @@ const limiteSchema = z
 
 const paginaSchema = z.number().int().min(1).max(500).optional().describe("Número de página.");
 
-/**
- * En modo stdio y en la rama con acceso administrativo compartido, estas
- * tools se registran solo si hay token en el entorno del servidor. En
- * `main` (modo remoto), se registran siempre que la persona conectada haya
- * iniciado sesión con su propia cuenta — `token` es el bearer DE ESA
- * PERSONA, no uno del servidor.
- *
- * El alcance de lo que devuelven lo decide el backend según el rol de ese
- * token (una fundación ve lo suyo, el admin ve todo, un usuario normal
- * probablemente reciba 403 en varias de estas): el servidor MCP no eleva
- * privilegios por su cuenta, solo reenvía la identidad de quien pregunta.
- */
 export function registrarToolsLecturaAutenticada(server: McpServer, token?: string): void {
   server.registerTool(
     "obtener_mi_perfil",

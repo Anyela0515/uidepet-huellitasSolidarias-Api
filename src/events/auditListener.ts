@@ -1,10 +1,6 @@
 import { domainEvents, type DomainEventPayload } from "./domainEvents.js";
 import * as auditoriaRepo from "../repositories/auditoria.repository.js";
 
-/** Acciones sensibles que dejan rastro en la tabla `auditoria` (inmutable,
- * ver db/migrations/2026_08_05_auditoria_inmutable.sql). Cada una se publica
- * desde el service correspondiente, después de que la escritura de negocio
- * ya se confirmó. */
 const ACCIONES_AUDITADAS = [
   "solicitud.aprobada",
   "solicitud.rechazada",
@@ -15,9 +11,6 @@ const ACCIONES_AUDITADAS = [
   "donacion.estado_cambiado",
 ] as const;
 
-/** Se llama una sola vez al arrancar el servidor (ver src/index.ts). Consume
- * los eventos de forma asíncrona y desacoplada del request original: si
- * escribir el log falla, se registra el error pero no afecta nada más. */
 export function registrarAuditListener(): void {
   for (const accion of ACCIONES_AUDITADAS) {
     domainEvents.on(accion, (payload: DomainEventPayload) => {

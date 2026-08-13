@@ -35,11 +35,6 @@ function signSessionToken(usuario: ReturnType<typeof mapUsuario>) {
 
   const payload = { sub: usuario.id, correo: usuario.correo, rol: usuario.rol };
 
-  // Los tres roles expiran igual, incluido el admin: una sesión eterna es
-  // un riesgo (una fuga del token da acceso indefinido, ni cambiar la
-  // contraseña la revoca) sin importar cuántas cuentas admin existan. Al
-  // vencer, el cliente (api/client.js) limpia la sesión con el 401 y el
-  // guard de rutas redirige a /ingreso.
   return jwt.sign(payload, secret, {
     algorithm: "HS256",
     issuer: JWT_ISSUER,
@@ -170,14 +165,6 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
   return consumed ? { ok: true } : { error: "El enlace es inválido, ya fue utilizado o venció." };
 }
 
-// A diferencia de requestPasswordReset, aquí SÍ se propaga el error de envío
-// (en vez de tragarlo con try/catch): el frontend llama esto justo después
-// de crear la cuenta y necesita poder avisar "se creó la cuenta pero no
-// pudimos enviar la verificación" si Gmail rechaza el correo.
-//
-// Si la cuenta no existe se responde igual que si todo hubiera ido bien
-// (sin enviar nada): este endpoint es público y no debe servir para que
-// alguien confirme si un correo está registrado probando uno por uno.
 export async function sendEmailVerification(correoInput: string, nombreInput?: string) {
   const correo = correoInput.trim().toLowerCase();
   const row = await usuarioRepo.findByCorreo(correo);
@@ -206,9 +193,6 @@ export async function verifyEmail(token: string) {
     : { error: "El enlace es inválido, ya fue utilizado o venció." };
 }
 
-// Si la cuenta no existe se responde "pending" (no "none"): distinguir
-// "no existe" de "existe pero no verificado" permitiría enumerar correos
-// registrados probando uno por uno contra este endpoint público.
 export async function getEmailVerificationStatus(correoInput: string) {
   const correo = correoInput.trim().toLowerCase();
   const row = await usuarioRepo.findByCorreo(correo);

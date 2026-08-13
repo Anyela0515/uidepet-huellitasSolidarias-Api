@@ -1,7 +1,4 @@
-/**
- * edadGrupo se deriva (no se persiste) — evita dependencia transitiva 3FN.
- * Regla alineada al catálogo del frontend (Joven / Adulto).
- */
+
 export function computeEdadGrupo(valor: number, unidad: string): string {
   if (unidad === "Meses") {
     return valor <= 24 ? "Joven" : "Adulto";

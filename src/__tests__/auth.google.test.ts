@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 
-// google-auth-library hace una llamada de red real para verificar el ID
-// token; se mockea para poder controlar el payload devuelto en cada caso
-// sin depender de credenciales de Google reales.
 const verifyIdToken = vi.fn();
 vi.mock("google-auth-library", () => ({
   OAuth2Client: vi.fn().mockImplementation(() => ({ verifyIdToken })),

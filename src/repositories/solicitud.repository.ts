@@ -341,9 +341,6 @@ export async function create(
   const estadoId = await catalog.getEstadoSolicitudAdopcionId("revision");
   const form = data.form as Record<string, unknown>;
 
-  // El formulario manda el id de la localidad elegida en los selectores en
-  // cascada. Si viniera solo un nombre (cliente antiguo), se intenta resolver
-  // contra la división política antes de rendirse.
   const localidadId = form.localidadId
     ? await catalog.assertLocalidadId(Number(form.localidadId))
     : await catalog.findLocalidadIdByNombre(
@@ -429,13 +426,6 @@ export async function create(
   return findById(id);
 }
 
-/**
- * Transición de estado con bloqueo pesimista: evita que dos solicitudes de
- * la misma mascota sean aprobadas concurrentemente (SELECT ... FOR UPDATE
- * sobre la mascota y sobre la propia solicitud, dentro de una transacción).
- * `allowedTransitions` se re-valida DENTRO del bloqueo por si el estado
- * cambió entre la lectura inicial (fuera de la transacción) y este punto.
- */
 export async function updateEstadoConBloqueo(
   id: string,
   petId: number,
@@ -467,8 +457,6 @@ export async function updateEstadoConBloqueo(
       throw new Error("TRANSICION_NO_PERMITIDA");
     }
 
-    // Bloquea la mascota para que ninguna otra transacción concurrente
-    // pueda aprobar/rechazar una solicitud distinta para el mismo animal.
     await conn.query("SELECT id FROM mascotas WHERE id = ? FOR UPDATE", [petId]);
 
     const estadoId = await catalog.getEstadoSolicitudAdopcionId(data.estado, conn);

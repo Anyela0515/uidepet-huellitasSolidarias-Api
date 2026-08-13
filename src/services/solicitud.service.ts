@@ -113,9 +113,6 @@ export async function actualizarEstado(
     return { error: "No tienes permiso para modificar esta solicitud." };
   }
 
-  // Validación optimista previa (mejor mensaje de error para el caso común);
-  // la validación autoritativa ocurre de nuevo dentro de la transacción con
-  // bloqueo, por si el estado cambió entre esta lectura y la escritura.
   const allowed = ALLOWED_TRANSITIONS[actual.estado] || [];
   if (!allowed.includes(data.estado)) {
     return { error: "Transición de estado no permitida." };
@@ -321,11 +318,6 @@ export async function actualizarSeguimiento(
   return solicitudRepo.updateSeguimientoComentario(id, comentario);
 }
 
-/**
- * Los seguimientos funcionan como evidencia de la adopción: nunca se borran
- * físicamente, ni siquiera para el administrador. La ruta existe para
- * cumplir el contrato, pero rechaza la operación de forma explícita.
- */
 export async function eliminarSeguimiento(id: number, rol: string, correo: string) {
   await assertSeguimientoManageable(id, rol, correo);
   throw new ConflictError(

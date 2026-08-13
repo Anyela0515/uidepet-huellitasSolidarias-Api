@@ -19,9 +19,6 @@ async function listPorTipoNombre(tipo: string): Promise<CatalogoItem[]> {
   return rows.map((row) => ({ id: Number(row.id), nombre: String(row.nombre) }));
 }
 
-// Estos catálogos no guardan un `nombre` propio (ver schema.sql): siempre
-// terminaba siendo el mismo texto que `codigo`. Se sigue devolviendo
-// `nombre` en la respuesta para no romper el contrato de este endpoint.
 async function listPorTipoCodigo(tipo: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT id, codigo FROM catalogos WHERE tipo = ? ORDER BY codigo ASC",
@@ -43,7 +40,6 @@ export const getUnidadesEdad = () => listPorTipoNombre("unidad_edad");
 export const getEstadosMascota = () => listPorTipoCodigo("estado_mascota");
 export const getProvincias = () => listPorTipoNombre("provincia");
 
-/** Cantones de una provincia (o todos, si no se filtra). */
 export async function getCantones(provinciaId?: number): Promise<RazaItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     provinciaId
@@ -58,7 +54,6 @@ export async function getCantones(provinciaId?: number): Promise<RazaItem[]> {
   }));
 }
 
-/** Parroquias de un cantón. Se exige el filtro: son más de 1300 en total. */
 export async function getParroquias(cantonId: number): Promise<RazaItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT id, padre_id, nombre FROM catalogos WHERE tipo = 'parroquia' AND padre_id = ? ORDER BY nombre ASC",

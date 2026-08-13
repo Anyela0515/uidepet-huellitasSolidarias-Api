@@ -2,16 +2,12 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 
-// Pruebas de integración: requieren la base de datos real de desarrollo
-// migrada y sembrada (npm run db:schema && npm run db:migrate && npm run seed).
 const app = createApp();
 
 function randomEmail(tag: string) {
   return `vitest.${tag}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@correo.com`;
 }
 
-// Lleva un dígito verificador real porque el schema valida el checksum
-// ecuatoriano, no solo la longitud.
 function randomCedula() {
   const base = String(Date.now()).slice(-9);
   const cuerpo = "17" + Math.min(Number(base[2]), 5) + base.slice(3);
@@ -32,11 +28,6 @@ async function loginAs(correo: string, password: string) {
   return res.body.token as string;
 }
 
-/**
- * Recorre la cascada real provincia -> cantón -> parroquia y devuelve el id de
- * la parroquia, que es lo que envía el formulario. De paso ejercita los tres
- * endpoints de la división política.
- */
 async function primeraParroquiaId(): Promise<number> {
   const provincias = await request(app).get("/catalogos/provincias");
   const provinciaId = provincias.body.data[0].id;
@@ -111,26 +102,22 @@ describe("Solicitudes", () => {
     expect(solicitud.status).toBe(201);
     const solicitudId = solicitud.body.solicitud.id;
 
-    // El adoptante dueño sí puede verla.
     const propia = await request(app)
       .get(`/solicitudes/${solicitudId}`)
       .set("Authorization", `Bearer ${adoptanteToken}`);
     expect(propia.status).toBe(200);
 
-    // La fundación dueña de la mascota sí puede verla.
     const vistaFundacion = await request(app)
       .get(`/solicitudes/${solicitudId}`)
       .set("Authorization", `Bearer ${fundacionToken}`);
     expect(vistaFundacion.status).toBe(200);
 
-    // El admin siempre puede verla.
     const adminToken = await loginAs("admin@huellitas.com", "Huellitas123");
     const vistaAdmin = await request(app)
       .get(`/solicitudes/${solicitudId}`)
       .set("Authorization", `Bearer ${adminToken}`);
     expect(vistaAdmin.status).toBe(200);
 
-    // Un usuario ajeno NO puede ver los datos personales de esta solicitud.
     const otroCorreo = randomEmail("ajeno");
     const otroPassword = "Clave123!";
     await request(app).post("/auth/register").send({
@@ -148,7 +135,6 @@ describe("Solicitudes", () => {
       .set("Authorization", `Bearer ${otroToken}`);
     expect(vistaAjena.status).toBe(403);
 
-    // limpieza: borrado lógico de la mascota creada para esta prueba.
     await request(app)
       .delete(`/mascotas/${mascotaId}`)
       .set("Authorization", `Bearer ${fundacionToken}`);

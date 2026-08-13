@@ -47,9 +47,6 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
     return;
   }
 
-  // El JWT por sí solo no refleja cambios posteriores a su emisión (cuenta
-  // suspendida/eliminada, rol cambiado): se revalida contra la base en cada
-  // request, y se usa el rol ACTUAL de la base, no el que traía el token.
   try {
     const actual = await usuarioRepo.findEstadoActual(payload.sub);
     if (!actual || actual.estado_codigo !== "Activo") {
@@ -63,7 +60,6 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
   }
 }
 
-/** Igual que requireJwt, pero nunca bloquea: si no hay token (o es inválido), sigue como anónimo. */
 export function optionalJwt(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) {
@@ -74,9 +70,7 @@ export function optionalJwt(req: Request, _res: Response, next: NextFunction) {
         issuer: JWT_ISSUER,
         audience: JWT_AUDIENCE,
       }) as unknown as AppJwtPayload;
-    } catch {
-      // Token ausente/inválido: se continúa sin req.user, como visitante anónimo.
-    }
+    } catch {} // eslint-disable-line no-empty
   }
   next();
 }

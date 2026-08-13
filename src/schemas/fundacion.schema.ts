@@ -10,7 +10,7 @@ export const crearFundacionSchema = z.object({
   localidadId: z.number().int().positive(),
   descripcion: z.string().trim().min(10),
   documento: z.string().trim().optional(),
-  // Data URL en base64 (PDF, máx. ~5MB en el frontend); ~7MB en base64.
+
   documentoContenido: z.string().startsWith("data:application/pdf").max(7 * 1024 * 1024).optional(),
 });
 
@@ -24,11 +24,9 @@ export const actualizarPerfilFundacionSchema = z
     localidadId: z.number().int().positive().optional(),
     descripcion: z.string().trim().min(10).optional(),
     direccion: z.string().trim().min(5).optional(),
-    // Data URL en base64; puede contener varios códigos QR combinados en
-    // una sola imagen (distintos bancos/medios de pago de la organización).
+
     imagenQr: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
-    // Imagen pública de la organización (logo/foto), visible para los
-    // usuarios en el listado de fundaciones aliadas.
+
     imagen: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {

@@ -1,4 +1,4 @@
-/** Errores de dominio tipados para que errorHandler responda con status/code correctos. */
+
 export class AppError extends Error {
   statusCode: number;
   code: string;

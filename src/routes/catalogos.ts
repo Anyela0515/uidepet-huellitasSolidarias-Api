@@ -3,8 +3,6 @@ import * as controller from "../controllers/catalogo.controller.js";
 
 const router = Router();
 
-// Todos los catálogos son de solo lectura y públicos: no exponen datos
-// sensibles, únicamente listas estáticas usadas para poblar selects del frontend.
 router.get("/roles", controller.roles);
 router.get("/estados-cuenta", controller.estadosCuenta);
 router.get("/especies", controller.especies);
@@ -13,7 +11,7 @@ router.get("/sexos", controller.sexos);
 router.get("/tamanos", controller.tamanos);
 router.get("/unidades-edad", controller.unidadesEdad);
 router.get("/estados-mascota", controller.estadosMascota);
-// División política de Ecuador, en cascada: provincia -> cantón -> parroquia.
+
 router.get("/provincias", controller.provincias);
 router.get("/cantones", controller.cantones);
 router.get("/parroquias", controller.parroquias);

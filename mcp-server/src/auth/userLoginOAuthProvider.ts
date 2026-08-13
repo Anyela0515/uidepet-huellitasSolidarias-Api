@@ -13,28 +13,6 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { InvalidRequestError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { config } from "../config.js";
 
-/**
- * Variante de PasscodeOAuthProvider (ver ese archivo / rama
- * mcp-admin-full-access) pensada para `main`: en vez de un passcode
- * compartido por el equipo, cada persona mete su PROPIO correo y
- * contraseña de Huellitas Solidarias. El servidor los valida contra el
- * backend real (POST /auth/login) — nunca los guarda — y el token que
- * emite el backend queda ligado al token MCP de esa sesión (en
- * `extra.backendToken` del AuthInfo). Cada llamada a una tool autenticada
- * usa el token DE ESA PERSONA, así que el rol real de su cuenta
- * (usuario/fundación/admin) es quien decide qué puede ver o hacer — el
- * mismo control de acceso que ya tiene la API, no uno nuevo.
- *
- * Sin cuenta de servicio, sin passcode de equipo, sin MCP_STATIC_API_KEYS:
- * quien no tenga una cuenta real de Huellitas Solidarias no puede conectar.
- *
- * Limitaciones conocidas (mismas que la variante de passcode):
- * - Tokens y códigos en memoria: un reinicio del proceso cierra todas las
- *   sesiones activas.
- * - Sin refresh tokens: al expirar (1h, la misma política del backend
- *   para cualquier sesión), el cliente MCP vuelve a pedir las credenciales.
- */
-
 interface StoredCode {
   client: OAuthClientInformationFull;
   params: AuthorizationParams;
@@ -123,7 +101,6 @@ export class UserLoginOAuthProvider implements OAuthServerProvider {
       .send(renderLoginForm({ action: `/authorize/submit?pending=${pendingId}` }));
   }
 
-  /** Invocado por el handler HTTP propio en POST /authorize/submit. */
   async handleLoginSubmit(
     pendingId: string,
     correo: string,
@@ -220,8 +197,7 @@ export class UserLoginOAuthProvider implements OAuthServerProvider {
   }
 
   async exchangeRefreshToken(): Promise<OAuthTokens> {
-    // Deliberadamente no soportado: al expirar el access token (1h), el
-    // cliente MCP vuelve a pedir correo/contraseña.
+
     throw new Error("Refresh tokens no soportados: vuelve a autorizar la conexión.");
   }
 

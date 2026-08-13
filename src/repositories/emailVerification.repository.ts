@@ -25,7 +25,6 @@ export async function create(usuarioId: number, tokenHash: string, expiresAt: Da
   }
 }
 
-/** Consume el token y marca el usuario como verificado; devuelve su correo o null si el token no es válido. */
 export async function consumeAndVerify(tokenHash: string): Promise<string | null> {
   const connection = await pool.getConnection();
   try {

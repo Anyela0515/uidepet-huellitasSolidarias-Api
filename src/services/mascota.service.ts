@@ -35,7 +35,6 @@ export async function listarVisibles(query: Record<string, unknown> = {}) {
   return mascotaRepo.findVisible(pagination, sortClause, parseFiltros(query));
 }
 
-/** Sin restricción de estado: el admin puede ver mascotas adoptadas/eliminadas. */
 export async function listarTodas(query: Record<string, unknown> = {}) {
   const pagination = parsePagination(query);
   const sortClause = buildSortClause(query.sortBy, query.sortOrder, MASCOTA_SORT_FIELDS, "fecha");
@@ -60,10 +59,6 @@ export async function obtenerMascota(id: number) {
   return mascotaRepo.findById(id);
 }
 
-/** Compara contra las fotos que la misma fundacion ya usa en otras mascotas.
- * La candidata se comprime igual que al guardar, porque las ya guardadas
- * estan comprimidas: comparar el archivo crudo contra el comprimido nunca
- * coincidiria aunque sea exactamente la misma foto. */
 export async function verificarImagenDuplicada(
   imagen: string,
   fundacionEmail: string,
@@ -128,8 +123,7 @@ export async function eliminarMascota(id: number, fundacionEmail?: string) {
 
   await solicitudRepo.cancelActiveByPetId(id);
   await favoritoRepo.removePetFromAll(id);
-  // Borrado lógico: nunca físico, porque las solicitudes históricas
-  // referencian mascotas.id con FK RESTRICT.
+
   await mascotaRepo.softDelete(id);
   return { ok: true };
 }

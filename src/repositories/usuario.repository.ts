@@ -57,11 +57,6 @@ export async function findById(id: number) {
   return rows[0] ?? null;
 }
 
-/**
- * Versión liviana de findById para revalidar en cada request autenticado
- * que la cuenta sigue existiendo y activa (requireJwt la usa). Solo trae
- * lo mínimo necesario para esa comprobación, sin el hash de password.
- */
 export async function findEstadoActual(id: number) {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT u.correo, r.codigo AS rol_codigo, ec.codigo AS estado_codigo
@@ -195,8 +190,6 @@ export async function create(
     if (ownsTransaction) conn.release();
   }
 
-  // Si la transacción es externa (aún no hizo commit), se debe leer con la
-  // misma conexión: una conexión distinta del pool no vería la fila todavía.
   const row = await findByCorreo(data.correo, ownsTransaction ? pool : conn);
   return row ? mapUsuario(row) : null;
 }

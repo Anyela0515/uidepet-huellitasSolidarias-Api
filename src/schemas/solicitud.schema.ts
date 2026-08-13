@@ -3,23 +3,13 @@ import { hoyEcuadorISO } from "../utils/dates.js";
 import { EVIDENCE_MIME_TYPES } from "../utils/fileSignature.js";
 import { esCedulaEcuatorianaValida, esTelefonoEcuatorianoValido } from "../utils/ecuador.js";
 
-// Mismos límites que usa el frontend por defecto en filesToPersistedEntries
-// (src/utils/constants.js): MAX_EVIDENCE_FILE_SIZE / MAX_EVIDENCE_VIDEO_SIZE.
 const MAX_FOTO_HOGAR_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_HOGAR_BYTES = 10 * 1024 * 1024;
 
-// Sin WEBP a propósito: algunas fundaciones no podían abrirlo al revisar
-// las evidencias del hogar. Espejo de ACCEPT_EVIDENCE_HOGAR en el frontend
-// (src/utils/fileValidation.js).
 const HOGAR_MIME_TYPES = ["image/jpeg", "image/png", "video/mp4"] as const;
 const CONTRATO_MIME_TYPES = ["application/pdf"] as const;
 const CONTRATO_FIRMADO_PREFIX = "Contrato firmado - ";
 
-// Espejo de tiposVivienda en el frontend
-// (src/components/adopcion/adoptionFormConfig.js): ahí es un <Select>, no
-// texto libre, así que aceptar cualquier string aquí permitía que quien
-// llama a la API directamente (p. ej. las tools MCP) mandara cosas como
-// "Mansión" que jamás podrían salir del formulario web real.
 const TIPOS_VIVIENDA = [
   "Casa propia",
   "Casa arrendada",
@@ -29,14 +19,8 @@ const TIPOS_VIVIENDA = [
   "Otro",
 ] as const;
 
-// Los mismos campos son <Radio> "sí"/"no" en el formulario web
-// (StepEntornoHogar, StepOtrasMascotas, StepCompromiso) — nunca texto libre.
 const SI_NO = ["si", "no"] as const;
 
-// Palabras que delatan una respuesta de mala fe o una señal real de maltrato
-// en las dos únicas descripciones libres del formulario (dónde permanece y
-// dónde duerme el animal). No reemplaza una revisión humana, pero evita que
-// pasen sin más "jaula", "cárcel", etc.
 const PALABRAS_CONFINAMIENTO = [
   "jaula", "carcel", "cárcel", "celda", "encerrado", "encerrada",
   "amarrado", "amarrada", "atado", "atada", "encadenado", "encadenada",
@@ -65,13 +49,6 @@ const evidenciaFormSchema = z.object({
     }),
 });
 
-// Los límites de longitud coinciden con las columnas VARCHAR reales
-// (los campos "declarado_*" de solicitudes_adopcion en db/schema.sql), para
-// rechazar con 422 en vez de
-// reventar con un error de MySQL (ER_DATA_TOO_LONG) si el cliente envía
-// texto libre más largo de lo que la tabla admite. permanenciaAnimal y
-// lugarDormir son descripciones libres (el frontend usa un textarea), por
-// eso llevan un máximo generoso y no uno corto tipo "si/no".
 export const formularioAdopcionSchema = z
   .object({
     nombre: z.string().min(3, "El nombre declarado es obligatorio.").max(120),
@@ -132,8 +109,7 @@ export const formularioAdopcionSchema = z
     declaracion: z.literal(true, {
       errorMap: () => ({ message: "Debes declarar que la información es verídica." }),
     }),
-    // Solo fotos/video del hogar. El PDF del contrato firmado se sube después
-    // en POST /solicitudes/:id/evidencias para no mezclar tipos en el alta.
+
     evidencias: z.array(evidenciaFormSchema).max(5, "Máximo 5 archivos del hogar permitidos.").optional(),
   })
   .superRefine((data, ctx) => {

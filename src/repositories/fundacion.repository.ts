@@ -139,9 +139,6 @@ export async function updateEstado(id: string, estado: string, conn: Executor = 
   return findById(id, conn);
 }
 
-// Una solicitud rechazada se elimina en vez de solo marcarse: correo y RUC
-// tienen restricciones UNIQUE en esta tabla, así que dejarla como "rechazada"
-// bloquearía para siempre un futuro reintento de la misma organización.
 export async function deleteRequest(id: string, conn: Executor = pool) {
   await conn.query("DELETE FROM solicitudes_registro_organizacion WHERE id = ?", [id]);
 }

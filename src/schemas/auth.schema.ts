@@ -1,21 +1,12 @@
 import { z } from "zod";
 import { esCedulaEcuatorianaValida, esTelefonoEcuatorianoValido } from "../utils/ecuador.js";
 
-// Entre 8 y 12 caracteres, con mayuscula, minuscula, numero y simbolo
-// especial. Solo se aplica al crear o cambiar una contrasena. NUNCA se le
-// pone tope maximo al login ni a currentPassword: son cuentas que ya existen
-// y pueden tener una contrasena de otro largo de antes de esta regla — si el
-// maximo tambien aplicara ahi, esas cuentas quedarian sin poder iniciar
-// sesion nunca mas.
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 12;
 const PASSWORD_SEGURA_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,12}$/;
 const PASSWORD_SEGURA_MSG =
   "Debe tener entre 8 y 12 caracteres, con mayúscula, minúscula, número y símbolo especial.";
 
-// Registro cerrado temporalmente para correos institucionales: por ahora la
-// plataforma es solo para el publico general, no para la comunidad UIDE.
-// Pensado para habilitarse en el futuro.
 export const DOMINIO_INSTITUCIONAL = "@uide.edu.ec";
 export const CORREO_INSTITUCIONAL_MSG = "Correo no permitido.";
 export function esCorreoInstitucional(correo: string) {
@@ -100,7 +91,7 @@ export const updateProfileSchema = z.object({
     .length(10)
     .refine(esCedulaEcuatorianaValida, { message: "La cédula ingresada no es válida." })
     .optional(),
-  // Foto de perfil del usuario. Data URL en base64; null la elimina.
+
   imagen: z.string().startsWith("data:image/").max(7 * 1024 * 1024).nullable().optional(),
 });
 

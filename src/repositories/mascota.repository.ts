@@ -164,10 +164,7 @@ export async function findVisible(
   filtros: MascotaFiltros = {}
 ) {
   const values: unknown[] = [];
-  // "Adoptado" se oculta igual que "Eliminado": una vez adoptada, la mascota
-  // ya no debe verse en el catálogo público ni para un usuario adoptante
-  // normal. Solo la fundación dueña (findByFundacionEmail) y el admin
-  // (findAllAdmin) siguen viéndola.
+
   const clauses = buildWhere(
     filtros,
     ["em.codigo <> 'Eliminado'", "em.codigo <> 'Adoptado'", "m.oculto = 0"],
@@ -246,9 +243,7 @@ export async function findByFundacionEmail(
   sortClause: string,
   filtros: MascotaFiltros = {}
 ) {
-  // A diferencia de findVisible, aquí no se oculta nada por defecto: la
-  // fundación debe poder administrar (ver/editar) también sus propias
-  // mascotas ocultas o marcadas como "Eliminado".
+
   const values: unknown[] = [fundacionEmail];
   const clauses = buildWhere(filtros, ["u.correo = ?"], values);
   const where = `WHERE ${clauses.join(" AND ")}`;
@@ -445,10 +440,6 @@ export async function update(id: number, data: ActualizarMascotaDTO) {
   return findById(id);
 }
 
-/**
- * Borrado lógico: la mascota puede tener solicitudes históricas (FK RESTRICT),
- * por lo que nunca se hace DELETE físico.
- */
 export async function softDelete(id: number) {
   const estadoEliminadoId = await catalog.getEstadoMascotaId("Eliminado");
   await pool.query(
@@ -501,7 +492,6 @@ export async function hasActiveSolicitud(petId: number) {
   return rows.length > 0;
 }
 
-/** Agrega un único tag sin afectar los existentes (evita duplicados vía la PK compuesta). */
 export async function addTag(mascotaId: number, tagNombre: string) {
   const [tagId] = await catalog.getOrCreateTagIds([tagNombre]);
   if (!tagId) return findById(mascotaId);

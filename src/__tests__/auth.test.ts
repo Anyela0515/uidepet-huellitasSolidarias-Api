@@ -2,19 +2,12 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
 
-// Pruebas de integración: requieren la base de datos real de desarrollo
-// migrada y sembrada (npm run db:schema && npm run db:migrate && npm run seed).
 const app = createApp();
 
 function randomEmail() {
   return `vitest.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@correo.com`;
 }
 
-// Cédula única por corrida: es un UNIQUE real en BD (usuarios.cedula)
-// y no hay BD de pruebas descartable, así que un valor fijo colisionaría con
-// corridas anteriores contra la misma base de desarrollo. Lleva un dígito
-// verificador real porque el schema valida el checksum ecuatoriano, no solo
-// la longitud.
 function randomCedula() {
   const base = String(Date.now()).slice(-9);
   const cuerpo = "17" + Math.min(Number(base[2]), 5) + base.slice(3);
@@ -111,7 +104,6 @@ describe("Auth", () => {
     const res = await request(app).post("/auth/login").send({ correo, password });
     expect(res.status).toBe(403);
 
-    // Se revierte para no dejar el dato de prueba en un estado inconsistente.
     await request(app)
       .patch(`/auth/usuarios/${correo}/estado`)
       .set("Authorization", `Bearer ${adminToken}`)
@@ -134,7 +126,6 @@ describe("Auth", () => {
       .send({ currentPassword: password, newPassword: "Nueva123!" });
     expect(ok.status).toBe(200);
 
-    // revertir
     await request(app)
       .patch("/auth/password")
       .set("Authorization", `Bearer ${token}`)

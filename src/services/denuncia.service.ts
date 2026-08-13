@@ -56,9 +56,6 @@ export async function consultarPorCodigo(codigo: string) {
   const denuncia = await denunciaRepo.findById(codigo);
   if (!denuncia) throw new NotFoundError("No encontramos un reporte con ese código.");
 
-  // Consulta pública (sin autenticación): solo se expone lo necesario para
-  // que la persona que reportó sepa qué pasó, sin filtrar sus datos de
-  // contacto ni los de otras personas involucradas.
   return {
     codigo: denuncia.codigo,
     estado: denuncia.estado,
