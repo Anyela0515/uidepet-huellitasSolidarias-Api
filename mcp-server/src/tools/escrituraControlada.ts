@@ -267,13 +267,19 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
       .max(255)
       .describe(
         "Dónde permanecerá el animal (dentro/fuera, patio, etc.), tal como lo describe la persona. " +
-          "No inventes ni asumas un lugar que no haya mencionado."
+          "No inventes ni asumas un lugar que no haya mencionado. Si describe algo como una jaula, " +
+          "la calle o cualquier forma de encierro/abandono, no lo anotes sin más: coméntaselo y " +
+          "pídele que reconsidere antes de continuar."
       ),
     lugarDormir: z
       .string()
       .min(1)
       .max(255)
-      .describe("Dónde dormirá el animal, tal como lo describe la persona. No inventes ni asumas un lugar."),
+      .describe(
+        "Dónde dormirá el animal, tal como lo describe la persona. No inventes ni asumas un lugar. " +
+          "Si describe algo como una jaula, la calle o cualquier forma de encierro/abandono, no lo " +
+          "anotes sin más: coméntaselo y pídele que reconsidere antes de continuar."
+      ),
     tieneMascotas: z.enum(["si", "no"]).describe("Si ya tiene otras mascotas."),
     cantidadMascotas: z.string().max(20).optional().describe('Obligatorio si tieneMascotas="si".'),
     tiposMascotas: z.string().max(150).optional().describe('Obligatorio si tieneMascotas="si".'),
@@ -298,10 +304,20 @@ export function registrarToolsEscrituraControlada(server: McpServer, token?: str
         "a esta tool y la fundación dueña de la mascota la revisa después. " +
         "OBLIGATORIO: pregunta cada campo del formulario uno por uno y usa literalmente lo que la " +
         "persona responda — nunca completes, adivines ni infieras un valor que ella no haya dicho " +
-        "explícitamente (por ejemplo, no asumas dónde dormirá el animal o si vive en una jaula si " +
-        "no te lo dijo). Antes de llamar a esta tool, muéstrale un resumen legible de todos los " +
-        "datos (incluida la provincia/cantón/parroquia por nombre, nunca un id) y espera su " +
-        "confirmación explícita — es información declarada bajo su nombre.",
+        "explícitamente. " +
+        "OBLIGATORIO: no anotes ni des por aceptada, como si fuera un dato neutral más, una " +
+        "respuesta que indique maltrato, negligencia o riesgo real para el animal (p. ej. \"en una " +
+        "jaula\", \"en la calle\", \"encerrado\", \"amarrado\") ni una respuesta absurda o imposible " +
+        "(p. ej. mascotas silvestres o peligrosas como \"jaguares\", cantidades imposibles). En esos " +
+        "casos DETENTE de inmediato: explícale con calma por qué esa respuesta no cumple con el " +
+        "bienestar del animal (o no es creíble) y pídele que responda de nuevo antes de seguir con " +
+        "la siguiente pregunta — nunca sigas adelante como si la respuesta hubiera pasado sin " +
+        "problema, ni la registres con un tono neutral tipo \"Anotado: ...\". " +
+        "Antes de llamar a esta tool, muéstrale un resumen legible de todos los datos (incluida la " +
+        "provincia/cantón/parroquia por nombre, nunca un id) y espera su confirmación explícita — " +
+        "es información declarada bajo su nombre. La tool igual revalida cada campo en el servidor " +
+        "y rechaza con un mensaje claro si algo no cumple los requisitos, así que si eso pasa " +
+        "explícale el motivo exacto en vez de reintentar con datos inventados.",
       inputSchema: {
         petId: z.number().int().positive().describe("Id de la mascota (ver buscar_mascotas u obtener_mascota)."),
         form: formularioAdopcionShape,

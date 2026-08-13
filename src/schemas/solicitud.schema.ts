@@ -40,7 +40,8 @@ const SI_NO = ["si", "no"] as const;
 const PALABRAS_CONFINAMIENTO = [
   "jaula", "carcel", "cárcel", "celda", "encerrado", "encerrada",
   "amarrado", "amarrada", "atado", "atada", "encadenado", "encadenada",
-  "sotano", "sótano",
+  "sotano", "sótano", "la calle", "en la calle", "afuera de la casa",
+  "a la intemperie",
 ];
 
 function sinSenalesDeConfinamiento(valor: string): boolean {
