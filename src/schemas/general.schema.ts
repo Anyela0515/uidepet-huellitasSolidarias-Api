@@ -5,6 +5,49 @@ const MAX_FOTO_EVIDENCIA_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_EVIDENCIA_BYTES = 10 * 1024 * 1024;
 const MAX_EVIDENCIAS_TOTAL_BYTES = 20 * 1024 * 1024;
 
+const evidenciaItemSchema = z.object({
+  name: z.string().min(1).max(255),
+  type: z.enum(EVIDENCE_MIME_TYPES),
+  size: z.number().int().positive().max(MAX_VIDEO_EVIDENCIA_BYTES),
+  url: z
+    .string()
+    .max(14_000_000)
+    .regex(/^data:(image\/jpeg|image\/png|image\/webp|video\/mp4);base64,/),
+});
+
+/** Mismos límites de tamaño/cantidad de video que ya aplican a las evidencias del reporte inicial. */
+function validarLimitesEvidencias(evidencias: z.infer<typeof evidenciaItemSchema>[], ctx: z.RefinementCtx) {
+  evidencias.forEach((evidencia, index) => {
+    const esVideo = evidencia.type === "video/mp4";
+    const limite = esVideo ? MAX_VIDEO_EVIDENCIA_BYTES : MAX_FOTO_EVIDENCIA_BYTES;
+    if (evidencia.size > limite) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["evidencias", index, "size"],
+        message: `${evidencia.name}: supera el tamaño máximo (${Math.round(limite / (1024 * 1024))} MB).`,
+      });
+    }
+  });
+
+  const total = evidencias.reduce((sum, evidencia) => sum + evidencia.size, 0);
+  if (total > MAX_EVIDENCIAS_TOTAL_BYTES) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["evidencias"],
+      message: "El total de archivos no puede superar 20 MB.",
+    });
+  }
+
+  const videos = evidencias.filter((evidencia) => evidencia.type === "video/mp4");
+  if (videos.length > 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["evidencias"],
+      message: "Solo se permite un video por reporte.",
+    });
+  }
+}
+
 const PALABRAS_NO_NOMBRE = new Set([
   "mi", "tu", "su", "yo", "el", "ella", "nosotros", "ellos", "ellas",
   "mama", "mami", "papa", "papi", "abuelo", "abuela", "abuelos", "abuelas",
@@ -163,6 +206,21 @@ export const crearReporteRescateSchema = z.object({
   }
 });
 
-export const actualizarEstadoDenunciaSchema = z.object({
-  estado: z.enum(["recibida", "revision", "atendida", "cerrada"]),
-});
+export const actualizarEstadoDenunciaSchema = z
+  .object({
+    estado: z.enum(["recibida", "revision", "atendida", "cerrada"]),
+    // Evidencia de que el animal fue rescatado: obligatoria para marcar
+    // "atendida" (ver superRefine abajo), opcional en el resto de estados.
+    evidencias: z.array(evidenciaItemSchema).max(5, "Máximo 5 archivos permitidos.").optional(),
+  })
+  .superRefine((data, ctx) => {
+    const evidencias = data.evidencias ?? [];
+    if (data.estado === "atendida" && evidencias.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["evidencias"],
+        message: "Adjunta al menos una foto o video como evidencia del rescate.",
+      });
+    }
+    if (evidencias.length > 0) validarLimitesEvidencias(evidencias, ctx);
+  });

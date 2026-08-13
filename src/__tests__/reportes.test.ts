@@ -1,6 +1,12 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../app.js";
+import * as emailService from "../services/email.service.js";
+
+vi.mock("../services/email.service.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../services/email.service.js")>();
+  return { ...actual, sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined) };
+});
 
 const app = createApp();
 
@@ -10,15 +16,16 @@ const evidenciaValida = [
   { name: "foto.jpg", type: "image/jpeg", size: 1024, url: JPEG_1PX },
 ];
 
+async function loginAs(correo: string, password: string) {
+  const res = await request(app).post("/auth/login").send({ correo, password });
+  return res.body.token as string;
+}
+
 describe("Reportes de rescate", () => {
   let adminToken: string;
 
   beforeAll(async () => {
-    const login = await request(app).post("/auth/login").send({
-      correo: "admin@huellitas.com",
-      password: "Huellitas123",
-    });
-    adminToken = login.body.token;
+    adminToken = await loginAs("admin@huellitas.com", "Huellitas123");
   });
 
   it("crea un reporte anónimo (sin cuenta, sin contacto) y devuelve un código", async () => {
@@ -112,10 +119,11 @@ describe("Reportes de rescate", () => {
     const actualizado = await request(app)
       .patch(`/reportes/${id}/estado`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ estado: "atendida" });
+      .send({ estado: "atendida", evidencias: evidenciaValida });
 
     expect(actualizado.status).toBe(200);
     expect(actualizado.body.reporte.estado).toBe("atendida");
+    expect(actualizado.body.reporte.evidenciasRescate).toHaveLength(1);
   });
 
   it("filtra reportes por estado", async () => {
@@ -124,5 +132,81 @@ describe("Reportes de rescate", () => {
       .set("Authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.every((r: { estado: string }) => r.estado === "atendida")).toBe(true);
+  });
+
+  it("rechaza marcar un reporte como atendida sin evidencia (422)", async () => {
+    const creado = await request(app).post("/reportes").send({
+      tipoAnimal: "Gato",
+      urgencia: "Alta",
+      ubicacion: "Sector oeste",
+      descripcion: "Gato atrapado en una alcantarilla, se escuchan maullidos.",
+      evidencias: evidenciaValida,
+    });
+    const id = creado.body.reporte.id;
+
+    const res = await request(app)
+      .patch(`/reportes/${id}/estado`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ estado: "atendida" });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("una fundación reclama el reporte al tocarlo; otra fundación queda bloqueada (409), admin no", async () => {
+    const creado = await request(app).post("/reportes").send({
+      tipoAnimal: "Perro",
+      urgencia: "Crítica",
+      ubicacion: "Sector este",
+      descripcion: "Perro atropellado, necesita atención veterinaria urgente.",
+      evidencias: evidenciaValida,
+    });
+    const id = creado.body.reporte.id;
+
+    const fundacionToken = await loginAs("fundacion@huellitas.com", "Huellitas123");
+    const enRevision = await request(app)
+      .patch(`/reportes/${id}/estado`)
+      .set("Authorization", `Bearer ${fundacionToken}`)
+      .send({ estado: "revision" });
+    expect(enRevision.status).toBe(200);
+    expect(enRevision.body.reporte.organizacionAtiende?.nombre).toBeTruthy();
+
+    const unique = Date.now();
+    const correo = `vitest.fundacion.reportes.${unique}@correo.com`;
+    const ruc = `11900${String(unique).slice(-8)}`;
+    const solicitud = await request(app).post("/fundaciones").send({
+      nombre: "Fundación Rescate Vitest",
+      ruc,
+      representante: "Rep Vitest",
+      correo,
+      telefono: "0987654321",
+      localidadId: (await request(app).get("/catalogos/provincias")).body.data[0].id,
+      descripcion: "Fundación de prueba para el bloqueo de reportes entre organizaciones.",
+    });
+    expect(solicitud.status).toBe(201);
+
+    const aprobacion = await request(app)
+      .patch(`/fundaciones/${solicitud.body.fundacion.id}/estado`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ estado: "aprobada" });
+    expect(aprobacion.status).toBe(200);
+    const envio = vi
+      .mocked(emailService.sendFundacionCredentialsEmail)
+      .mock.calls.find((args) => args[0] === correo);
+    const temporaryPassword = envio?.[2] as string;
+
+    const otraFundacionToken = await loginAs(correo, temporaryPassword);
+    expect(typeof otraFundacionToken).toBe("string");
+
+    const bloqueado = await request(app)
+      .patch(`/reportes/${id}/estado`)
+      .set("Authorization", `Bearer ${otraFundacionToken}`)
+      .send({ estado: "atendida", evidencias: evidenciaValida });
+    expect(bloqueado.status).toBe(409);
+
+    const adminSiPuede = await request(app)
+      .patch(`/reportes/${id}/estado`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ estado: "cerrada" });
+    expect(adminSiPuede.status).toBe(200);
   });
 });

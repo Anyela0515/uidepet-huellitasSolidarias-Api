@@ -4,6 +4,7 @@ import {
   crearReporteRescateSchema,
 } from "../schemas/general.schema.js";
 import * as denunciaService from "../services/denuncia.service.js";
+import * as catalogRepo from "../repositories/catalog.repository.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { verificarEvidenciaOLanzar } from "../utils/fileSignature.js";
 
@@ -24,11 +25,22 @@ export const crear = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const actualizarEstado = asyncHandler(async (req: Request, res: Response) => {
-  const { estado } = actualizarEstadoDenunciaSchema.parse(req.body);
-  const result = await denunciaService.actualizarEstado(String(req.params.id), estado, {
-    id: req.user!.sub,
-    correo: req.user!.correo,
-  });
+  const { estado, evidencias } = actualizarEstadoDenunciaSchema.parse(req.body);
+  for (const evidencia of evidencias ?? []) {
+    await verificarEvidenciaOLanzar(evidencia.url, evidencia.type, evidencia.name);
+  }
+
+  const user = req.user!;
+  const organizacionId =
+    user.rol === "fundacion" ? await catalogRepo.findOrganizacionIdByUsuarioCorreo(user.correo) : null;
+
+  const result = await denunciaService.actualizarEstado(
+    String(req.params.id),
+    estado,
+    organizacionId,
+    evidencias ?? [],
+    { id: user.sub, correo: user.correo }
+  );
   res.status(200).json({ success: true, ...result });
 });
 

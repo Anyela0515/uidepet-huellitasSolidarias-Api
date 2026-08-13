@@ -63,6 +63,10 @@ export async function consultarPorCodigo(codigo: string) {
     urgencia: denuncia.urgencia,
     ubicacion: denuncia.ubicacion,
     fecha: denuncia.fecha,
+    // Evidencia de que el animal fue rescatado, y quién lo atendió: solo se
+    // llenan una vez que una fundación marca el reporte como "atendida".
+    evidenciasRescate: denuncia.evidenciasRescate,
+    organizacionAtiende: denuncia.organizacionAtiende?.nombre ?? null,
   };
 }
 
@@ -89,11 +93,17 @@ async function notificarFundaciones(reporte: {
   await Promise.allSettled(envios);
 }
 
-export async function actualizarEstado(id: string, estado: string, actor?: Actor) {
+export async function actualizarEstado(
+  id: string,
+  estado: string,
+  organizacionId: number | null,
+  evidencias: denunciaRepo.EvidenciaRescateInput[] = [],
+  actor?: Actor
+) {
   const denuncia = await denunciaRepo.findById(id);
   if (!denuncia) throw new NotFoundError("Reporte no encontrado.");
 
-  const reporte = await denunciaRepo.updateEstado(id, estado);
+  const reporte = await denunciaRepo.updateEstado(id, estado, organizacionId, evidencias);
 
   publish("reporte.estado_cambiado", {
     usuarioId: actor?.id ?? null,

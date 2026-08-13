@@ -248,18 +248,20 @@ export function mapMensaje(row: Record<string, unknown>) {
   };
 }
 
-export function mapDenuncia(row: Record<string, unknown>) {
-  const evidenciasRaw = row.evidencias_json;
-  let evidencias: unknown[] = [];
-  if (typeof evidenciasRaw === "string") {
+function parseJsonArray(raw: unknown): unknown[] {
+  if (typeof raw === "string") {
     try {
-      evidencias = JSON.parse(evidenciasRaw);
+      return JSON.parse(raw);
     } catch {
-      evidencias = [];
+      return [];
     }
-  } else if (Array.isArray(evidenciasRaw)) {
-    evidencias = evidenciasRaw;
   }
+  return Array.isArray(raw) ? raw : [];
+}
+
+export function mapDenuncia(row: Record<string, unknown>) {
+  const evidencias = parseJsonArray(row.evidencias_json);
+  const evidenciasRescate = parseJsonArray(row.evidencias_rescate_json);
 
   const latitud = row.latitud != null ? Number(row.latitud) : null;
   const longitud = row.longitud != null ? Number(row.longitud) : null;
@@ -279,6 +281,11 @@ export function mapDenuncia(row: Record<string, unknown>) {
     estado: String(row.estado_codigo ?? row.estado ?? "recibida"),
     fecha: formatFechaCorta(toDate(row.creado_en)),
     evidencias,
+    evidenciasRescate,
+    organizacionAtiende:
+      row.organizacion_atiende_id != null
+        ? { id: Number(row.organizacion_atiende_id), nombre: String(row.organizacion_atiende_nombre ?? "") }
+        : null,
   };
 }
 

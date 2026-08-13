@@ -3,6 +3,7 @@ import type { RowDataPacket } from "mysql2";
 import { mapDenuncia } from "../utils/mappers.js";
 import * as catalog from "./catalog.repository.js";
 import { buildPaginationMeta, type PaginationParams } from "../utils/pagination.js";
+import { ConflictError, NotFoundError } from "../utils/errors.js";
 
 export const DENUNCIA_SORT_FIELDS: Record<string, string> = {
   fecha: "dr.creado_en",
@@ -23,6 +24,8 @@ const SELECT = `
     dr.correo_notificacion,
     dr.creado_en,
     ed.codigo AS estado_codigo,
+    dr.organizacion_atiende_id,
+    org.nombre AS organizacion_atiende_nombre,
     (
       SELECT JSON_ARRAYAGG(
         JSON_OBJECT(
@@ -33,10 +36,23 @@ const SELECT = `
         )
       )
       FROM archivos ev
-      WHERE ev.denuncia_id = dr.id
-    ) AS evidencias_json
+      WHERE ev.denuncia_id = dr.id AND ev.categoria = 'reporte'
+    ) AS evidencias_json,
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'name', ev.nombre_archivo,
+          'type', ev.mime_type,
+          'size', ev.tamanio_bytes,
+          'url', ev.contenido
+        )
+      )
+      FROM archivos ev
+      WHERE ev.denuncia_id = dr.id AND ev.categoria = 'rescate'
+    ) AS evidencias_rescate_json
   FROM denuncias_rescate dr
   INNER JOIN catalogos ed ON ed.id = dr.estado_id AND ed.tipo = 'estado_denuncia'
+  LEFT JOIN organizaciones org ON org.id = dr.organizacion_atiende_id
 `;
 
 export interface DenunciaFiltros {
@@ -84,12 +100,76 @@ export async function findById(id: string) {
   return rows[0] ? mapDenuncia(rows[0]) : null;
 }
 
-export async function updateEstado(id: string, estado: string) {
-  const estadoId = await catalog.getEstadoDenunciaId(estado);
-  await pool.query("UPDATE denuncias_rescate SET estado_id = ? WHERE id = ?", [
-    estadoId,
-    id,
-  ]);
+export interface EvidenciaRescateInput {
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+}
+
+/**
+ * `organizacionId` es null para un admin (nunca queda bloqueado por nadie,
+ * ni reclama el reporte para sí). Para una fundación: si el reporte ya está
+ * reclamado por OTRA organización, se rechaza con ConflictError — es la
+ * comprobación (y el UPDATE) dentro de la misma transacción con bloqueo
+ * pesimista lo que evita que dos fundaciones lo reclamen a la vez.
+ */
+export async function updateEstado(
+  id: string,
+  estado: string,
+  organizacionId: number | null,
+  evidencias: EvidenciaRescateInput[] = []
+) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [locked] = await conn.query<RowDataPacket[]>(
+      `SELECT dr.id, dr.organizacion_atiende_id
+       FROM denuncias_rescate dr
+       WHERE dr.id = ?
+       FOR UPDATE`,
+      [id]
+    );
+    if (!locked[0]) {
+      throw new NotFoundError("Reporte no encontrado.");
+    }
+
+    const organizacionActualId = locked[0].organizacion_atiende_id as number | null;
+    if (
+      organizacionId !== null &&
+      organizacionActualId !== null &&
+      organizacionActualId !== organizacionId
+    ) {
+      throw new ConflictError("Este reporte ya está siendo atendido por otra fundación.");
+    }
+
+    const estadoId = await catalog.getEstadoDenunciaId(estado, conn);
+    await conn.query(
+      `UPDATE denuncias_rescate
+       SET estado_id = ?,
+           organizacion_atiende_id = COALESCE(organizacion_atiende_id, ?)
+       WHERE id = ?`,
+      [estadoId, organizacionId, id]
+    );
+
+    for (const ev of evidencias) {
+      await conn.query(
+        `INSERT INTO archivos
+          (denuncia_id, categoria, nombre_archivo, mime_type, tamanio_bytes, contenido)
+         VALUES (?, 'rescate', ?, ?, ?, ?)`,
+        [id, ev.name, ev.type, ev.size, ev.url]
+      );
+    }
+
+    await conn.commit();
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
+
   return findById(id);
 }
 
