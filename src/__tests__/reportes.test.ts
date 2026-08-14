@@ -5,7 +5,12 @@ import * as emailService from "../services/email.service.js";
 
 vi.mock("../services/email.service.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../services/email.service.js")>();
-  return { ...actual, sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined) };
+  return {
+    ...actual,
+    sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined),
+    sendReporteRescatadoEmail: vi.fn().mockResolvedValue(undefined),
+    sendReporteEstadoActualizadoEmail: vi.fn().mockResolvedValue(undefined),
+  };
 });
 
 const app = createApp();
@@ -209,4 +214,41 @@ describe("Reportes de rescate", () => {
       .send({ estado: "cerrada" });
     expect(adminSiPuede.status).toBe(200);
   });
+
+  it("al marcar un reporte como atendida, notifica al correo con el aviso de rescate", async () => {
+    // Timeout ampliado: crear el reporte dispara SMTP real (confirmación al
+    // reportante + aviso a cada fundación activa), y para este punto de la
+    // suite ya hay más de una fundación de prueba registrada.
+    const correo = `vitest.notificacion.${Date.now()}@gmail.com`;
+    const creado = await request(app).post("/reportes").send({
+      tipoAnimal: "Perro",
+      urgencia: "Alta",
+      ubicacion: "Sector notificaciones",
+      descripcion: "Perro reportado para probar la notificación de rescate por correo.",
+      correoNotificacion: correo,
+      evidencias: evidenciaValida,
+    });
+    const id = creado.body.reporte.id;
+
+    const enRevision = await request(app)
+      .patch(`/reportes/${id}/estado`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ estado: "revision" });
+    expect(enRevision.status).toBe(200);
+
+    const atendida = await request(app)
+      .patch(`/reportes/${id}/estado`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ estado: "atendida", evidencias: evidenciaValida });
+    expect(atendida.status).toBe(200);
+
+    expect(
+      vi.mocked(emailService.sendReporteEstadoActualizadoEmail).mock.calls.some((args) => args[0] === correo)
+    ).toBe(true);
+    const avisoRescate = vi
+      .mocked(emailService.sendReporteRescatadoEmail)
+      .mock.calls.find((args) => args[0] === correo);
+    expect(avisoRescate).toBeTruthy();
+    expect(avisoRescate?.[1]).toBe(id);
+  }, 30000);
 });

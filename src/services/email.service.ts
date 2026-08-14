@@ -501,3 +501,38 @@ export async function sendReporteEstadoActualizadoEmail(
     },
   });
 }
+
+export async function sendReporteRescatadoEmail(
+  correo: string,
+  codigo: string,
+  seguimientoUrl: string,
+  reporte: { tipoAnimal: string; ubicacion: string; organizacionAtiende?: string | null }
+) {
+  const porOrganizacion = reporte.organizacionAtiende
+    ? ` por ${reporte.organizacionAtiende}`
+    : "";
+
+  await deliverMail({
+    to: correo,
+    subject: `¡Buenas noticias! Tu reporte ${codigo} fue atendido 🎉`,
+    text: `¡Buenas noticias! El ${reporte.tipoAnimal} que reportaste en ${reporte.ubicacion} (código ${codigo}) fue rescatado${porOrganizacion}.\n\nYa puedes ver las fotos que confirman el rescate en: ${seguimientoUrl}`,
+    content: {
+      preheader: `Tu reporte ${codigo} fue atendido: el animal ya fue rescatado`,
+      webViewUrl: seguimientoUrl,
+      badge: { text: "Animal rescatado", variant: "success" },
+      title: "¡Tu reporte fue atendido! 🎉",
+      introHtml: `<p style="margin:0">El <strong>${escapeHtml(reporte.tipoAnimal)}</strong> que reportaste en <strong>${escapeHtml(reporte.ubicacion)}</strong> fue rescatado${
+        reporte.organizacionAtiende ? ` por <strong>${escapeHtml(reporte.organizacionAtiende)}</strong>` : ""
+      }. Subimos fotos como evidencia del rescate.</p>`,
+      infoCardTitle: "Información del reporte",
+      infoRows: [
+        { icon: "🔖", label: "Código", value: codigo },
+        { icon: "🐾", label: "Animal", value: reporte.tipoAnimal },
+        { icon: "📍", label: "Ubicación", value: reporte.ubicacion },
+        estadoRow("Atendido", "success"),
+      ],
+      noteHtml: "Ingresa con tu código de seguimiento para ver las fotos que confirman el rescate.",
+      cta: { url: seguimientoUrl, label: "Ver evidencia del rescate" },
+    },
+  });
+}

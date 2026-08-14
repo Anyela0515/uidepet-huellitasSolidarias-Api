@@ -4,6 +4,7 @@ import {
   sendNuevoReporteRescateEmail,
   sendReporteConfirmacionEmail,
   sendReporteEstadoActualizadoEmail,
+  sendReporteRescatadoEmail,
 } from "./email.service.js";
 import { NotFoundError } from "../utils/errors.js";
 import { buildSortClause, parsePagination } from "../utils/pagination.js";
@@ -114,13 +115,24 @@ export async function actualizarEstado(
   });
 
   if (reporte?.correoNotificacion) {
-    await sendReporteEstadoActualizadoEmail(
-      reporte.correoNotificacion,
-      reporte.codigo,
-      reporte.estado,
-      seguimientoUrl(),
-      reporte
-    ).catch((error) => {
+    // "Atendida" siempre trae evidencia (lo exige el schema), así que en vez
+    // del correo genérico de "cambio de estado" se manda uno dedicado que
+    // avisa explícitamente que el animal fue rescatado y enlaza a las fotos.
+    const envio =
+      estado === "atendida"
+        ? sendReporteRescatadoEmail(reporte.correoNotificacion, reporte.codigo, seguimientoUrl(), {
+            tipoAnimal: reporte.tipoAnimal,
+            ubicacion: reporte.ubicacion,
+            organizacionAtiende: reporte.organizacionAtiende?.nombre ?? null,
+          })
+        : sendReporteEstadoActualizadoEmail(
+            reporte.correoNotificacion,
+            reporte.codigo,
+            reporte.estado,
+            seguimientoUrl(),
+            reporte
+          );
+    await envio.catch((error) => {
       console.error(`No se pudo enviar la actualización del reporte ${reporte.codigo}:`, error);
     });
   }
