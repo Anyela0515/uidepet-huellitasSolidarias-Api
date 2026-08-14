@@ -42,6 +42,11 @@ export const crear = asyncHandler(async (req: Request, res: Response) => {
   for (const evidencia of data.form.evidencias || []) {
     await verificarEvidenciaOLanzar(evidencia.url, evidencia.type, evidencia.name);
   }
+  await verificarEvidenciaOLanzar(
+    data.form.contratoFirmado.url,
+    data.form.contratoFirmado.type,
+    data.form.contratoFirmado.name
+  );
   const session = req.user!;
   const usuario = await authService.getMe(session.sub);
 

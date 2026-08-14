@@ -415,6 +415,20 @@ export async function create(
       );
     }
 
+    const contrato = data.form.contratoFirmado;
+    await conn.query(
+      `INSERT INTO archivos
+        (solicitud_id, nombre_archivo, mime_type, tamanio_bytes, contenido)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        id,
+        `Contrato firmado - ${contrato.name.replace(/^Contrato firmado - /, "")}`,
+        contrato.type,
+        contrato.size,
+        contrato.url,
+      ]
+    );
+
     await conn.commit();
   } catch (error) {
     await conn.rollback();

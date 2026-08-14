@@ -55,12 +55,112 @@ function formularioValido(localidadId: number, overrides: Record<string, unknown
     responsableGastos: "Adoptante Vitest",
     seguimiento: "si",
     contrato: "si",
+    contratoFirmado: {
+      name: "contrato.pdf",
+      type: "application/pdf",
+      size: 9,
+      url: "data:application/pdf;base64,JVBERi0xLjQ=",
+    },
     declaracion: true,
     ...overrides,
   };
 }
 
 describe("Solicitudes", () => {
+  it("registra un usuario y crea una solicitud con tres fotos y el PDF separado", async () => {
+    const visibles = await request(app).get("/mascotas/publicas?limit=10");
+    const mascota = visibles.body.data.find((item: { estado?: string }) => item.estado === "Disponible");
+    expect(mascota?.id).toBeDefined();
+
+    const correo = randomEmail("flujo.completo");
+    const password = "Clave123!";
+    const registro = await request(app).post("/auth/register").send({
+      nombre: "Prueba Adopcion Completa",
+      correo,
+      password,
+      cedula: randomCedula(),
+      telefono: "0991234567",
+      direccion: "Calle de validacion 123",
+    });
+    expect(registro.status).toBe(201);
+
+    const token = await loginAs(correo, password);
+    expect(token).toBeTruthy();
+
+    const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const formulario = formularioValido(await primeraParroquiaId(), {
+      correo,
+      evidencias: [
+        { name: "interior.png", type: "image/png", size: 70, url: png },
+        { name: "patio.png", type: "image/png", size: 70, url: png },
+        { name: "cerramiento.png", type: "image/png", size: 70, url: png },
+      ],
+    });
+
+    const creada = await request(app)
+      .post("/solicitudes")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ petId: mascota.id, form: formulario });
+
+    expect(creada.status).toBe(201);
+    expect(creada.body.solicitud.formData.evidencias).toHaveLength(4);
+    expect(
+      creada.body.solicitud.formData.evidencias.filter(
+        (archivo: { type: string }) => archivo.type === "application/pdf"
+      )
+    ).toHaveLength(1);
+    expect(
+      creada.body.solicitud.formData.evidencias.filter(
+        (archivo: { type: string }) => archivo.type === "image/png"
+      )
+    ).toHaveLength(3);
+  });
+
+  it("rechaza un PDF con firma falsa sin crear una solicitud parcial", async () => {
+    const visibles = await request(app).get("/mascotas/publicas?limit=10");
+    const mascota = visibles.body.data.find((item: { estado?: string }) => item.estado === "Disponible");
+    expect(mascota?.id).toBeDefined();
+
+    const correo = randomEmail("pdf.invalido");
+    const password = "Clave123!";
+    const registro = await request(app).post("/auth/register").send({
+      nombre: "Prueba PDF Invalido",
+      correo,
+      password,
+      cedula: randomCedula(),
+      telefono: "0991234567",
+      direccion: "Calle de validacion 456",
+    });
+    expect(registro.status).toBe(201);
+    const token = await loginAs(correo, password);
+
+    const form = formularioValido(await primeraParroquiaId(), {
+      correo,
+      contratoFirmado: {
+        name: "contrato-falso.pdf",
+        type: "application/pdf",
+        size: 1,
+        url: "data:application/pdf;base64,YQ==",
+      },
+    });
+    const rechazada = await request(app)
+      .post("/solicitudes")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ petId: mascota.id, form });
+    expect(rechazada.status).toBe(422);
+    expect(rechazada.body.error).toContain("contrato-falso.pdf");
+
+    const solicitudes = await request(app)
+      .get("/solicitudes")
+      .set("Authorization", `Bearer ${token}`);
+    expect(solicitudes.status).toBe(200);
+    expect(solicitudes.body.pagination.total).toBe(0);
+
+    const mascotaDespues = await request(app).get(`/mascotas/${mascota.id}`);
+    expect(mascotaDespues.status).toBe(200);
+    expect(mascotaDespues.body.data.estado).toBe("Disponible");
+  });
+
   it("crea una solicitud y solo el adoptante dueño, su fundación o un admin pueden verla", async () => {
     const fundacionToken = await loginAs("fundacion@huellitas.com", "Huellitas123");
 

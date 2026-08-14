@@ -49,6 +49,22 @@ const evidenciaFormSchema = z.object({
     }),
 });
 
+const contratoFirmadoFormSchema = z.object({
+  name: z.string().min(1).max(255),
+  type: z.literal("application/pdf", {
+    errorMap: () => ({ message: "El contrato firmado debe ser un PDF." }),
+  }),
+  size: z.number().int().positive().max(MAX_FOTO_HOGAR_BYTES, {
+    message: "El contrato firmado no puede superar 5 MB.",
+  }),
+  url: z
+    .string()
+    .max(14_000_000)
+    .regex(/^data:application\/pdf;base64,/, {
+      message: "El contrato firmado tiene un formato no permitido.",
+    }),
+});
+
 export const formularioAdopcionSchema = z
   .object({
     nombre: z.string().min(3, "El nombre declarado es obligatorio.").max(120),
@@ -111,6 +127,7 @@ export const formularioAdopcionSchema = z
     }),
 
     evidencias: z.array(evidenciaFormSchema).max(5, "Máximo 5 archivos del hogar permitidos.").optional(),
+    contratoFirmado: contratoFirmadoFormSchema,
   })
   .superRefine((data, ctx) => {
     const evidencias = data.evidencias || [];

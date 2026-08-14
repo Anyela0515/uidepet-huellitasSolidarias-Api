@@ -43,10 +43,11 @@ describe("formularioAdopcionSchema", () => {
     responsableGastos: "Ana Pérez López",
     seguimiento: "si",
     contrato: "si",
+    contratoFirmado: contratoPdf,
     declaracion: true as const,
   };
 
-  it("acepta solo fotos del hogar en el alta (sin PDF)", () => {
+  it("acepta fotos y contrato en campos separados", () => {
     const result = formularioAdopcionSchema.safeParse({
       ...baseForm,
       evidencias: [
@@ -65,10 +66,19 @@ describe("formularioAdopcionSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("requiere el contrato PDF separado", () => {
+    const result = formularioAdopcionSchema.safeParse({
+      ...baseForm,
+      contratoFirmado: undefined,
+      evidencias: [fotoHogar],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("evidenciaAdopcionSchema", () => {
-  it("acepta el PDF del contrato firmado en el endpoint aparte", async () => {
+  it("mantiene compatibilidad para adjuntar un PDF a una solicitud existente", async () => {
     const { evidenciaAdopcionSchema } = await import("./solicitud.schema.js");
     const result = evidenciaAdopcionSchema.safeParse({
       nombreArchivo: contratoPdf.name,
