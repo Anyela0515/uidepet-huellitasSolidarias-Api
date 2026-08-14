@@ -364,6 +364,68 @@ export async function sendNuevoMensajeNotificationEmail(
   });
 }
 
+export async function sendNuevaSolicitudAdopcionEmail(
+  correoOrganizacion: string,
+  nombreOrganizacion: string,
+  panelUrl: string,
+  adoptanteNombre: string,
+  mascotaNombre: string
+) {
+  await deliverMail({
+    to: correoOrganizacion,
+    subject: `Nueva solicitud de adopción: ${mascotaNombre}`,
+    text: `Hola ${nombreOrganizacion}. ${adoptanteNombre} envió una solicitud para adoptar a ${mascotaNombre}. Ingresa a ${panelUrl} para revisarla.`,
+    content: {
+      preheader: `Nueva solicitud de adopción para ${mascotaNombre}`,
+      webViewUrl: panelUrl,
+      badge: { text: "Nueva solicitud", variant: "info" },
+      title: "¡Tienes una nueva solicitud de adopción! 🐾",
+      nombre: nombreOrganizacion,
+      introHtml: `<p style="margin:0"><strong>${escapeHtml(adoptanteNombre)}</strong> quiere adoptar a <strong>${escapeHtml(mascotaNombre)}</strong>.</p>`,
+      infoCardTitle: "Información de la solicitud",
+      infoRows: [
+        { icon: "👤", label: "Adoptante", value: adoptanteNombre },
+        { icon: "🐾", label: "Mascota", value: mascotaNombre },
+        estadoRow("Solicitud recibida", "info"),
+      ],
+      noteHtml: "Ingresa al panel para revisar el formulario completo y decidir si la apruebas.",
+      cta: { url: panelUrl, label: "Ver solicitud" },
+    },
+  });
+}
+
+export async function sendNuevaDonacionEmail(
+  correoOrganizacion: string,
+  nombreOrganizacion: string,
+  panelUrl: string,
+  donanteNombre: string,
+  tipo: string,
+  cantidad: string
+) {
+  await deliverMail({
+    to: correoOrganizacion,
+    subject: `Nueva donación recibida: ${tipo}`,
+    text: `Hola ${nombreOrganizacion}. ${donanteNombre} hizo una donación (${tipo}: ${cantidad}). Ingresa a ${panelUrl} para revisarla.`,
+    content: {
+      preheader: `Nueva donación de ${donanteNombre}`,
+      webViewUrl: panelUrl,
+      badge: { text: "Nueva donación", variant: "success" },
+      title: "¡Recibiste una nueva donación! 🎁",
+      nombre: nombreOrganizacion,
+      introHtml: `<p style="margin:0"><strong>${escapeHtml(donanteNombre)}</strong> quiere hacerte una donación.</p>`,
+      infoCardTitle: "Información de la donación",
+      infoRows: [
+        { icon: "👤", label: "Donante", value: donanteNombre },
+        { icon: "🎁", label: "Tipo", value: tipo },
+        { icon: "🔢", label: "Cantidad", value: cantidad },
+        estadoRow("Donación recibida", "success"),
+      ],
+      noteHtml: "Ingresa al panel para ver los detalles y coordinar la entrega o el comprobante.",
+      cta: { url: panelUrl, label: "Ver donación" },
+    },
+  });
+}
+
 export async function sendSeguimientoActualizadoEmail(
   correoFundacion: string,
   nombreFundacion: string,

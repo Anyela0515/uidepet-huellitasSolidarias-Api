@@ -3,7 +3,7 @@ import * as organizacionRepo from "../repositories/organizacion.repository.js";
 import { buildPaginationMeta, buildSortClause, parsePagination } from "../utils/pagination.js";
 import { DONACION_SORT_FIELDS, type DonacionFiltros } from "../repositories/donacion.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
-import { sendComprobanteDonacionEmail, sendNuevoMensajeNotificationEmail } from "./email.service.js";
+import { sendComprobanteDonacionEmail, sendNuevaDonacionEmail } from "./email.service.js";
 import { publish } from "../events/domainEvents.js";
 
 interface Actor {
@@ -53,12 +53,13 @@ export async function crearDonacion(data: {
 
   const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
   try {
-    await sendNuevoMensajeNotificationEmail(
+    await sendNuevaDonacionEmail(
       organizacion.correo,
       organizacion.nombre,
       `${frontendUrl}/fundacion/donaciones`,
       data.nombre,
-      `Nueva donación — ${data.tipo}`
+      data.tipo,
+      data.cantidad
     );
   } catch (error) {
     console.error("No se pudo enviar el aviso de nueva donación a la organización:", error);

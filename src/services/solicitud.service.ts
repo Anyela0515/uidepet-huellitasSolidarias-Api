@@ -11,7 +11,7 @@ import { SOLICITUD_SORT_FIELDS } from "../repositories/solicitud.repository.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import {
   sendEntregaReagendadaEmail,
-  sendNuevoMensajeNotificationEmail,
+  sendNuevaSolicitudAdopcionEmail,
   sendSeguimientoActualizadoEmail,
   sendSolicitudAprobadaEmail,
   sendSolicitudRechazadaEmail,
@@ -85,12 +85,12 @@ export async function crearSolicitud(
   if (pet.fundacionEmail) {
     const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
     try {
-      await sendNuevoMensajeNotificationEmail(
+      await sendNuevaSolicitudAdopcionEmail(
         pet.fundacionEmail,
         pet.fundacion || "tu organización",
         `${frontendUrl}/fundacion/solicitudes`,
         user.nombre,
-        `Nueva solicitud de adopción — ${pet.nombre}`
+        pet.nombre
       );
     } catch (error) {
       console.error("No se pudo enviar el aviso de nueva solicitud a la organización:", error);
