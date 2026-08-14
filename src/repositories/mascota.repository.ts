@@ -293,6 +293,21 @@ export async function findOrganizacionId(id: number): Promise<number | null> {
   return rows[0] ? Number(rows[0].organizacion_id) : null;
 }
 
+/**
+ * "Activa" = no eliminada (todavía ocupa un cupo del plan de la fundación).
+ * Disponible, en proceso y adoptada cuentan; solo lo eliminado deja de contar.
+ */
+export async function countActivasByOrganizacion(organizacionId: number): Promise<number> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS total
+     FROM mascotas m
+     INNER JOIN catalogos em ON em.id = m.estado_mascota_id AND em.tipo = 'estado_mascota'
+     WHERE m.organizacion_id = ? AND em.codigo != 'Eliminado'`,
+    [organizacionId]
+  );
+  return Number(rows[0]?.total ?? 0);
+}
+
 export async function create(
   data: CrearMascotaDTO & { organizacionId: number }
 ) {

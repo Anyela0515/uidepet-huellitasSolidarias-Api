@@ -62,6 +62,14 @@ function map(row: RowDataPacket): OrganizacionPerfil {
   };
 }
 
+export async function getPlan(id: number): Promise<string> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT plan FROM organizaciones WHERE id = ? LIMIT 1",
+    [id]
+  );
+  return rows[0] ? String(rows[0].plan) : "basico";
+}
+
 export async function findById(id: number): Promise<OrganizacionPerfil | null> {
   const [rows] = await pool.query<RowDataPacket[]>(`${SELECT} WHERE o.id = ? LIMIT 1`, [id]);
   return rows[0] ? map(rows[0]) : null;

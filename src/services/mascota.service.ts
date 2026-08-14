@@ -2,6 +2,7 @@ import * as mascotaRepo from "../repositories/mascota.repository.js";
 import * as favoritoRepo from "../repositories/favorito.repository.js";
 import * as solicitudRepo from "../repositories/solicitud.repository.js";
 import * as catalog from "../repositories/catalog.repository.js";
+import * as organizacionRepo from "../repositories/organizacion.repository.js";
 import type { Mascota } from "../types/frontend.js";
 import {
   ActualizarMascotaDTO,
@@ -70,6 +71,22 @@ export async function verificarImagenDuplicada(
   return duplicada ? { duplicada: true, nombre: duplicada.nombre } : { duplicada: false };
 }
 
+// Plan básico (gratuito): 15 mascotas + 5 de regalo por lanzamiento = 20.
+// Los planes pagos (aliado, impulso) no tienen límite.
+const LIMITE_MASCOTAS_PLAN_BASICO = 20;
+
+async function verificarCupoDelPlan(organizacionId: number) {
+  const plan = await organizacionRepo.getPlan(organizacionId);
+  if (plan !== "basico") return;
+
+  const activas = await mascotaRepo.countActivasByOrganizacion(organizacionId);
+  if (activas >= LIMITE_MASCOTAS_PLAN_BASICO) {
+    throw new Error(
+      `Alcanzaste el límite de ${LIMITE_MASCOTAS_PLAN_BASICO} mascotas activas del plan gratuito. Elimina alguna o mejora tu plan para seguir publicando.`
+    );
+  }
+}
+
 export async function crearMascota(
   data: CrearMascotaDTO,
   fundacionEmail: string,
@@ -83,6 +100,8 @@ export async function crearMascota(
       "La cuenta de fundación no tiene una organización asociada."
     );
   }
+
+  await verificarCupoDelPlan(organizacionId);
 
   const imagen = data.imagen ? await compressImageDataUrl(data.imagen) : data.imagen;
 
