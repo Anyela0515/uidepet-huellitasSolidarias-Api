@@ -11,6 +11,10 @@ export interface RazaItem extends CatalogoItem {
   especieId: number;
 }
 
+export interface LocalidadItem extends CatalogoItem {
+  padreId: number;
+}
+
 async function listPorTipoNombre(tipo: string): Promise<CatalogoItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT id, nombre FROM catalogos WHERE tipo = ? ORDER BY nombre ASC",
@@ -40,7 +44,7 @@ export const getUnidadesEdad = () => listPorTipoNombre("unidad_edad");
 export const getEstadosMascota = () => listPorTipoCodigo("estado_mascota");
 export const getProvincias = () => listPorTipoNombre("provincia");
 
-export async function getCantones(provinciaId?: number): Promise<RazaItem[]> {
+export async function getCantones(provinciaId?: number): Promise<LocalidadItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     provinciaId
       ? "SELECT id, padre_id, nombre FROM catalogos WHERE tipo = 'canton' AND padre_id = ? ORDER BY nombre ASC"
@@ -49,19 +53,19 @@ export async function getCantones(provinciaId?: number): Promise<RazaItem[]> {
   );
   return rows.map((row) => ({
     id: Number(row.id),
-    especieId: Number(row.padre_id),
+    padreId: Number(row.padre_id),
     nombre: String(row.nombre),
   }));
 }
 
-export async function getParroquias(cantonId: number): Promise<RazaItem[]> {
+export async function getParroquias(cantonId: number): Promise<LocalidadItem[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT id, padre_id, nombre FROM catalogos WHERE tipo = 'parroquia' AND padre_id = ? ORDER BY nombre ASC",
     [cantonId]
   );
   return rows.map((row) => ({
     id: Number(row.id),
-    especieId: Number(row.padre_id),
+    padreId: Number(row.padre_id),
     nombre: String(row.nombre),
   }));
 }
