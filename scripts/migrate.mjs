@@ -57,7 +57,11 @@ const INCLUIDAS_EN_SCHEMA = new Set([
   "2026_07_29_z7_eliminar_configuracion_sitio.sql",
   "2026_07_29_z8_eliminar_catalogos_viejos.sql",
   "2026_07_30_seguimiento_creado_por.sql",
+  "2026_07_30_telefono_donacion.sql",
   "2026_07_30_tokens_usuario.sql",
+  "2026_08_01_agenda_entrega_solicitud.sql",
+  "2026_08_01_z2_entrega_contacto_solicitud.sql",
+  "2026_08_04_usuario_imagen_perfil.sql",
 ]);
 
 try {
