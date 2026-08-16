@@ -3,3 +3,4 @@ dist/
 .env
 npm-debug.log*
 PROMPT_CLAUDE_IMPLEMENTACION_HUELLITAS.md
+.claude/
