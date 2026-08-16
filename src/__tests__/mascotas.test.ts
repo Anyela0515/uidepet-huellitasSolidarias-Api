@@ -3,10 +3,6 @@ import request from "supertest";
 import { createApp } from "../app.js";
 import * as emailService from "../services/email.service.js";
 
-vi.mock("../services/email.service.js", () => ({
-  sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined),
-}));
-
 const app = createApp();
 
 async function loginAs(correo: string, password: string) {
