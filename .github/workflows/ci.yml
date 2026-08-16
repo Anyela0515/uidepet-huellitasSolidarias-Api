@@ -20,6 +20,11 @@ jobs:
       DB_PASSWORD: root
       DB_NAME: huellitas_solidarias_db
       JWT_SECRET: ci_secret_for_huellitas_solidarias_32_chars
+      # Valor ficticio a proposito: auth.google.test.ts simula por completo
+      # google-auth-library, asi que nunca se contacta con Google. Solo hace
+      # falta que la variable exista, porque loginWithGoogle falla de entrada
+      # si no esta configurada.
+      GOOGLE_CLIENT_ID: ci-client-id-no-real.apps.googleusercontent.com
 
     services:
       mysql:
