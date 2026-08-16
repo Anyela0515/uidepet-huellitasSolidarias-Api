@@ -3,16 +3,6 @@ import request from "supertest";
 import { createApp } from "../app.js";
 import * as emailService from "../services/email.service.js";
 
-vi.mock("../services/email.service.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../services/email.service.js")>();
-  return {
-    ...actual,
-    sendFundacionCredentialsEmail: vi.fn().mockResolvedValue(undefined),
-    sendReporteRescatadoEmail: vi.fn().mockResolvedValue(undefined),
-    sendReporteEstadoActualizadoEmail: vi.fn().mockResolvedValue(undefined),
-  };
-});
-
 const app = createApp();
 
 const JPEG_1PX = "data:image/jpeg;base64,/9j/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/ALoAH//Z";
@@ -216,9 +206,6 @@ describe("Reportes de rescate", () => {
   });
 
   it("al marcar un reporte como atendida, notifica al correo con el aviso de rescate", async () => {
-    // Timeout ampliado: crear el reporte dispara SMTP real (confirmación al
-    // reportante + aviso a cada fundación activa), y para este punto de la
-    // suite ya hay más de una fundación de prueba registrada.
     const correo = `vitest.notificacion.${Date.now()}@gmail.com`;
     const creado = await request(app).post("/reportes").send({
       tipoAnimal: "Perro",
